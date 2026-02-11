@@ -1,0 +1,123 @@
+{
+  "_comment": "NotesForge Configuration - Edit any value!",
+  "_version": "1.0",
+  "app": {
+    "name": "NotesForge Ultimate by AKP",
+    "version": "1.0.0",
+    "theme": "professional"
+  },
+  "fonts": {
+    "family": "Times New Roman",
+    "family_code": "Courier New",
+    "sizes": {
+      "day_heading": 18,
+      "day_heading_with_title": 16,
+      "topic_heading": 14,
+      "section_heading": 13,
+      "body": 12,
+      "code": 10
+    }
+  },
+  "colors": {
+    "day_heading": "#FF8C00",
+    "topic_heading": "#1F4788",
+    "section_heading": "#2E5C8A",
+    "code_background": "#F5F5F5",
+    "table_header_bg": "#ff8c00",
+    "table_header_text": "#FFFFFF",
+    "table_odd_row": "#F5F5F5",
+    "table_even_row": "#FFFFFF"
+  },
+  "spacing": {
+    "line_spacing": 1.5,
+    "paragraph_spacing_after": 6,
+    "heading_spacing_before": 12,
+    "heading_spacing_after": 6,
+    "code_indent": 0.25,
+    "quote_indent": 0.5
+  },
+  "page": {
+    "margins": {
+      "top": 1.0,
+      "bottom": 1.0,
+      "left": 1.0,
+      "right": 1.0
+    },
+    "border": {
+      "enabled": true,
+      "width": 12
+    }
+  },
+  "header": {
+    "enabled": true,
+    "text": "Notes Forge by AKP",
+    "size": 12,
+    "color": "#FF8C00",
+    "bold": true
+  },
+  "footer": {
+    "enabled": true,
+    "show_page_numbers": true,
+    "size": 10
+  },
+  "commands": [
+    "ls",
+    "cd",
+    "pwd",
+    "mkdir",
+    "rm",
+    "cp",
+    "mv",
+    "touch",
+    "cat",
+    "chmod",
+    "chown",
+    "grep",
+    "sed",
+    "awk",
+    "find",
+    "git",
+    "npm",
+    "pip",
+    "python",
+    "node",
+    "curl",
+    "wget",
+    "ssh",
+    "docker",
+    "kubectl",
+    "make",
+    "gcc",
+    "java",
+    "mysql",
+    "psql",
+    "mongo",
+    "redis",
+    "nginx",
+    "systemctl",
+    "service",
+    "ps",
+    "top",
+    "kill",
+    "df",
+    "du",
+    "free",
+    "netstat",
+    "ifconfig",
+    "ping",
+    "traceroute",
+    "tar",
+    "gzip",
+    "zip",
+    "unzip",
+    "tcpdump",
+    "dig",
+    "nslookup",
+    "arp",
+    "ip"
+  ],
+  "output": {
+    "default_format": "docx",
+    "enable_pdf": true
+  }
+}
