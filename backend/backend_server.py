@@ -1,6 +1,8 @@
 """
 NotesForge Professional - Backend Server v6.2 (Clean)
 """
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import logging
@@ -317,13 +319,10 @@ def get_state() -> AppState:
 
 app = FastAPI()
 
+# ✅ CORS MUST BE HERE (before routes)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://notes-forge-ruddy.vercel.app",
-        "https://notes-forge.onrender.com",
-        "*"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
