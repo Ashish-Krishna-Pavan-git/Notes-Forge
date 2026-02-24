@@ -64,8 +64,9 @@ import {
 // ═══════════════════════════════════════════════════════════════════
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════
+
 const API =
-  (import.meta as any).env?.VITE_API_URL ?? "https://notes-forge.onrender.com";
+  (import.meta as any).env?.VITE_API_URL ?? "http://localhost:8000";
 
 const AUTOSAVE_MS = 30_000;
 const ANALYZE_DEBOUNCE_MS = 600;
@@ -278,16 +279,6 @@ const CATEGORY_BADGE: Record<string, string> = {
   default:
     "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300",
 };
-
-const BUILTIN_THEME_KEYS = new Set([
-  "professional",
-  "modern",
-  "minimal",
-  "academic",
-  "corporate",
-  "creative",
-  "startup",
-]);
 
 // ═══════════════════════════════════════════════════════════════════
 // FALLBACK AI PROMPT
@@ -1052,7 +1043,7 @@ export default function App() {
 
   const saveSettings = useCallback(async () => {
     try {
-      const sections: (keyof AppConfigState)[] = [
+      for (const section of [
         "fonts",
         "colors",
         "spacing",
@@ -1060,10 +1051,8 @@ export default function App() {
         "header",
         "footer",
         "watermark",
-      ];
-
-      for (const section of sections) {
-        const val = config[section];
+      ]) {
+        const val = (config as Record<string, unknown> )[section];
         if (val) {
           await axios.post(`${API}/api/config/update`, {
             path: section,
@@ -1083,50 +1072,25 @@ export default function App() {
       setError("Key and name required");
       return;
     }
-    const savedKey = newThemeKey
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-z0-9_]/g, "");
-    if (!savedKey) {
-      setError("Invalid theme key");
-      return;
-    }
     setSavingTheme(true);
     try {
       await axios.post(`${API}/api/themes/save`, {
-        key: savedKey,
+        key: newThemeKey,
         name: newThemeName,
         description: newThemeDesc,
-        config,
-      });
-      await axios.post(`${API}/api/themes/apply`, {
-        theme_name: savedKey,
       });
       await loadThemes();
-      await loadConfig();
-      setCurrentTheme(savedKey);
-      setDirty(false);
       setNewThemeKey("");
       setNewThemeName("");
       setNewThemeDesc("");
-      setSuccess(
-        `✅ Theme "${newThemeName}" saved and applied!`
-      );
+      setSuccess(`✅ Theme "${newThemeName}" saved!`);
     } catch (e) {
       const axErr = e as AxiosError<{ detail?: string }>;
       setError(axErr?.response?.data?.detail || "Save failed");
     } finally {
       setSavingTheme(false);
     }
-  }, [
-    newThemeKey,
-    newThemeName,
-    newThemeDesc,
-    config,
-    loadThemes,
-    loadConfig,
-  ]);
+  }, [newThemeKey, newThemeName, newThemeDesc, loadThemes]);
 
   const deleteTheme = useCallback(
     async (key: string) => {
@@ -2482,11 +2446,17 @@ export default function App() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                             {Object.entries(themes).map(
                               ([key, theme]: [string, any]) => {
-                                if (
-                                  !BUILTIN_THEME_KEYS.has(
-                                    key.toLowerCase()
-                                  )
-                                )
+                                // Skip custom themes in this grid
+                                const builtins = [
+                                  "professional",
+                                  "modern",
+                                  "minimal",
+                                  "academic",
+                                  "corporate",
+                                  "creative",
+                                  "startup",
+                                ];
+                                if (!builtins.includes(key))
                                   return null;
 
                                 return (
@@ -2662,9 +2632,15 @@ export default function App() {
                         {themes &&
                           Object.keys(themes).filter(
                             (k) =>
-                              !BUILTIN_THEME_KEYS.has(
-                                k.toLowerCase()
-                              )
+                              ![
+                                "professional",
+                                "modern",
+                                "minimal",
+                                "academic",
+                                "corporate",
+                                "creative",
+                                "startup",
+                              ].includes(k)
                           ).length > 0 && (
                             <div className="border-t dark:border-gray-700 pt-6 mt-6">
                               <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
@@ -2672,9 +2648,15 @@ export default function App() {
                                 {
                                   Object.keys(themes).filter(
                                     (k) =>
-                                      !BUILTIN_THEME_KEYS.has(
-                                        k.toLowerCase()
-                                      )
+                                      ![
+                                        "professional",
+                                        "modern",
+                                        "minimal",
+                                        "academic",
+                                        "corporate",
+                                        "creative",
+                                        "startup",
+                                      ].includes(k)
                                   ).length
                                 }
                                 )
@@ -2683,9 +2665,15 @@ export default function App() {
                                 {Object.entries(themes)
                                   .filter(
                                     ([k]) =>
-                                      !BUILTIN_THEME_KEYS.has(
-                                        k.toLowerCase()
-                                      )
+                                      ![
+                                        "professional",
+                                        "modern",
+                                        "minimal",
+                                        "academic",
+                                        "corporate",
+                                        "creative",
+                                        "startup",
+                                      ].includes(k)
                                   )
                                   .map(
                                     (
@@ -2708,29 +2696,16 @@ export default function App() {
                                               "Custom"}
                                           </p>
                                         </div>
-                                        <div className="flex items-center gap-1.5">
-                                          <button
-                                            onClick={() =>
-                                              applyTheme(
-                                                key
-                                              )
-                                            }
-                                            className="px-3 py-1.5 rounded text-xs font-medium bg-purple-200 dark:bg-purple-900/40 text-purple-900 dark:text-purple-200 hover:bg-purple-300 transition"
-                                          >
-                                            Apply
-                                          </button>
-                                          <button
-                                            onClick={() =>
-                                              deleteTheme(
-                                                key
-                                              )
-                                            }
-                                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
-                                            title="Delete theme"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
-                                        </div>
+                                        <button
+                                          onClick={() =>
+                                            deleteTheme(
+                                              key
+                                            )
+                                          }
+                                          className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
+                                        >
+                                          🗑️
+                                        </button>
                                       </div>
                                     )
                                   )}
@@ -3175,9 +3150,12 @@ export default function App() {
                         ][]
                       ).map(
                         ([path, label, min, max, step]) => {
-                          const [, key] = path.split(".");
+                          const [section, key] =
+                            path.split(".");
                           const val =
-                            config.spacing?.[key] ?? min;
+                            (
+                              config as Record< string,Record<string, number> >
+                            )[section]?.[key] ?? min;
                           return (
                             <div key={path}>
                               <label className={lbl}>
