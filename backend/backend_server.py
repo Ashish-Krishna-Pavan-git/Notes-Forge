@@ -3,7 +3,6 @@ NotesForge Professional - Backend Server v6.2 (Clean)
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.cors import CORSMiddleware
 import json
 import logging
 import os
@@ -317,9 +316,10 @@ def get_state() -> AppState:
     return _app_state
 
 
+
 app = FastAPI()
 
-# ✅ CORS MUST BE HERE (before routes)
+# 🔥 CORS MUST BE IMMEDIATELY AFTER app creation
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
