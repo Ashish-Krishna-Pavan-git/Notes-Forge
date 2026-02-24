@@ -52,6 +52,7 @@ class FontSettings:
     h4_family: str = "Calibri"
     h5_family: str = "Calibri"
     h6_family: str = "Calibri"
+    bullet_family: str = "Calibri"
 
     sizes: Dict[str, int] = field(default_factory=lambda: {
         "h1": 20, "h2": 17, "h3": 14, "h4": 13, "h5": 12, "h6": 11,
@@ -125,7 +126,10 @@ class AppConfig:
         enabled=True, text="NotesForge Professional", color="#FF8C00", bold=False,
     ))
     footer: HeaderFooterSettings = field(default_factory=lambda: HeaderFooterSettings(
-        enabled=True, show_page_numbers=True, page_format="X | P a g e",
+        enabled=True,
+        text=f"© {time.localtime().tm_year} NotesForge",
+        show_page_numbers=True,
+        page_format="Page X of Y",
     ))
     page: PageSettings = field(default_factory=PageSettings)
 
@@ -193,11 +197,15 @@ class AppConfig:
             for k, v in data["header"].items():
                 if hasattr(cfg.header, k):
                     setattr(cfg.header, k, v)
-        
+            if (cfg.header.page_format or "").strip() in {"X | Page", "X | P a g e"}:
+                cfg.header.page_format = "Page X of Y"
+
         if "footer" in data and isinstance(data["footer"], dict):
             for k, v in data["footer"].items():
                 if hasattr(cfg.footer, k):
                     setattr(cfg.footer, k, v)
+            if (cfg.footer.page_format or "").strip() in {"X | Page", "X | P a g e"}:
+                cfg.footer.page_format = "Page X of Y"
         
         if "page" in data and isinstance(data["page"], dict):
             page_data = data["page"]
@@ -452,7 +460,15 @@ class DocumentBuilder:
         except Exception as e:
             logger.warning(f"Failed to add image watermark: {e}")
 
-    def _append_field(self, paragraph, field_name: str):
+    def _append_field(self, paragraph, field_name: str, style: str = "arabic"):
+        style_map = {
+            "arabic": "",
+            "roman": r" \* ROMAN",
+            "alpha": r" \* ALPHABETIC",
+        }
+        field_suffix = style_map.get((style or "arabic").lower(), "")
+        field_code = f"{field_name}{field_suffix}"
+
         run = paragraph.add_run()
         fld_begin = OxmlElement("w:fldChar")
         fld_begin.set(qn("w:fldCharType"), "begin")
@@ -461,7 +477,7 @@ class DocumentBuilder:
         run = paragraph.add_run()
         instr = OxmlElement("w:instrText")
         instr.set(qn("xml:space"), "preserve")
-        instr.text = field_name
+        instr.text = field_code
         run._r.append(instr)
 
         run = paragraph.add_run()
@@ -476,10 +492,12 @@ class DocumentBuilder:
         fld_end.set(qn("w:fldCharType"), "end")
         run._r.append(fld_end)
 
-    def _append_page_number_format(self, paragraph, fmt: str):
+    def _append_page_number_format(self, paragraph, fmt: str, style: str = "arabic"):
         template = (fmt or "X").strip()
         if not template:
             template = "X"
+        template = re.sub(r"(?i)\{page\}", "X", template)
+        template = re.sub(r"(?i)\{pages\}|\{total\}", "Y", template)
 
         token_pattern = re.compile(r"(?i)\b([xy])\b")
         pos = 0
@@ -492,16 +510,36 @@ class DocumentBuilder:
                 paragraph.add_run(template[pos:start])
             token = match.group(1).upper()
             if token == "X":
-                self._append_field(paragraph, "PAGE")
+                self._append_field(paragraph, "PAGE", style)
             else:
-                self._append_field(paragraph, "NUMPAGES")
+                self._append_field(paragraph, "NUMPAGES", style)
             pos = end
 
         if pos < len(template):
             paragraph.add_run(template[pos:])
 
         if not found:
-            self._append_field(paragraph, "PAGE")
+            self._append_field(paragraph, "PAGE", style)
+
+    def _apply_separator_line(self, paragraph, edge: str, color: str):
+        """Draw a real separator line using paragraph borders."""
+        p_pr = paragraph._p.get_or_add_pPr()
+        p_bdr = p_pr.find(qn("w:pBdr"))
+        if p_bdr is None:
+            p_bdr = OxmlElement("w:pBdr")
+            p_pr.append(p_bdr)
+
+        edge_tag = qn(f"w:{edge}")
+        existing = p_bdr.find(edge_tag)
+        if existing is not None:
+            p_bdr.remove(existing)
+
+        line = OxmlElement(f"w:{edge}")
+        line.set(qn("w:val"), "single")
+        line.set(qn("w:sz"), "8")
+        line.set(qn("w:space"), "2")
+        line.set(qn("w:color"), (color or "#CCCCCC").lstrip("#"))
+        p_bdr.append(line)
 
     def _apply_header_footer(self):
         """Apply header and footer to document."""
@@ -524,7 +562,11 @@ class DocumentBuilder:
                 ):
                     if self.config.header.text:
                         h_para.add_run(" | ")
-                    self._append_page_number_format(h_para, self.config.header.page_format)
+                    self._append_page_number_format(
+                        h_para,
+                        self.config.header.page_format,
+                        self.config.header.page_number_style,
+                    )
                     h_para.alignment = self._get_alignment(
                         self.config.header.page_number_alignment or self.config.header.alignment
                     )
@@ -538,13 +580,18 @@ class DocumentBuilder:
                     run.bold = self.config.header.bold
                     run.italic = self.config.header.italic
 
+                if self.config.header.separator:
+                    self._apply_separator_line(
+                        h_para,
+                        "bottom",
+                        self.config.header.separator_color,
+                    )
+
             # FOOTER
             if self.config.footer.enabled:
                 footer = section.footer
                 f_para = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
-
-                if self.config.footer.text:
-                    f_para.text = self.config.footer.text
+                f_para.text = self.config.footer.text or ""
                 
                 if (
                     self.config.footer.show_page_numbers
@@ -554,7 +601,11 @@ class DocumentBuilder:
                         f_para.add_run(" | ")
                     elif self.config.footer.text:
                         f_para.add_run(" ")
-                    self._append_page_number_format(f_para, self.config.footer.page_format)
+                    self._append_page_number_format(
+                        f_para,
+                        self.config.footer.page_format,
+                        self.config.footer.page_number_style,
+                    )
                     f_para.alignment = self._get_alignment(
                         self.config.footer.page_number_alignment or self.config.footer.alignment
                     )
@@ -567,6 +618,13 @@ class DocumentBuilder:
                     run.font.color.rgb = self._hex_color(self.config.footer.color)
                     run.bold = self.config.footer.bold
                     run.italic = self.config.footer.italic
+
+                if self.config.footer.separator:
+                    self._apply_separator_line(
+                        f_para,
+                        "top",
+                        self.config.footer.separator_color,
+                    )
 
     def _add_heading(self, text: str, level: int):
         """Add heading to document."""
@@ -635,11 +693,25 @@ class DocumentBuilder:
             level * self.config.spacing.get("bullet_indent_per_level", 0.45)
         )
         p.paragraph_format.line_spacing = self.config.spacing.get("line_spacing", 1.4)
+        bullet_font = self.config.fonts.bullet_family or self.config.fonts.family
+        bullet_size = Pt(self.config.fonts.sizes.get("body", 12))
+        bullet_color = self._hex_color(self.config.colors.get("body", "#000000"))
+        for run in p.runs:
+            run.font.name = bullet_font
+            run.font.size = bullet_size
+            run.font.color.rgb = bullet_color
 
     def _add_numbered(self, text: str):
         """Add numbered list item."""
         p = self.doc.add_paragraph(text, style="List Number")
         p.paragraph_format.line_spacing = self.config.spacing.get("line_spacing", 1.4)
+        bullet_font = self.config.fonts.bullet_family or self.config.fonts.family
+        bullet_size = Pt(self.config.fonts.sizes.get("body", 12))
+        bullet_color = self._hex_color(self.config.colors.get("body", "#000000"))
+        for run in p.runs:
+            run.font.name = bullet_font
+            run.font.size = bullet_size
+            run.font.color.rgb = bullet_color
 
     def _add_code(self, text: str):
         """Add code block."""

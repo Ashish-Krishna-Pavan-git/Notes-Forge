@@ -64,8 +64,9 @@ import {
 // ═══════════════════════════════════════════════════════════════════
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════
+
 const API =
-  (import.meta as any).env?.VITE_API_URL ?? "https://notes-forge.onrender.com";
+  (import.meta as any).env?.VITE_API_URL ?? "http://localhost:8000";
 
 const AUTOSAVE_MS = 30_000;
 const ANALYZE_DEBOUNCE_MS = 600;
@@ -116,7 +117,13 @@ interface SavedDraft {
   savedAt: number;
 }
 
-type TabId = "editor" | "templates" | "settings" | "prompt" | "shortcuts";
+type TabId =
+  | "editor"
+  | "templates"
+  | "settings"
+  | "prompt"
+  | "guide"
+  | "shortcuts";
 type SettingsTabId = "themes" | "fonts" | "colors" | "spacing" | "page";
 type ConnectionStatus = "checking" | "online" | "offline";
 type ExportFormat = "docx" | "pdf" | "md" | "html";
@@ -130,6 +137,7 @@ interface FontsConfig {
   h4_family?: string;
   h5_family?: string;
   h6_family?: string;
+  bullet_family?: string;
   families?: Record<string, string>;
   available_fonts?: string[];
   available_code_fonts?: string[];
@@ -289,6 +297,52 @@ const BUILTIN_THEME_KEYS = new Set([
   "startup",
 ]);
 
+const DEFAULT_FONT_OPTIONS = [
+  "Arial",
+  "Arial Black",
+  "Bahnschrift",
+  "Book Antiqua",
+  "Calibri",
+  "Cambria",
+  "Candara",
+  "Century Gothic",
+  "Comic Sans MS",
+  "Consolas",
+  "Constantia",
+  "Corbel",
+  "Courier New",
+  "Franklin Gothic Medium",
+  "Garamond",
+  "Georgia",
+  "Helvetica",
+  "Lucida Console",
+  "Lucida Sans Unicode",
+  "Monaco",
+  "Palatino Linotype",
+  "Segoe UI",
+  "Tahoma",
+  "Times New Roman",
+  "Trebuchet MS",
+  "Verdana",
+  "Fira Code",
+  "Source Code Pro",
+  "Roboto",
+  "Open Sans",
+];
+
+const DEFAULT_CODE_FONT_OPTIONS = [
+  "Consolas",
+  "Courier New",
+  "Fira Code",
+  "JetBrains Mono",
+  "Source Code Pro",
+  "Cascadia Code",
+  "Menlo",
+  "Monaco",
+  "Lucida Console",
+  "Inconsolata",
+];
+
 // ═══════════════════════════════════════════════════════════════════
 // FALLBACK AI PROMPT
 // ═══════════════════════════════════════════════════════════════════
@@ -379,6 +433,36 @@ const TEMPLATES: readonly {
   icon: string;
   content: string;
 }[] = [
+  {
+    id: "quickstart",
+    name: "Quick Start (New User)",
+    category: "Academic",
+    icon: "🚀",
+    content: `HEADING: "My First NotesForge Document"
+PARAGRAPH: "Author: [Your name]  |  Date: [Date]"
+
+NOTE: "Delete this note after reading. Replace bracket text with your content."
+
+SUBHEADING: "1) What this document is about"
+PARAGRAPH: "[Add a short introduction.]"
+
+SUBHEADING: "2) Key Points"
+BULLET: "[Main point]"
+BULLET: "[Second point]"
+BULLET: "  [Optional sub-point]"
+
+SUBHEADING: "3) Important Data"
+TABLE: "Item | Value | Notes"
+TABLE: "[Item A] | [Value] | [Notes]"
+
+SUBHEADING: "4) Next Steps"
+NUMBERED: "1. [First action]"
+NUMBERED: "2. [Second action]"
+
+SUBHEADING: "5) References"
+LINK: "Source" | "https://example.com"
+FOOTNOTE: "[Optional citation]"`,
+  },
   {
     id: "meeting",
     name: "Meeting Notes",
@@ -886,6 +970,25 @@ export default function App() {
     const mins = Math.max(1, Math.ceil(words / 200));
     return { words, chars, mins };
   }, [text]);
+
+  const availableFonts = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...DEFAULT_FONT_OPTIONS,
+        ...(config.fonts?.available_fonts ?? []),
+      ])
+    );
+  }, [config.fonts?.available_fonts]);
+
+  const availableCodeFonts = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...DEFAULT_CODE_FONT_OPTIONS,
+        ...availableFonts,
+        ...(config.fonts?.available_code_fonts ?? []),
+      ])
+    );
+  }, [config.fonts?.available_code_fonts, availableFonts]);
 
   // ═════════════════════════════════════════════════════════════
   // HISTORY
@@ -1608,6 +1711,7 @@ export default function App() {
               [
                 ["editor", "Editor", FileText],
                 ["templates", "Templates", BookOpen],
+                ["guide", "New User", Sparkles],
                 ["settings", "Settings", Settings],
                 ["prompt", "AI Prompt", Bot],
                 ["shortcuts", "Shortcuts", Keyboard],
@@ -1749,7 +1853,7 @@ export default function App() {
                   }
                   className="text-xs text-purple-500 hover:underline px-2"
                 >
-                  Load Sample
+                  Load Starter
                 </button>
                 <button
                   onClick={() => handleText("")}
@@ -1908,7 +2012,8 @@ export default function App() {
                     <p className="text-xs text-gray-400 mb-3 flex items-center gap-2">
                       <ImagePlus className="w-4 h-4" />
                       Paste images from clipboard · Drop
-                      .txt/.md files · Load from drafts
+                      .txt/.md files · Load from drafts ·
+                      Use New User tab for step-by-step guide
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {MARKER_BUTTONS.map((btn) => (
@@ -2366,6 +2471,113 @@ export default function App() {
         )}
 
         {/* ══════════════════════════════════════════════════════
+            NEW USER GUIDE TAB
+        ══════════════════════════════════════════════════════ */}
+        {tab === "guide" && (
+          <div className="space-y-5">
+            <div className={`${card} overflow-hidden`}>
+              <div
+                className={`px-6 py-4 ${
+                  dark
+                    ? "bg-gray-700/50"
+                    : "bg-gradient-to-r from-blue-50 to-emerald-50"
+                }`}
+              >
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  New User Guide
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  First time using NotesForge? Follow these 5 steps.
+                </p>
+              </div>
+
+              <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-3">
+                {[
+                  [
+                    "1",
+                    "Pick a starter",
+                    "Open Templates and load Quick Start.",
+                  ],
+                  [
+                    "2",
+                    "Fill your content",
+                    "Replace bracket text with your actual notes.",
+                  ],
+                  [
+                    "3",
+                    "Check preview",
+                    "Use Live Preview and marker error list.",
+                  ],
+                  [
+                    "4",
+                    "Style document",
+                    "Open Settings for fonts, footer, colors, and border.",
+                  ],
+                  [
+                    "5",
+                    "Generate file",
+                    "Click Generate Document and download DOCX/PDF.",
+                  ],
+                ].map(([n, title, desc]) => (
+                  <div
+                    key={n}
+                    className={`p-3 rounded-xl border ${
+                      dark
+                        ? "bg-gray-800 border-gray-700"
+                        : "bg-white border-gray-200"
+                    }`}
+                  >
+                    <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mb-2">
+                      {n}
+                    </div>
+                    <div className="text-sm font-semibold mb-1">
+                      {title}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="px-6 pb-6 flex flex-wrap gap-3">
+                <button
+                  onClick={() => {
+                    handleText(TEMPLATES[0].content);
+                    setTab("editor");
+                    setSuccess("✅ Starter template loaded");
+                  }}
+                  className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+                >
+                  Load Starter Template
+                </button>
+                <button
+                  onClick={() => setTab("templates")}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-medium border ${
+                    dark
+                      ? "border-gray-600 hover:bg-gray-700"
+                      : "border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  Browse All Templates
+                </button>
+                <button
+                  onClick={() => setTab("settings")}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-medium border ${
+                    dark
+                      ? "border-gray-600 hover:bg-gray-700"
+                      : "border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  Open Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════
             SETTINGS TAB
         ══════════════════════════════════════════════════════ */}
         {tab === "settings" && (
@@ -2679,7 +2891,7 @@ export default function App() {
                                 }
                                 )
                               </h4>
-                              <div className="space-y-2">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {Object.entries(themes)
                                   .filter(
                                     ([k]) =>
@@ -2696,9 +2908,13 @@ export default function App() {
                                     ) => (
                                       <div
                                         key={key}
-                                        className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                                        className={`p-4 rounded-lg border-2 transition ${
+                                          currentTheme === key
+                                            ? "border-purple-600 bg-purple-50 dark:bg-purple-900/20"
+                                            : "border-gray-200 dark:border-gray-700 hover:border-purple-400"
+                                        }`}
                                       >
-                                        <div>
+                                        <div className="mb-3">
                                           <p className="font-medium text-gray-900 dark:text-white">
                                             {theme.name ||
                                               key}
@@ -2708,16 +2924,66 @@ export default function App() {
                                               "Custom"}
                                           </p>
                                         </div>
-                                        <div className="flex items-center gap-1.5">
+
+                                        <div className="flex gap-1.5 mb-3">
+                                          {[
+                                            theme.colors?.h1 ||
+                                              "#000000",
+                                            theme.colors?.h2 ||
+                                              "#333333",
+                                            theme.colors?.h3 ||
+                                              "#666666",
+                                            theme.colors
+                                              ?.table_header_bg ||
+                                              "#999999",
+                                          ].map((color, i) => (
+                                            <div
+                                              key={i}
+                                              className="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600"
+                                              style={{
+                                                backgroundColor:
+                                                  color,
+                                              }}
+                                              title={color}
+                                            />
+                                          ))}
+                                        </div>
+
+                                        <div
+                                          className={`rounded-lg p-2.5 text-xs mb-3 border ${
+                                            dark
+                                              ? "bg-gray-900 border-gray-700 text-gray-300"
+                                              : "bg-white border-gray-200 text-gray-700"
+                                          }`}
+                                          style={{
+                                            fontFamily:
+                                              theme.fonts
+                                                ?.family ||
+                                              "inherit",
+                                          }}
+                                        >
+                                          Preview text for{" "}
+                                          {theme.name || key}
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
                                           <button
                                             onClick={() =>
                                               applyTheme(
                                                 key
                                               )
                                             }
-                                            className="px-3 py-1.5 rounded text-xs font-medium bg-purple-200 dark:bg-purple-900/40 text-purple-900 dark:text-purple-200 hover:bg-purple-300 transition"
+                                            className={`flex-1 py-2 rounded text-xs font-medium transition ${
+                                              currentTheme ===
+                                              key
+                                                ? "bg-purple-600 text-white"
+                                                : "bg-purple-200 dark:bg-purple-900/40 text-purple-900 dark:text-purple-200 hover:bg-purple-300"
+                                            }`}
                                           >
-                                            Apply
+                                            {currentTheme ===
+                                            key
+                                              ? "✓ Applied"
+                                              : "Apply"}
                                           </button>
                                           <button
                                             onClick={() =>
@@ -2725,7 +2991,7 @@ export default function App() {
                                                 key
                                               )
                                             }
-                                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
+                                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition border border-red-200 dark:border-red-900/30"
                                             title="Delete theme"
                                           >
                                             <Trash2 className="w-4 h-4" />
@@ -2787,18 +3053,7 @@ export default function App() {
                               : {}
                           }
                         >
-                          {(
-                            config.fonts
-                              ?.available_fonts || [
-                              "Times New Roman",
-                              "Arial",
-                              "Calibri",
-                              "Georgia",
-                              "Verdana",
-                              "Cambria",
-                              "Trebuchet MS",
-                            ]
-                          ).map((f) => (
+                          {availableFonts.map((f) => (
                             <option
                               key={f}
                               value={f}
@@ -2860,15 +3115,7 @@ export default function App() {
                               : {}
                           }
                         >
-                          {(
-                            config.fonts
-                              ?.available_code_fonts || [
-                              "Courier New",
-                              "Consolas",
-                              "Fira Code",
-                              "Source Code Pro",
-                            ]
-                          ).map((f) => (
+                          {availableCodeFonts.map((f) => (
                             <option
                               key={f}
                               value={f}
@@ -2939,18 +3186,7 @@ export default function App() {
                               }
                               className={inp}
                             >
-                              {(
-                                config.fonts
-                                  ?.available_fonts || [
-                                  "Times New Roman",
-                                  "Arial",
-                                  "Calibri",
-                                  "Georgia",
-                                  "Verdana",
-                                  "Cambria",
-                                  "Trebuchet MS",
-                                ]
-                              ).map((f) => (
+                              {availableFonts.map((f) => (
                                 <option key={f}>
                                   {f}
                                 </option>
@@ -2958,6 +3194,32 @@ export default function App() {
                             </select>
                           </div>
                         ))}
+                      </div>
+
+                      <div>
+                        <label className={lbl}>
+                          Bullet / Numbered List Font
+                        </label>
+                        <select
+                          value={
+                            config.fonts?.bullet_family ||
+                            config.fonts?.family ||
+                            ""
+                          }
+                          onChange={(e) =>
+                            cfgLocal(
+                              "fonts.bullet_family",
+                              e.target.value
+                            )
+                          }
+                          className={inp}
+                        >
+                          {availableFonts.map((f) => (
+                            <option key={f} value={f}>
+                              {f}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       {/* Font Sizes */}
@@ -3366,16 +3628,7 @@ export default function App() {
                                   }
                                   className={inp}
                                 >
-                                  {(
-                                    config.fonts
-                                      ?.available_fonts || [
-                                      "Times New Roman",
-                                      "Arial",
-                                      "Calibri",
-                                      "Georgia",
-                                      "Verdana",
-                                    ]
-                                  ).map((f) => (
+                                  {availableFonts.map((f) => (
                                     <option key={f}>
                                       {f}
                                     </option>
@@ -3411,6 +3664,108 @@ export default function App() {
                                   </option>
                                 </select>
                               </div>
+
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    config.header
+                                      ?.show_page_numbers ||
+                                    false
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "header.show_page_numbers",
+                                      e.target.checked
+                                    )
+                                  }
+                                  className="w-4 h-4 accent-purple-600"
+                                />
+                                <span className="text-sm">
+                                  Show page numbers in header
+                                </span>
+                              </label>
+
+                              <div>
+                                <label className={lbl}>
+                                  Header Page Format
+                                </label>
+                                <input
+                                  type="text"
+                                  value={
+                                    config.header
+                                      ?.page_format ||
+                                    "Page X of Y"
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "header.page_format",
+                                      e.target.value
+                                    )
+                                  }
+                                  className={inp}
+                                  placeholder="Use X for current page and Y for total pages"
+                                />
+                              </div>
+
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    config.header
+                                      ?.separator !== false
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "header.separator",
+                                      e.target.checked
+                                    )
+                                  }
+                                  className="w-4 h-4 accent-purple-600"
+                                />
+                                <span className="text-sm">
+                                  Show separator line below header
+                                </span>
+                              </label>
+
+                              <div>
+                                <label className={lbl}>
+                                  Header Separator Colour
+                                </label>
+                                <div className="flex gap-2 items-center">
+                                  <input
+                                    type="color"
+                                    value={
+                                      config.header
+                                        ?.separator_color ||
+                                      "#CCCCCC"
+                                    }
+                                    onChange={(e) =>
+                                      cfgLocal(
+                                        "header.separator_color",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-10 h-9 rounded-lg cursor-pointer border-0 shrink-0"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={
+                                      config.header
+                                        ?.separator_color ||
+                                      "#CCCCCC"
+                                    }
+                                    onChange={(e) =>
+                                      cfgLocal(
+                                        "header.separator_color",
+                                        e.target.value
+                                      )
+                                    }
+                                    className={`${inp} font-mono`}
+                                    maxLength={7}
+                                  />
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -3441,135 +3796,289 @@ export default function App() {
                               Show footer
                             </span>
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={
-                                config.footer
-                                  ?.show_page_numbers ||
-                                false
-                              }
-                              onChange={(e) =>
-                                cfgLocal(
-                                  "footer.show_page_numbers",
-                                  e.target.checked
-                                )
-                              }
-                              className="w-4 h-4 accent-purple-600"
-                            />
-                            <span className="text-sm">
-                              Show "Page X of Y" numbers
-                            </span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={
-                                config.footer
-                                  ?.separator !== false
-                              }
-                              onChange={(e) =>
-                                cfgLocal(
-                                  "footer.separator",
-                                  e.target.checked
-                                )
-                              }
-                              className="w-4 h-4 accent-purple-600"
-                            />
-                            <span className="text-sm">
-                              Separator line above footer
-                            </span>
-                          </label>
-                          <div>
-                            <label className={lbl}>
-                              Page Number Style
-                            </label>
-                            <select
-                              value={
-                                config.footer
-                                  ?.page_number_style ||
-                                "arabic"
-                              }
-                              onChange={(e) =>
-                                cfgLocal(
-                                  "footer.page_number_style",
-                                  e.target.value
-                                )
-                              }
-                              className={inp}
-                            >
-                              <option value="arabic">
-                                1, 2, 3
-                              </option>
-                              <option value="roman">
-                                I, II, III
-                              </option>
-                              <option value="alpha">
-                                A, B, C
-                              </option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className={lbl}>
-                              Footer Font
-                            </label>
-                            <select
-                              value={
-                                config.footer
-                                  ?.font_family ||
-                                config.fonts?.family ||
-                                ""
-                              }
-                              onChange={(e) =>
-                                cfgLocal(
-                                  "footer.font_family",
-                                  e.target.value
-                                )
-                              }
-                              className={inp}
-                            >
-                              {(
-                                config.fonts
-                                  ?.available_fonts || [
-                                  "Times New Roman",
-                                  "Arial",
-                                  "Calibri",
-                                  "Georgia",
-                                  "Verdana",
-                                ]
-                              ).map((f) => (
-                                <option key={f}>{f}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className={lbl}>
-                              Footer Alignment
-                            </label>
-                            <select
-                              value={
-                                config.footer
-                                  ?.alignment || "center"
-                              }
-                              onChange={(e) =>
-                                cfgLocal(
-                                  "footer.alignment",
-                                  e.target.value
-                                )
-                              }
-                              className={inp}
-                            >
-                              <option value="left">
-                                Left
-                              </option>
-                              <option value="center">
-                                Center
-                              </option>
-                              <option value="right">
-                                Right
-                              </option>
-                            </select>
-                          </div>
+
+                          {config.footer?.enabled && (
+                            <div className="space-y-3 pl-6">
+                              <div>
+                                <label className={lbl}>
+                                  Footer Text
+                                </label>
+                                <input
+                                  type="text"
+                                  value={
+                                    config.footer?.text ||
+                                    ""
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "footer.text",
+                                      e.target.value
+                                    )
+                                  }
+                                  className={inp}
+                                  placeholder={`e.g. © ${new Date().getFullYear()} NotesForge`}
+                                />
+                              </div>
+
+                              <div>
+                                <label className={lbl}>
+                                  Footer Colour
+                                </label>
+                                <div className="flex gap-2 items-center">
+                                  <input
+                                    type="color"
+                                    value={
+                                      config.footer
+                                        ?.color ||
+                                      "#333333"
+                                    }
+                                    onChange={(e) =>
+                                      cfgLocal(
+                                        "footer.color",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-10 h-9 rounded-lg cursor-pointer border-0 shrink-0"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={
+                                      config.footer
+                                        ?.color ||
+                                      "#333333"
+                                    }
+                                    onChange={(e) =>
+                                      cfgLocal(
+                                        "footer.color",
+                                        e.target.value
+                                      )
+                                    }
+                                    className={`${inp} font-mono`}
+                                    maxLength={7}
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className={lbl}>
+                                  Footer Size:{" "}
+                                  {config.footer?.size ||
+                                    10}
+                                  pt
+                                </label>
+                                <input
+                                  type="range"
+                                  min="8"
+                                  max="16"
+                                  value={
+                                    config.footer?.size ||
+                                    10
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "footer.size",
+                                      parseInt(
+                                        e.target.value
+                                      )
+                                    )
+                                  }
+                                  className="w-full accent-purple-600"
+                                />
+                              </div>
+
+                              <div>
+                                <label className={lbl}>
+                                  Footer Font
+                                </label>
+                                <select
+                                  value={
+                                    config.footer
+                                      ?.font_family ||
+                                    config.fonts?.family ||
+                                    ""
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "footer.font_family",
+                                      e.target.value
+                                    )
+                                  }
+                                  className={inp}
+                                >
+                                  {availableFonts.map((f) => (
+                                    <option
+                                      key={f}
+                                      value={f}
+                                    >
+                                      {f}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className={lbl}>
+                                  Footer Alignment
+                                </label>
+                                <select
+                                  value={
+                                    config.footer
+                                      ?.alignment ||
+                                    "center"
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "footer.alignment",
+                                      e.target.value
+                                    )
+                                  }
+                                  className={inp}
+                                >
+                                  <option value="left">
+                                    Left
+                                  </option>
+                                  <option value="center">
+                                    Center
+                                  </option>
+                                  <option value="right">
+                                    Right
+                                  </option>
+                                </select>
+                              </div>
+
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    config.footer
+                                      ?.show_page_numbers ||
+                                    false
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "footer.show_page_numbers",
+                                      e.target.checked
+                                    )
+                                  }
+                                  className="w-4 h-4 accent-purple-600"
+                                />
+                                <span className="text-sm">
+                                  Show page numbers
+                                </span>
+                              </label>
+
+                              <div>
+                                <label className={lbl}>
+                                  Page Number Format
+                                </label>
+                                <input
+                                  type="text"
+                                  value={
+                                    config.footer
+                                      ?.page_format ||
+                                    "Page X of Y"
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "footer.page_format",
+                                      e.target.value
+                                    )
+                                  }
+                                  className={inp}
+                                  placeholder="Use X for current page and Y for total pages"
+                                />
+                              </div>
+
+                              <div>
+                                <label className={lbl}>
+                                  Page Number Style
+                                </label>
+                                <select
+                                  value={
+                                    config.footer
+                                      ?.page_number_style ||
+                                    "arabic"
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "footer.page_number_style",
+                                      e.target.value
+                                    )
+                                  }
+                                  className={inp}
+                                >
+                                  <option value="arabic">
+                                    1, 2, 3
+                                  </option>
+                                  <option value="roman">
+                                    I, II, III
+                                  </option>
+                                  <option value="alpha">
+                                    A, B, C
+                                  </option>
+                                </select>
+                              </div>
+
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    config.footer
+                                      ?.separator !== false
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "footer.separator",
+                                      e.target.checked
+                                    )
+                                  }
+                                  className="w-4 h-4 accent-purple-600"
+                                />
+                                <span className="text-sm">
+                                  Show separator line above footer
+                                </span>
+                              </label>
+
+                              <div>
+                                <label className={lbl}>
+                                  Separator Colour
+                                </label>
+                                <div className="flex gap-2 items-center">
+                                  <input
+                                    type="color"
+                                    value={
+                                      config.footer
+                                        ?.separator_color ||
+                                      "#CCCCCC"
+                                    }
+                                    onChange={(e) =>
+                                      cfgLocal(
+                                        "footer.separator_color",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-10 h-9 rounded-lg cursor-pointer border-0 shrink-0"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={
+                                      config.footer
+                                        ?.separator_color ||
+                                      "#CCCCCC"
+                                    }
+                                    onChange={(e) =>
+                                      cfgLocal(
+                                        "footer.separator_color",
+                                        e.target.value
+                                      )
+                                    }
+                                    className={`${inp} font-mono`}
+                                    maxLength={7}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -3652,6 +4161,37 @@ export default function App() {
                                       className={inp}
                                       placeholder="CONFIDENTIAL"
                                     />
+                                  </div>
+
+                                  <div>
+                                    <label className={lbl}>
+                                      Watermark Font
+                                    </label>
+                                    <select
+                                      value={
+                                        config.watermark
+                                          ?.font ||
+                                        config.fonts
+                                          ?.family ||
+                                        ""
+                                      }
+                                      onChange={(e) =>
+                                        cfgLocal(
+                                          "watermark.font",
+                                          e.target.value
+                                        )
+                                      }
+                                      className={inp}
+                                    >
+                                      {availableFonts.map((f) => (
+                                        <option
+                                          key={f}
+                                          value={f}
+                                        >
+                                          {f}
+                                        </option>
+                                      ))}
+                                    </select>
                                   </div>
 
                                   <div>
@@ -4011,6 +4551,45 @@ export default function App() {
                                     Dotted
                                   </option>
                                 </select>
+                              </div>
+
+                              <div>
+                                <label className={lbl}>
+                                  Border Colour
+                                </label>
+                                <div className="flex gap-2 items-center">
+                                  <input
+                                    type="color"
+                                    value={
+                                      config.page?.border
+                                        ?.color ||
+                                      "#000000"
+                                    }
+                                    onChange={(e) =>
+                                      cfgLocal(
+                                        "page.border.color",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-10 h-9 rounded-lg cursor-pointer border-0 shrink-0"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={
+                                      config.page?.border
+                                        ?.color ||
+                                      "#000000"
+                                    }
+                                    onChange={(e) =>
+                                      cfgLocal(
+                                        "page.border.color",
+                                        e.target.value
+                                      )
+                                    }
+                                    className={`${inp} font-mono`}
+                                    maxLength={7}
+                                  />
+                                </div>
                               </div>
                               <div>
                                 <label className={lbl}>

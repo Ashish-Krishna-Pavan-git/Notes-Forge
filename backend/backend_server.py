@@ -1,8 +1,7 @@
 """
 NotesForge Professional - Backend Server v6.2 (Clean)
 """
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+
 import json
 import logging
 import os
@@ -14,11 +13,10 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, validator
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -157,6 +155,7 @@ class FontUpdateRequest(BaseModel):
     h4_family: Optional[str] = None
     h5_family: Optional[str] = None
     h6_family: Optional[str] = None
+    bullet_family: Optional[str] = None
 
 
 class AppState:
@@ -187,6 +186,7 @@ class AppState:
                 "h4_family": cfg.fonts.h4_family,
                 "h5_family": cfg.fonts.h5_family,
                 "h6_family": cfg.fonts.h6_family,
+                "bullet_family": cfg.fonts.bullet_family,
                 "sizes": cfg.fonts.sizes,
             },
             "colors": cfg.colors,
@@ -316,17 +316,16 @@ def get_state() -> AppState:
     return _app_state
 
 
-
-app = FastAPI()
-
-# 🔥 CORS MUST BE IMMEDIATELY AFTER app creation
+app = FastAPI(title="NotesForge API", version="6.2")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     return {"status": "ok", "version": "6.2"}

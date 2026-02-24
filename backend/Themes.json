@@ -181,7 +181,7 @@
       },
       "footer": {
         "enabled": true,
-        "text": "© 2024 NotesForge",
+        "text": "© 2026 NotesForge",
         "size": 9,
         "color": "#6200EA",
         "bold": false,
@@ -499,7 +499,7 @@
       },
       "footer": {
         "enabled": true,
-        "text": "© 2024 Corporation. All Rights Reserved.",
+        "text": "© 2026 Corporation. All Rights Reserved.",
         "size": 9,
         "color": "#666666",
         "bold": false,
@@ -843,7 +843,7 @@
       },
       "footer": {
         "enabled": true,
-        "text": "© 2024 NotesForge",
+        "text": "© 2026 NotesForge",
         "size": 9,
         "color": "#6200EA",
         "bold": false,
