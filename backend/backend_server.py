@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -317,12 +317,11 @@ def get_state() -> AppState:
 app = FastAPI(title="NotesForge API", version="6.2")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
