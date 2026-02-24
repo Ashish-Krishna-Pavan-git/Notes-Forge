@@ -1,0 +1,120 @@
+{
+  "app": {
+    "name": "NotesForge Professional",
+    "version": "6.2",
+    "theme": "professional"
+  },
+  "fonts": {
+    "family": "Calibri",
+    "family_code": "Courier New",
+    "h1_family": "Calibri",
+    "h2_family": "Calibri",
+    "h3_family": "Calibri",
+    "h4_family": "Calibri",
+    "h5_family": "Calibri",
+    "h6_family": "Calibri",
+    "sizes": {
+      "h1": 22,
+      "h2": 18,
+      "h3": 15,
+      "h4": 14,
+      "h5": 13,
+      "h6": 12,
+      "body": 12,
+      "code": 10,
+      "header": 10,
+      "footer": 10
+    }
+  },
+  "colors": {
+    "h1": "#003366",
+    "h2": "#004080",
+    "h3": "#0052A3",
+    "h4": "#1E5A96",
+    "h5": "#333333",
+    "h6": "#555555",
+    "body": "#000000",
+    "code_background": "#F5F5F5",
+    "code_text": "#D32F2F",
+    "table_header_bg": "#003366",
+    "table_header_text": "#FFFFFF",
+    "table_odd_row": "#E3F2FD",
+    "table_even_row": "#FFFFFF",
+    "table_border": "#90CAF9",
+    "link": "#0563C1"
+  },
+  "spacing": {
+    "line_spacing": 1.5,
+    "paragraph_spacing_after": 6.0,
+    "heading_spacing_before": 12.0,
+    "heading_spacing_after": 6.0,
+    "code_indent": 0.35,
+    "quote_indent": 0.5,
+    "bullet_base_indent": 0.25,
+    "bullet_indent_per_level": 0.45
+  },
+  "page": {
+    "size": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1.0,
+      "bottom": 1.0,
+      "left": 1.0,
+      "right": 1.0
+    },
+    "border": {
+      "enabled": false,
+      "width": 4,
+      "color": "#003366",
+      "style": "single",
+      "offset": 24
+    }
+  },
+  "watermark": {
+    "enabled": false,
+    "type": "text",
+    "text": "DRAFT",
+    "image_path": "",
+    "font": "Calibri",
+    "size": 48,
+    "color": "#CCCCCC",
+    "opacity": 0.15,
+    "rotation": 315,
+    "position": "center",
+    "scale": 100
+  },
+  "header": {
+    "enabled": true,
+    "text": "PROFESSIONAL DOCUMENT",
+    "size": 10,
+    "color": "#003366",
+    "bold": false,
+    "italic": false,
+    "alignment": "center",
+    "font_family": "Calibri",
+    "show_page_numbers": false,
+    "page_number_position": "header",
+    "page_number_alignment": "center",
+    "page_format": "X | Page",
+    "page_number_style": "arabic",
+    "separator": true,
+    "separator_color": "#CCCCCC"
+  },
+  "footer": {
+    "enabled": true,
+    "text": "",
+    "size": 10,
+    "color": "#666666",
+    "bold": false,
+    "italic": false,
+    "alignment": "center",
+    "font_family": "Calibri",
+    "show_page_numbers": true,
+    "page_number_position": "footer",
+    "page_number_alignment": "center",
+    "page_format": "X | Page",
+    "page_number_style": "arabic",
+    "separator": true,
+    "separator_color": "#CCCCCC"
+  }
+}

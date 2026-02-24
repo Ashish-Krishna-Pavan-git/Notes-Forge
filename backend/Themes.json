@@ -1,0 +1,863 @@
+{
+  "themes": {
+    "professional": {
+      "name": "Professional Blue",
+      "description": "Clean, corporate theme with blue accents",
+      "colors": {
+        "h1": "#003366",
+        "h2": "#004080",
+        "h3": "#0052A3",
+        "h4": "#1E5A96",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#000000",
+        "code_background": "#F5F5F5",
+        "code_text": "#D32F2F",
+        "table_header_bg": "#003366",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#E3F2FD",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#90CAF9",
+        "link": "#0563C1"
+      },
+      "fonts": {
+        "family": "Calibri",
+        "family_code": "Courier New",
+        "h1_family": "Calibri",
+        "h2_family": "Calibri",
+        "h3_family": "Calibri",
+        "sizes": {
+          "h1": 22,
+          "h2": 18,
+          "h3": 15,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 12,
+          "code": 10,
+          "header": 10,
+          "footer": 10
+        }
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
+        },
+        "border": {
+          "enabled": false,
+          "width": 4,
+          "color": "#003366",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "PROFESSIONAL DOCUMENT",
+        "size": 10,
+        "color": "#003366",
+        "bold": false,
+        "italic": false,
+        "alignment": "center",
+        "font_family": "Calibri",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_format": "X | Page",
+        "page_number_style": "arabic",
+        "separator": true,
+        "separator_color": "#CCCCCC"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "",
+        "size": 10,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "alignment": "center",
+        "font_family": "Calibri",
+        "show_page_numbers": true,
+        "page_number_style": "arabic",
+        "separator": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_format": "X | Page",
+        "separator_color": "#CCCCCC"
+      },
+      "watermark": {
+        "enabled": false,
+        "type": "text",
+        "text": "DRAFT",
+        "size": 48,
+        "color": "#CCCCCC",
+        "opacity": 0.15,
+        "rotation": 315
+      },
+      "spacing": {
+        "line_spacing": 1.5,
+        "paragraph_spacing_after": 6.0,
+        "heading_spacing_before": 12.0,
+        "heading_spacing_after": 6.0
+      }
+    },
+    "modern": {
+      "name": "Modern Tech",
+      "description": "Vibrant purple and modern aesthetic",
+      "colors": {
+        "h1": "#6200EA",
+        "h2": "#651FFF",
+        "h3": "#7C4DFF",
+        "h4": "#B388FF",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#1E1E2E",
+        "code_text": "#D4D4D4",
+        "table_header_bg": "#6200EA",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#F3EDFF",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#D1C4E9",
+        "link": "#6200EA"
+      },
+      "fonts": {
+        "family": "Segoe UI",
+        "family_code": "Fira Code",
+        "h1_family": "Segoe UI",
+        "h2_family": "Segoe UI",
+        "h3_family": "Segoe UI",
+        "sizes": {
+          "h1": 24,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 12,
+          "code": 11,
+          "header": 10,
+          "footer": 10
+        }
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 2,
+          "color": "#6200EA",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "NotesForge Professional",
+        "size": 11,
+        "color": "#6200EA",
+        "bold": true,
+        "italic": false,
+        "alignment": "center",
+        "font_family": "Segoe UI",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_format": "X | Page",
+        "page_number_style": "arabic",
+        "separator": true,
+        "separator_color": "#CCCCCC"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2024 NotesForge",
+        "size": 9,
+        "color": "#6200EA",
+        "bold": false,
+        "italic": true,
+        "alignment": "right",
+        "font_family": "Segoe UI",
+        "show_page_numbers": true,
+        "page_number_style": "arabic",
+        "separator": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "right",
+        "page_format": "X | Page",
+        "separator_color": "#CCCCCC"
+      },
+      "watermark": {
+        "enabled": false,
+        "type": "text",
+        "text": "CONFIDENTIAL",
+        "size": 48,
+        "color": "#6200EA",
+        "opacity": 0.1,
+        "rotation": 315
+      },
+      "spacing": {
+        "line_spacing": 1.6,
+        "paragraph_spacing_after": 8.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0
+      }
+    },
+    "minimal": {
+      "name": "Minimal Clean",
+      "description": "Simple, distraction-free design",
+      "colors": {
+        "h1": "#000000",
+        "h2": "#1A1A1A",
+        "h3": "#333333",
+        "h4": "#555555",
+        "h5": "#666666",
+        "h6": "#777777",
+        "body": "#000000",
+        "code_background": "#EFEFEF",
+        "code_text": "#000000",
+        "table_header_bg": "#000000",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#F9F9F9",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#CCCCCC",
+        "link": "#0000EE"
+      },
+      "fonts": {
+        "family": "Georgia",
+        "family_code": "Courier New",
+        "h1_family": "Georgia",
+        "h2_family": "Georgia",
+        "h3_family": "Georgia",
+        "sizes": {
+          "h1": 20,
+          "h2": 16,
+          "h3": 13,
+          "h4": 12,
+          "h5": 11,
+          "h6": 10,
+          "body": 11,
+          "code": 9,
+          "header": 9,
+          "footer": 9
+        }
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 0.75,
+          "bottom": 0.75,
+          "left": 0.75,
+          "right": 0.75
+        },
+        "border": {
+          "enabled": false,
+          "width": 0,
+          "color": "#000000",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": false,
+        "text": "",
+        "size": 9,
+        "color": "#000000",
+        "bold": false,
+        "italic": false,
+        "alignment": "center",
+        "font_family": "Georgia",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_format": "X | Page",
+        "page_number_style": "arabic",
+        "separator": true,
+        "separator_color": "#CCCCCC"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "alignment": "center",
+        "font_family": "Georgia",
+        "show_page_numbers": true,
+        "page_number_style": "arabic",
+        "separator": false,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_format": "X | Page",
+        "separator_color": "#CCCCCC"
+      },
+      "watermark": {
+        "enabled": false,
+        "type": "text",
+        "text": "",
+        "size": 48,
+        "color": "#000000",
+        "opacity": 0.0,
+        "rotation": 315
+      },
+      "spacing": {
+        "line_spacing": 1.5,
+        "paragraph_spacing_after": 8.0,
+        "heading_spacing_before": 10.0,
+        "heading_spacing_after": 4.0
+      }
+    },
+    "academic": {
+      "name": "Academic Formal",
+      "description": "APA-style academic formatting",
+      "colors": {
+        "h1": "#000000",
+        "h2": "#1C1C1C",
+        "h3": "#2E2E2E",
+        "h4": "#404040",
+        "h5": "#525252",
+        "h6": "#646464",
+        "body": "#000000",
+        "code_background": "#F0F0F0",
+        "code_text": "#333333",
+        "table_header_bg": "#CCCCCC",
+        "table_header_text": "#000000",
+        "table_odd_row": "#FFFFFF",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#999999",
+        "link": "#0066CC"
+      },
+      "fonts": {
+        "family": "Times New Roman",
+        "family_code": "Courier New",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "sizes": {
+          "h1": 12,
+          "h2": 12,
+          "h3": 12,
+          "h4": 12,
+          "h5": 12,
+          "h6": 12,
+          "body": 12,
+          "code": 10,
+          "header": 10,
+          "footer": 10
+        }
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
+        },
+        "border": {
+          "enabled": false,
+          "width": 0,
+          "color": "#000000",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "Running Head: TITLE",
+        "size": 10,
+        "color": "#000000",
+        "bold": false,
+        "italic": false,
+        "alignment": "right",
+        "font_family": "Times New Roman",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "right",
+        "page_format": "X | Page",
+        "page_number_style": "arabic",
+        "separator": true,
+        "separator_color": "#CCCCCC"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "",
+        "size": 10,
+        "color": "#000000",
+        "bold": false,
+        "italic": false,
+        "alignment": "right",
+        "font_family": "Times New Roman",
+        "show_page_numbers": true,
+        "page_number_style": "arabic",
+        "separator": false,
+        "page_number_position": "footer",
+        "page_number_alignment": "right",
+        "page_format": "X | Page",
+        "separator_color": "#CCCCCC"
+      },
+      "watermark": {
+        "enabled": false,
+        "type": "text",
+        "text": "",
+        "size": 48,
+        "color": "#000000",
+        "opacity": 0.0,
+        "rotation": 315
+      },
+      "spacing": {
+        "line_spacing": 2.0,
+        "paragraph_spacing_after": 0.0,
+        "heading_spacing_before": 0.0,
+        "heading_spacing_after": 0.0
+      }
+    },
+    "corporate": {
+      "name": "Corporate Red",
+      "description": "Executive corporate with red branding",
+      "colors": {
+        "h1": "#C41E3A",
+        "h2": "#DC143C",
+        "h3": "#E63946",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#2C3E50",
+        "code_text": "#ECF0F1",
+        "table_header_bg": "#C41E3A",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FCE8E8",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#DC143C",
+        "link": "#C41E3A"
+      },
+      "fonts": {
+        "family": "Arial",
+        "family_code": "Consolas",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9
+        }
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 3,
+          "color": "#C41E3A",
+          "style": "double",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "alignment": "center",
+        "font_family": "Arial",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_format": "X | Page",
+        "page_number_style": "arabic",
+        "separator": true,
+        "separator_color": "#CCCCCC"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2024 Corporation. All Rights Reserved.",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "alignment": "center",
+        "font_family": "Arial",
+        "show_page_numbers": true,
+        "page_number_style": "arabic",
+        "separator": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_format": "X | Page",
+        "separator_color": "#CCCCCC"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
+        "rotation": 315
+      },
+      "spacing": {
+        "line_spacing": 1.4,
+        "paragraph_spacing_after": 10.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0
+      }
+    },
+    "creative": {
+      "name": "Creative Vibrant",
+      "description": "Colorful design for creative projects",
+      "colors": {
+        "h1": "#FF6B6B",
+        "h2": "#FF8C42",
+        "h3": "#FFB627",
+        "h4": "#4ECDC4",
+        "h5": "#45B7D1",
+        "h6": "#96CEB4",
+        "body": "#2C3E50",
+        "code_background": "#F7DC6F",
+        "code_text": "#2C3E50",
+        "table_header_bg": "#FF6B6B",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FFF5E1",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#FF8C42",
+        "link": "#4ECDC4"
+      },
+      "fonts": {
+        "family": "Trebuchet MS",
+        "family_code": "Monaco",
+        "h1_family": "Trebuchet MS",
+        "h2_family": "Trebuchet MS",
+        "h3_family": "Trebuchet MS",
+        "sizes": {
+          "h1": 28,
+          "h2": 22,
+          "h3": 18,
+          "h4": 16,
+          "h5": 14,
+          "h6": 12,
+          "body": 12,
+          "code": 11,
+          "header": 11,
+          "footer": 10
+        }
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
+        },
+        "border": {
+          "enabled": true,
+          "width": 6,
+          "color": "#FF6B6B",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "✨ NotesForge Creative ✨",
+        "size": 12,
+        "color": "#FF6B6B",
+        "bold": true,
+        "italic": true,
+        "alignment": "center",
+        "font_family": "Trebuchet MS",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_format": "X | Page",
+        "page_number_style": "arabic",
+        "separator": true,
+        "separator_color": "#CCCCCC"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "Created with NotesForge Professional",
+        "size": 10,
+        "color": "#4ECDC4",
+        "bold": false,
+        "italic": true,
+        "alignment": "center",
+        "font_family": "Trebuchet MS",
+        "show_page_numbers": true,
+        "page_number_style": "arabic",
+        "separator": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_format": "X | Page",
+        "separator_color": "#CCCCCC"
+      },
+      "watermark": {
+        "enabled": false,
+        "type": "text",
+        "text": "",
+        "size": 48,
+        "color": "#FF6B6B",
+        "opacity": 0.1,
+        "rotation": 315
+      },
+      "spacing": {
+        "line_spacing": 1.7,
+        "paragraph_spacing_after": 12.0,
+        "heading_spacing_before": 16.0,
+        "heading_spacing_after": 10.0
+      }
+    },
+    "startup": {
+      "name": "Startup Pitch",
+      "description": "Modern startup presentation theme",
+      "colors": {
+        "h1": "#00D4FF",
+        "h2": "#00B8D4",
+        "h3": "#0099CC",
+        "h4": "#0073B2",
+        "h5": "#333333",
+        "h6": "#666666",
+        "body": "#1A1A1A",
+        "code_background": "#0F2027",
+        "code_text": "#00D4FF",
+        "table_header_bg": "#00699E",
+        "table_header_text": "#00D4FF",
+        "table_odd_row": "#E8F8FF",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#00B8D4",
+        "link": "#00D4FF"
+      },
+      "fonts": {
+        "family": "Verdana",
+        "family_code": "Source Code Pro",
+        "h1_family": "Verdana",
+        "h2_family": "Verdana",
+        "h3_family": "Verdana",
+        "sizes": {
+          "h1": 28,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 12,
+          "h6": 11,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9
+        }
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
+        },
+        "border": {
+          "enabled": false,
+          "width": 2,
+          "color": "#00D4FF",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "STARTUP PITCH DECK",
+        "size": 11,
+        "color": "#00D4FF",
+        "bold": true,
+        "italic": false,
+        "alignment": "left",
+        "font_family": "Verdana",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "left",
+        "page_format": "X | Page",
+        "page_number_style": "arabic",
+        "separator": true,
+        "separator_color": "#CCCCCC"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "🚀 Innovation Driven",
+        "size": 9,
+        "color": "#00B8D4",
+        "bold": false,
+        "italic": false,
+        "alignment": "right",
+        "font_family": "Verdana",
+        "show_page_numbers": true,
+        "page_number_style": "arabic",
+        "separator": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "right",
+        "page_format": "X | Page",
+        "separator_color": "#CCCCCC"
+      },
+      "watermark": {
+        "enabled": false,
+        "type": "text",
+        "text": "CONFIDENTIAL",
+        "size": 48,
+        "color": "#00D4FF",
+        "opacity": 0.12,
+        "rotation": 315
+      },
+      "spacing": {
+        "line_spacing": 1.5,
+        "paragraph_spacing_after": 8.0,
+        "heading_spacing_before": 12.0,
+        "heading_spacing_after": 6.0
+      }
+    },
+    "flm": {
+      "name": "Frontlines Edu Tech",
+      "description": "Daily Notes Generator",
+      "fonts": {
+        "family": "Segoe UI",
+        "family_code": "Fira Code",
+        "h1_family": "Segoe UI",
+        "h2_family": "Segoe UI",
+        "h3_family": "Segoe UI",
+        "h4_family": "Calibri",
+        "h5_family": "Calibri",
+        "h6_family": "Calibri",
+        "sizes": {
+          "h1": 24,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 12,
+          "code": 11,
+          "header": 10,
+          "footer": 10
+        }
+      },
+      "colors": {
+        "h1": "#6200EA",
+        "h2": "#651FFF",
+        "h3": "#7C4DFF",
+        "h4": "#B388FF",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#1E1E2E",
+        "code_text": "#D4D4D4",
+        "table_header_bg": "#6200EA",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#F3EDFF",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#D1C4E9",
+        "link": "#6200EA"
+      },
+      "spacing": {
+        "line_spacing": 1.6,
+        "paragraph_spacing_after": 8.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 2,
+          "color": "#6200EA",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "watermark": {
+        "enabled": false,
+        "type": "text",
+        "text": "CONFIDENTIAL",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#6200EA",
+        "opacity": 0.1,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "header": {
+        "enabled": true,
+        "text": "NotesForge Professional",
+        "size": 11,
+        "color": "#6200EA",
+        "bold": true,
+        "italic": false,
+        "alignment": "center",
+        "font_family": "Segoe UI",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_format": "X | Page",
+        "page_number_style": "arabic",
+        "separator": true,
+        "separator_color": "#CCCCCC"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2024 NotesForge",
+        "size": 9,
+        "color": "#6200EA",
+        "bold": false,
+        "italic": true,
+        "alignment": "right",
+        "font_family": "Segoe UI",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "right",
+        "page_format": "X | Page",
+        "page_number_style": "arabic",
+        "separator": true,
+        "separator_color": "#CCCCCC"
+      }
+    }
+  }
+}
