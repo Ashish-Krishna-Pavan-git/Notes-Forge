@@ -1,7 +1,7 @@
 """
 NotesForge Professional - Backend Server v6.2 (Clean)
 """
-
+from fastapi.middleware.cors import CORSMiddleware
 import json
 import logging
 import os
@@ -319,12 +319,15 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://notes-forge-ruddy.vercel.app",
+        "https://notes-forge.onrender.com",
+        "*"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     return {"status": "ok", "version": "6.2"}
