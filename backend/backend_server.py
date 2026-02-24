@@ -13,7 +13,8 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
-
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -314,7 +315,8 @@ def get_state() -> AppState:
     return _app_state
 
 
-app = FastAPI(title="NotesForge API", version="6.2")
+app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
