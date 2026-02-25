@@ -1,17 +1,13 @@
 # NotesForge
 
-NotesForge is a full-stack notes-to-document formatter with:
-- React + TypeScript frontend
-- FastAPI backend
-- Marker-based parsing
-- Theme/config management
-- DOCX/PDF/HTML/Markdown export support
+NotesForge is a marker-based notes formatter built with React + FastAPI.
+It converts structured marker text into professional documents (`.docx`, `.pdf`, `.md`, `.html`).
 
-## Tech Stack
+## Stack
 
-- Frontend: React 18, TypeScript, Vite, Tailwind CSS, Axios
-- Backend: Python, FastAPI, Uvicorn
-- Document generation: `python-docx` (with optional PDF/HTML conversion helpers)
+- Frontend: React 18, TypeScript, Vite, Tailwind, Axios
+- Backend: FastAPI, python-docx, Uvicorn
+- No Streamlit is used in this project
 
 ## Project Structure
 
@@ -25,36 +21,46 @@ notesforge/
     Config.json
     Themes.json
     prompt.txt
+    requirements.txt
   frontend/
     src/
       App.tsx
       main.tsx
       index.css
     package.json
-  SETUP.bat
+  .env.example
   START.bat
   STOP.bat
+  SETUP.bat
+  LICENSE
 ```
 
-## Requirements
+## Prerequisites
 
 - Python 3.9+
 - Node.js 18+
 - npm
 
 Optional:
-- LibreOffice (for PDF conversion path used by backend)
-- `mammoth` Python package (for HTML conversion endpoint path)
+- LibreOffice (for PDF conversion path in backend)
+- `mammoth` (for HTML export path in backend)
 
-## Quick Start (Windows Scripts)
+## Environment Variables
 
-1. Run one-time setup:
+Copy `.env.example` to `.env` (or set in shell) and adjust:
+
+- `NF_CORS_ORIGINS` for backend CORS
+- `VITE_API_URL` for frontend API base URL
+
+## Quick Start (Windows)
+
+1. Run setup once:
 
 ```bat
 SETUP.bat
 ```
 
-2. Start frontend + backend:
+2. Start both services:
 
 ```bat
 START.bat
@@ -66,18 +72,16 @@ START.bat
 STOP.bat
 ```
 
-Note: `START.bat` currently contains an absolute local path. If your project path differs, update the `cd /d ...` lines inside `START.bat`.
+`START.bat` is now relative-path based, so clones can run without editing absolute paths.
 
-## Manual Run (Recommended for development)
+## Manual Run
 
 ### Backend
 
 ```powershell
 cd backend
 python -m pip install --upgrade pip
-python -m pip install fastapi uvicorn python-docx python-multipart
-# Optional for HTML export:
-# python -m pip install mammoth
+python -m pip install -r requirements.txt
 python -m uvicorn backend_server:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -89,15 +93,8 @@ npm install
 npm run dev
 ```
 
-Frontend default URL: `http://localhost:5173`  
-Backend default URL: `http://localhost:8000`
-
-## Environment Variables
-
-- Frontend:
-  - `VITE_API_URL` (optional, defaults to `http://localhost:8000`)
-- Backend:
-  - `NF_CORS_ORIGINS` comma-separated origins (defaults include localhost ports)
+Frontend default: `http://localhost:5173`  
+Backend default: `http://localhost:8000`
 
 ## Core API Endpoints
 
@@ -114,212 +111,11 @@ Backend default URL: `http://localhost:8000`
 - `GET /api/prompt`
 - `POST /api/prompt`
 
-## Theme Workflow
+## PDF Export Behavior
 
-1. Open Settings -> Themes in the frontend.
-2. Modify fonts/colors/spacing/page settings.
-3. Save settings or save as a custom theme.
-4. Apply built-in or custom themes from the same panel.
-
-## Attribution and Reuse
-
-This project is licensed under the MIT License.
-
-You can use, modify, and redistribute this project (including commercial use), but you must keep the original copyright
-and license notice in copies or substantial portions of the software.
-
-See [LICENSE](./LICENSE).
-
-## Maintainer
-
-- Ashish
-- **H1-H6 Headings**: Automatic detection of all heading levels
-- **Code Blocks**: Syntax detection with 3+ indicators
-- **Tables**: Pipe, space, or tab-separated columns
-- **ASCII Diagrams**: Auto-centered with gray background
-- **Bullet Points**: Multi-level nesting (3 levels)
-- **Commands**: 50+ pre-configured commands
-- **File Paths**: Automatic path detection
-- **Formulas**: Mathematical expression formatting
-
-### Modern UI
-- **Purple/Blue Gradient Header**: Professional appearance
-- **Live Statistics**: Real-time analysis as you type
-- **Live Preview**: See detected element types
-- **Tab Navigation**: Editor, Preview, Settings
-- **Dark/Light Ready**: Easy to customize
-- **Responsive Design**: Works on all screen sizes
-
-### Document Output
-- **DOCX Format**: Microsoft Word compatible
-- **PDF Format**: Direct PDF generation
-- **7 Themes**: Professional, Academic, Modern, Minimal, Book, Colorful, Frontlines
-- **Customizable**: Fonts, colors, spacing, borders
-
----
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Health check |
-| `/analyze` | POST | Analyze text and return classifications |
-| `/generate` | POST | Generate DOCX/PDF document |
-| `/download/{filename}` | GET | Download generated file |
-| `/config` | GET/POST | Get/Update configuration |
-| `/themes` | GET | Get all available themes |
-| `/commands` | GET/POST | Get/Add commands |
-| `/docs` | GET | Auto-generated API documentation |
-
----
-
-## Troubleshooting
-
-### Backend Not Starting
-```batch
-# Check if port 8000 is in use
-netstat -ano | findstr :8000
-
-# Kill process if needed
-taskkill /F /PID <PID>
-```
-
-### Frontend Not Starting
-```batch
-# Delete node_modules and reinstall
-cd frontend
-rmdir /s node_modules
-del package-lock.json
-npm install
-```
-
-### Module Not Found Errors
-Make sure you copied ALL your Python files to the `backend/` folder:
-- Core.py
-- Config.py
-- Themes.py
-- Config.json
-- themes.json
-
----
-
-## Manual Setup (If Batch Files Don't Work)
-
-### 1. Install Python Dependencies
-```batch
-cd backend
-pip install fastapi uvicorn python-docx python-multipart
-```
-
-### 2. Install Node.js Dependencies
-```batch
-cd frontend
-npm install
-```
-
-### 3. Start Backend
-```batch
-cd backend
-python backend_server.py
-```
-
-### 4. Start Frontend (New Terminal)
-```batch
-cd frontend
-npm run dev
-```
-
-### 5. Open Browser
-Navigate to: http://localhost:5173
-
----
-
-## Project Structure
-
-```
-notesforge/
-├── SETUP.bat              # One-click setup
-├── START.bat              # One-click start
-├── STOP.bat               # One-click stop
-├── README.md              # This file
-│
-├── backend/               # Python FastAPI Backend
-│   ├── backend_server.py  # API server
-│   ├── Core.py           # Your text analysis logic
-│   ├── Config.py         # Your config manager
-│   ├── Themes.py         # Your theme manager
-│   ├── Config.json       # Your settings
-│   └── themes.json       # Your themes
-│
-└── frontend/              # React Frontend
-    ├── src/
-    │   ├── App.tsx       # Main component
-    │   ├── main.tsx      # Entry point
-    │   └── index.css     # Styles
-    ├── package.json      # Dependencies
-    ├── vite.config.ts    # Vite config
-    └── tailwind.config.js # Tailwind config
-```
-
----
-
-## Customization
-
-### Adding New Commands
-Edit `backend/Config.json`:
-```json
-{
-  "commands": [
-    "your-new-command",
-    "another-command"
-  ]
-}
-```
-
-### Creating Custom Themes
-Edit `backend/themes.json`:
-```json
-{
-  "my_theme": {
-    "name": "My Custom Theme",
-    "description": "Perfect for...",
-    "fonts": {...},
-    "colors": {...}
-  }
-}
-```
-
-### Changing Default Settings
-Edit `backend/Config.json` or use the Settings tab in the UI.
-
----
-
-## Technology Stack
-
-### Frontend
-- **React 18** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **Lucide React** - Icons
-- **Axios** - HTTP client
-
-### Backend
-- **FastAPI** - Web framework
-- **Uvicorn** - ASGI server
-- **python-docx** - DOCX generation
-- **python-multipart** - File uploads
-
----
+If PDF conversion is unavailable (usually missing LibreOffice), backend falls back to DOCX and returns a warning message.
+Frontend displays this warning to the user.
 
 ## License
 
-MIT License - Feel free to use and modify!
-
----
-
-## Credits
-
-**NotesForge Professional** by AKP (Ashish Krishna Pavan)
-
-From chaos to clarity - automated note formatting
+MIT License. See [LICENSE](./LICENSE).

@@ -39,13 +39,27 @@ echo.
 echo Starting services...
 echo.
 
-REM ====== EDIT THESE PATHS TO YOUR PROJECT ======
+set "ROOT_DIR=%~dp0"
+set "FRONTEND_DIR=%ROOT_DIR%frontend"
+set "BACKEND_DIR=%ROOT_DIR%backend"
+
+if not exist "%FRONTEND_DIR%\package.json" (
+    echo [ERROR] Frontend folder not found: %FRONTEND_DIR%
+    pause
+    exit /b 1
+)
+
+if not exist "%BACKEND_DIR%\backend_server.py" (
+    echo [ERROR] Backend folder not found: %BACKEND_DIR%
+    pause
+    exit /b 1
+)
 
 REM Frontend
-start "" cmd /k "cd /d C:\Users\Ashish\Desktop\notesforge\frontend && npm run dev"
+start "" cmd /k "cd /d ""%FRONTEND_DIR%"" && npm run dev"
 
 REM Backend
-start "" cmd /k "cd /d C:\Users\Ashish\Desktop\notesforge\backend && python -m uvicorn backend_server:app --reload"
+start "" cmd /k "cd /d ""%BACKEND_DIR%"" && python -m uvicorn backend_server:app --reload"
 
 REM =====================================================
 echo.

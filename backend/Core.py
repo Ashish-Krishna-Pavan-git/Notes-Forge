@@ -35,6 +35,34 @@ logging.basicConfig(
 logger = logging.getLogger("NotesForge")
 
 
+def _normalize_page_format(value: Any) -> str:
+    """Normalize legacy page format strings to the canonical template."""
+    if not isinstance(value, str):
+        return "Page X of Y"
+
+    fmt = re.sub(r"\s+", " ", value.strip())
+    if not fmt:
+        return "Page X of Y"
+
+    compact = fmt.lower().replace(" ", "")
+    legacy_patterns = {
+        "x|page",
+        "x|pagex",
+        "|pagex",
+        "pagex",
+        "xofy",
+        "x/page",
+    }
+
+    if compact in legacy_patterns:
+        return "Page X of Y"
+
+    if compact == "x":
+        return "X"
+
+    return fmt
+
+
 # ═══════════════════════════════════════════════════════════════════
 # CONFIGURATION CLASSES
 # ═══════════════════════════════════════════════════════════════════
@@ -197,15 +225,13 @@ class AppConfig:
             for k, v in data["header"].items():
                 if hasattr(cfg.header, k):
                     setattr(cfg.header, k, v)
-            if (cfg.header.page_format or "").strip() in {"X | Page", "X | P a g e"}:
-                cfg.header.page_format = "Page X of Y"
+            cfg.header.page_format = _normalize_page_format(cfg.header.page_format)
 
         if "footer" in data and isinstance(data["footer"], dict):
             for k, v in data["footer"].items():
                 if hasattr(cfg.footer, k):
                     setattr(cfg.footer, k, v)
-            if (cfg.footer.page_format or "").strip() in {"X | Page", "X | P a g e"}:
-                cfg.footer.page_format = "Page X of Y"
+            cfg.footer.page_format = _normalize_page_format(cfg.footer.page_format)
         
         if "page" in data and isinstance(data["page"], dict):
             page_data = data["page"]
@@ -676,6 +702,9 @@ class DocumentBuilder:
                     run = p.add_run(text_part)
                     if color_name in self.config.colors:
                         run.font.color.rgb = self._hex_color(self.config.colors[color_name])
+                    elif re.match(r"^#?[0-9a-fA-F]{6}$", color_name.strip()):
+                        hex_value = color_name if color_name.startswith("#") else f"#{color_name}"
+                        run.font.color.rgb = self._hex_color(hex_value)
             else:
                 run = p.add_run(part)
 

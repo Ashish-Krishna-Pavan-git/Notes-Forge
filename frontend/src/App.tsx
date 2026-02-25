@@ -73,6 +73,7 @@ const ANALYZE_DEBOUNCE_MS = 600;
 const HEALTH_INTERVAL_MS = 30_000;
 const MAX_HISTORY = 100;
 const MAX_DRAFTS = 10;
+const MAX_RECENT_EXPORTS = 5;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB
 
 // ═══════════════════════════════════════════════════════════════════
@@ -115,6 +116,15 @@ interface SavedDraft {
   name: string;
   content: string;
   savedAt: number;
+}
+
+interface RecentExport {
+  id: string;
+  filename: string;
+  download_url: string;
+  format: ExportFormat;
+  createdAt: number;
+  warning?: string;
 }
 
 type TabId =
@@ -641,9 +651,39 @@ function validateMarkersInText(text: string): MarkerError[] {
   return errors;
 }
 
-function buildPreviewHTML(text: string): string {
+function previewColor(
+  raw: string | undefined,
+  fallback: string
+): string {
+  const val = (raw || "").trim();
+  return /^#?[0-9a-fA-F]{3,8}$/.test(val)
+    ? (val.startsWith("#") ? val : `#${val}`)
+    : fallback;
+}
+
+function buildPreviewHTML(
+  text: string,
+  colors: Record<string, string> = {}
+): string {
   const lines = text.split("\n");
   const parts: string[] = [];
+
+  const cH1 = previewColor(colors.h1, "#ea580c");
+  const cH2 = previewColor(colors.h2, "#d97706");
+  const cH3 = previewColor(colors.h3, "#1d4ed8");
+  const cH4 = previewColor(colors.h4, "#2563eb");
+  const cH5 = previewColor(colors.h5, "#4f46e5");
+  const cH6 = previewColor(colors.h6, "#7e22ce");
+  const cBody = previewColor(colors.body, "#111827");
+  const cCodeBg = previewColor(colors.code_background, "#f3f4f6");
+  const cCodeText = previewColor(colors.code_text, "#1f2937");
+  const cTableHeaderBg = previewColor(colors.table_header_bg, "#e5e7eb");
+  const cTableHeaderText = previewColor(colors.table_header_text, "#111827");
+  const cTableOdd = previewColor(colors.table_odd_row, "#ffffff");
+  const cTableEven = previewColor(colors.table_even_row, "#f9fafb");
+  const cLink = previewColor(colors.link, "#2563eb");
+
+  let tableRowIndex = 0;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -655,12 +695,15 @@ function buildPreviewHTML(text: string): string {
     const match = trimmed.match(/^([A-Z][A-Z0-9-]*):\s*(.*)$/);
     if (!match) {
       parts.push(
-        `<p class="text-gray-500 text-sm">${escapeHtml(trimmed)}</p>`
+        `<p class="text-gray-500 text-sm" style="color:${cBody}">${escapeHtml(trimmed)}</p>`
       );
       continue;
     }
 
     const [, marker, rawRest] = match;
+    if (marker !== "TABLE") {
+      tableRowIndex = 0;
+    }
     const content = escapeHtml(
       rawRest.trim().replace(/^["']|["']$/g, "")
     );
@@ -669,50 +712,50 @@ function buildPreviewHTML(text: string): string {
       case "HEADING":
       case "H1":
         parts.push(
-          `<h1 class="text-2xl font-bold text-orange-600 mt-4 mb-2">${content}</h1>`
+          `<h1 class="text-2xl font-bold mt-4 mb-2" style="color:${cH1}">${content}</h1>`
         );
         break;
       case "SUBHEADING":
       case "H2":
         parts.push(
-          `<h2 class="text-xl font-bold text-orange-600 mt-3 mb-2">${content}</h2>`
+          `<h2 class="text-xl font-bold mt-3 mb-2" style="color:${cH2}">${content}</h2>`
         );
         break;
       case "SUB-SUBHEADING":
       case "H3":
         parts.push(
-          `<h3 class="text-lg font-bold text-blue-700 mt-3 mb-1">${content}</h3>`
+          `<h3 class="text-lg font-bold mt-3 mb-1" style="color:${cH3}">${content}</h3>`
         );
         break;
       case "H4":
         parts.push(
-          `<h4 class="text-base font-bold text-blue-600 mt-2 mb-1">${content}</h4>`
+          `<h4 class="text-base font-bold mt-2 mb-1" style="color:${cH4}">${content}</h4>`
         );
         break;
       case "H5":
         parts.push(
-          `<h5 class="text-sm font-bold text-indigo-600 mt-2 mb-1">${content}</h5>`
+          `<h5 class="text-sm font-bold mt-2 mb-1" style="color:${cH5}">${content}</h5>`
         );
         break;
       case "H6":
         parts.push(
-          `<h6 class="text-sm font-semibold text-purple-600 mt-2 mb-1">${content}</h6>`
+          `<h6 class="text-sm font-semibold mt-2 mb-1" style="color:${cH6}">${content}</h6>`
         );
         break;
       case "PARAGRAPH":
       case "PARA":
         parts.push(
-          `<p class="text-sm leading-relaxed mb-2">${content}</p>`
+          `<p class="text-sm leading-relaxed mb-2" style="color:${cBody}">${content}</p>`
         );
         break;
       case "CENTER":
         parts.push(
-          `<p class="text-sm leading-relaxed mb-2 text-center">${content}</p>`
+          `<p class="text-sm leading-relaxed mb-2 text-center" style="color:${cBody}">${content}</p>`
         );
         break;
       case "RIGHT":
         parts.push(
-          `<p class="text-sm leading-relaxed mb-2 text-right">${content}</p>`
+          `<p class="text-sm leading-relaxed mb-2 text-right" style="color:${cBody}">${content}</p>`
         );
         break;
       case "BULLET": {
@@ -723,7 +766,7 @@ function buildPreviewHTML(text: string): string {
         parts.push(
           `<div class="text-sm mb-1" style="margin-left:${
             indent * 20 + 20
-          }px">• ${cleaned}</div>`
+          }px;color:${cBody}">• ${cleaned}</div>`
         );
         break;
       }
@@ -735,19 +778,27 @@ function buildPreviewHTML(text: string): string {
             .replace(/^\s*\d+[.)]\s*/, "")
         );
         parts.push(
-          `<div class="text-sm mb-1 ml-5">${numContent}</div>`
+          `<div class="text-sm mb-1 ml-5" style="color:${cBody}">${numContent}</div>`
         );
         break;
       }
       case "CODE":
         parts.push(
-          `<pre class="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono mb-1">${content}</pre>`
+          `<pre class="text-xs p-2 rounded font-mono mb-1" style="background:${cCodeBg};color:${cCodeText}">${content}</pre>`
         );
         break;
       case "TABLE": {
         const cells = content.split("|").map((c) => c.trim());
+        const isHeader = tableRowIndex === 0;
+        const rowBg = isHeader
+          ? cTableHeaderBg
+          : tableRowIndex % 2 === 0
+            ? cTableEven
+            : cTableOdd;
+        const rowText = isHeader ? cTableHeaderText : cBody;
+        tableRowIndex += 1;
         parts.push(
-          `<div class="flex gap-2 text-xs border-b pb-1 mb-1">${cells
+          `<div class="flex gap-2 text-xs border-b pb-1 mb-1 px-2 py-1 rounded" style="background:${rowBg};color:${rowText}">${cells
             .map(
               (c) =>
                 `<span class="flex-1 font-medium">${c}</span>`
@@ -758,13 +809,13 @@ function buildPreviewHTML(text: string): string {
       }
       case "QUOTE":
         parts.push(
-          `<blockquote class="border-l-4 border-yellow-500 pl-3 italic text-sm text-gray-600 dark:text-gray-400 mb-2">"${content}"</blockquote>`
+          `<blockquote class="border-l-4 border-yellow-500 pl-3 italic text-sm mb-2" style="color:${cBody}">"${content}"</blockquote>`
         );
         break;
       case "NOTE":
       case "IMPORTANT":
         parts.push(
-          `<div class="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-600 p-2 text-sm mb-2">📝 ${content}</div>`
+          `<div class="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-600 p-2 text-sm mb-2" style="color:${cBody}">📝 ${content}</div>`
         );
         break;
       case "HIGHLIGHT": {
@@ -783,7 +834,7 @@ function buildPreviewHTML(text: string): string {
         const linkLabel = linkParts[0] || "Link";
         const linkUrl = linkParts[1] || "#";
         parts.push(
-          `<p class="text-sm"><a class="text-blue-600 underline">${linkLabel}</a> <span class="text-gray-400 text-xs">(${escapeHtml(linkUrl)})</span></p>`
+          `<p class="text-sm"><a class="underline" style="color:${cLink}">${linkLabel}</a> <span class="text-gray-400 text-xs">(${escapeHtml(linkUrl)})</span></p>`
         );
         break;
       }
@@ -800,23 +851,23 @@ function buildPreviewHTML(text: string): string {
       }
       case "FOOTNOTE":
         parts.push(
-          `<p class="text-xs text-gray-500 italic border-t pt-1 mt-2">[*] ${content}</p>`
+          `<p class="text-xs text-gray-500 italic border-t pt-1 mt-2" style="color:${cBody}">[*] ${content}</p>`
         );
         break;
       case "TOC":
         parts.push(
-          `<p class="text-sm text-purple-600 font-semibold mb-2">📑 Table of Contents</p>`
+          `<p class="text-sm font-semibold mb-2" style="color:${cH2}">📑 Table of Contents</p>`
         );
         break;
       case "ASCII":
       case "DIAGRAM":
         parts.push(
-          `<pre class="text-xs font-mono text-gray-500 leading-none mb-1">${content}</pre>`
+          `<pre class="text-xs font-mono leading-none mb-1" style="color:${cBody}">${content}</pre>`
         );
         break;
       default:
         parts.push(
-          `<p class="text-xs text-gray-400">${escapeHtml(
+          `<p class="text-xs text-gray-400" style="color:${cBody}">${escapeHtml(
             marker
           )}: ${content}</p>`
         );
@@ -881,10 +932,15 @@ export default function App() {
   const [searchQ, setSearchQ] = useState("");
   const [replaceQ, setReplaceQ] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const [splitPreview, setSplitPreview] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
   const [showASCII, setShowASCII] = useState(false);
   const [showFontPreview, setShowFontPreview] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => localStorage.getItem("nf_onboard_done") !== "1"
+  );
+  const [onboardingExpanded, setOnboardingExpanded] = useState(true);
 
   // ── Generation State ──────────────────────────────────────────
   const [generating, setGenerating] = useState(false);
@@ -929,18 +985,23 @@ export default function App() {
 
   // ── AI Prompt ─────────────────────────────────────────────────
   const [promptText, setPromptText] = useState(FALLBACK_PROMPT);
+  const [promptTopic, setPromptTopic] = useState("");
   const [promptCopied, setPromptCopied] = useState(false);
   const [promptEditing, setPromptEditing] = useState(false);
   const [promptSaving, setPromptSaving] = useState(false);
 
   // ── Drafts ────────────────────────────────────────────────────
   const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>([]);
+  const [recentExports, setRecentExports] = useState<RecentExport[]>(
+    []
+  );
   const [draftName, setDraftName] = useState("");
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
   // ── Refs ──────────────────────────────────────────────────────
   const taRef = useRef<HTMLTextAreaElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const lineNumRef = useRef<HTMLDivElement>(null);
 
   // ═════════════════════════════════════════════════════════════
   // DERIVED / MEMOIZED VALUES
@@ -958,9 +1019,18 @@ export default function App() {
 
   const previewHTML = useMemo(
     () =>
-      showPreview && text.trim() ? buildPreviewHTML(text) : "",
-    [text, showPreview]
+      (showPreview || splitPreview) && text.trim()
+        ? buildPreviewHTML(text, config.colors)
+        : "",
+    [text, showPreview, splitPreview, config.colors]
   );
+
+  const lineNumbers = useMemo(() => {
+    const count = Math.max(1, text.split("\n").length);
+    return Array.from({ length: count }, (_, i) =>
+      String(i + 1)
+    ).join("\n");
+  }, [text]);
 
   const stats = useMemo(() => {
     const words = text.trim()
@@ -1116,6 +1186,27 @@ export default function App() {
         a.click();
         setSuccess(`✅ ${r.data.filename} downloaded!`);
         if (r.data.warning) setWarn(r.data.warning);
+        const entry: RecentExport = {
+          id: Date.now().toString(),
+          filename: r.data.filename,
+          download_url: r.data.download_url,
+          format,
+          createdAt: Date.now(),
+          warning: r.data.warning,
+        };
+        setRecentExports((prev) => {
+          const next = [entry, ...prev].slice(
+            0,
+            MAX_RECENT_EXPORTS
+          );
+          localStorage.setItem(
+            "nf_recent_exports",
+            JSON.stringify(next)
+          );
+          return next;
+        });
+      } else {
+        setError(r.data.error || "Generation failed");
       }
     } catch (e) {
       const axErr = e as AxiosError<{ detail?: string }>;
@@ -1272,11 +1363,38 @@ export default function App() {
     }
   }, [promptText]);
 
+  const composedPrompt = useMemo(() => {
+    const topic = promptTopic.trim();
+    if (!topic) return promptText;
+    return `${promptText}\n\n## USER TOPIC\n${topic}`;
+  }, [promptText, promptTopic]);
+
   const copyPrompt = useCallback(async () => {
-    await navigator.clipboard.writeText(promptText);
+    await navigator.clipboard.writeText(composedPrompt);
     setPromptCopied(true);
     setTimeout(() => setPromptCopied(false), 2500);
-  }, [promptText]);
+  }, [composedPrompt]);
+
+  const openInChatGPT = useCallback(() => {
+    const q = encodeURIComponent(composedPrompt);
+    window.open(
+      `https://chat.openai.com/?q=${q}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }, [composedPrompt]);
+
+  const dismissOnboarding = useCallback(() => {
+    setShowOnboarding(false);
+    localStorage.setItem("nf_onboard_done", "1");
+  }, []);
+
+  const downloadRecentExport = useCallback((item: RecentExport) => {
+    const a = document.createElement("a");
+    a.href = `${API}${item.download_url}`;
+    a.download = item.filename;
+    a.click();
+  }, []);
 
   // ═════════════════════════════════════════════════════════════
   // CONFIG LOCAL UPDATES
@@ -1456,6 +1574,13 @@ export default function App() {
       /* ignore */
     }
 
+    try {
+      const stored = localStorage.getItem("nf_recent_exports");
+      if (stored) setRecentExports(JSON.parse(stored));
+    } catch {
+      /* ignore */
+    }
+
     checkHealth();
     loadThemes();
     loadConfig();
@@ -1465,6 +1590,11 @@ export default function App() {
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!showOnboarding || !text.trim()) return;
+    dismissOnboarding();
+  }, [text, showOnboarding, dismissOnboarding]);
 
   // Dark mode
   useEffect(() => {
@@ -1815,6 +1945,17 @@ export default function App() {
                   <Monitor className="w-4 h-4" />
                 </button>
                 <button
+                  onClick={() => setSplitPreview((v) => !v)}
+                  title="Toggle Split Preview"
+                  className={`p-2 rounded-lg ${
+                    splitPreview
+                      ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <Layout className="w-4 h-4" />
+                </button>
+                <button
                   onClick={() => setShowDrafts(true)}
                   title="Manage Drafts"
                   className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 relative"
@@ -1862,6 +2003,70 @@ export default function App() {
                   Clear
                 </button>
               </div>
+
+              {showOnboarding && (
+                <div className={`${card} p-4`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-sm mb-1">
+                        How NotesForge Works
+                      </h3>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Write simple markers, then export
+                        polished documents.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          setOnboardingExpanded((v) => !v)
+                        }
+                        className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600"
+                      >
+                        {onboardingExpanded
+                          ? "Collapse"
+                          : "Expand"}
+                      </button>
+                      <button
+                        onClick={dismissOnboarding}
+                        className="text-xs px-2 py-1 rounded bg-blue-600 text-white"
+                      >
+                        Got it
+                      </button>
+                    </div>
+                  </div>
+
+                  {onboardingExpanded && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div
+                        className={`rounded-lg p-3 text-xs font-mono ${
+                          dark
+                            ? "bg-gray-900 text-gray-300"
+                            : "bg-gray-50 text-gray-700"
+                        }`}
+                      >
+                        HEADING: "Weekly Plan"
+                        <br />
+                        BULLET: "Finish API docs"
+                        <br />
+                        BULLET: "Ship v6.3"
+                      </div>
+                      <div
+                        className={`rounded-lg p-3 text-xs ${
+                          dark
+                            ? "bg-gray-900 text-gray-300"
+                            : "bg-gray-50 text-gray-700"
+                        }`}
+                      >
+                        <p className="font-semibold mb-1">
+                          Result
+                        </p>
+                        <p>Big heading + clean bullet list in exported file.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Marker Errors */}
               {markerErrors.length > 0 && (
@@ -1942,7 +2147,7 @@ export default function App() {
               )}
 
               {/* Live Preview */}
-              {showPreview && (
+              {showPreview && !splitPreview && (
                 <div className={`${card} overflow-hidden`}>
                   <div
                     className={`px-5 py-3 border-b flex items-center justify-between ${
@@ -2035,22 +2240,79 @@ export default function App() {
                   </div>
                 )}
 
-                <textarea
-                  ref={taRef}
-                  value={text}
-                  onChange={(e) => handleText(e.target.value)}
-                  spellCheck={false}
-                  placeholder={`Start typing with markers, or:\n• Drag & drop a .txt/.md file here\n• Paste an image from clipboard (Ctrl+V)\n• Click 'Manage Drafts' to save/load multiple documents\n\nHEADING: "My Document"\nPARAGRAPH: "Introduction..."\nBULLET: "First point"`}
-                  className={`w-full p-5 font-mono text-sm resize-none focus:outline-none leading-relaxed ${
-                    fullscreen
-                      ? "h-[calc(100vh-260px)]"
-                      : "h-[440px]"
-                  } ${
-                    dark
-                      ? "bg-gray-800 text-gray-100 placeholder-gray-600"
-                      : "bg-white text-gray-900 placeholder-gray-400"
+                <div
+                  className={`${
+                    splitPreview
+                      ? "grid grid-cols-1 xl:grid-cols-2"
+                      : "block"
                   }`}
-                />
+                >
+                  <div
+                    className={`flex ${
+                      splitPreview
+                        ? "xl:border-r xl:border-gray-200 xl:dark:border-gray-700"
+                        : ""
+                    }`}
+                  >
+                    <div
+                      ref={lineNumRef}
+                      className={`w-12 shrink-0 px-2 py-5 text-right font-mono text-xs select-none overflow-hidden ${
+                        dark
+                          ? "bg-gray-900 text-gray-500"
+                          : "bg-gray-50 text-gray-400"
+                      } ${
+                        fullscreen
+                          ? "h-[calc(100vh-260px)]"
+                          : "h-[440px]"
+                      }`}
+                    >
+                      <pre className="leading-relaxed">
+                        {lineNumbers}
+                      </pre>
+                    </div>
+                    <textarea
+                      ref={taRef}
+                      value={text}
+                      onChange={(e) => handleText(e.target.value)}
+                      onScroll={(e) => {
+                        if (lineNumRef.current) {
+                          lineNumRef.current.scrollTop =
+                            e.currentTarget.scrollTop;
+                        }
+                      }}
+                      spellCheck={false}
+                      placeholder={`Start typing with markers, or:\n• Drag & drop a .txt/.md file here\n• Paste an image from clipboard (Ctrl+V)\n• Click 'Manage Drafts' to save/load multiple documents\n\nHEADING: "My Document"\nPARAGRAPH: "Introduction..."\nBULLET: "First point"`}
+                      className={`flex-1 p-5 font-mono text-sm resize-none focus:outline-none leading-relaxed ${
+                        fullscreen
+                          ? "h-[calc(100vh-260px)]"
+                          : "h-[440px]"
+                      } ${
+                        dark
+                          ? "bg-gray-800 text-gray-100 placeholder-gray-600"
+                          : "bg-white text-gray-900 placeholder-gray-400"
+                      }`}
+                    />
+                  </div>
+
+                  {splitPreview && (
+                    <div
+                      className={`p-5 overflow-y-auto ${
+                        fullscreen
+                          ? "h-[calc(100vh-260px)]"
+                          : "h-[440px]"
+                      } ${
+                        dark
+                          ? "bg-gray-900"
+                          : "bg-white"
+                      }`}
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          previewHTML ||
+                          '<p class="text-sm text-gray-400">Start typing to preview...</p>',
+                      }}
+                    />
+                  )}
+                </div>
               </div>
 
               {/* Generate Bar */}
@@ -2117,6 +2379,58 @@ export default function App() {
                   </p>
                 )}
               </div>
+
+              {recentExports.length > 0 && (
+                <div className={`${card} p-4`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold">
+                      Recent Exports
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setRecentExports([]);
+                        localStorage.removeItem(
+                          "nf_recent_exports"
+                        );
+                      }}
+                      className="text-xs text-red-500 hover:underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {recentExports.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`p-2.5 rounded-lg border flex items-center gap-2 ${
+                          dark
+                            ? "border-gray-700 bg-gray-800/70"
+                            : "border-gray-200 bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">
+                            {item.filename}
+                          </p>
+                          <p className="text-[11px] text-gray-400">
+                            {new Date(
+                              item.createdAt
+                            ).toLocaleString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() =>
+                            downloadRecentExport(item)
+                          }
+                          className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          Download
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* RIGHT: Stats & Preview */}
@@ -2460,6 +2774,24 @@ export default function App() {
                       .split("\n")
                       .slice(0, 4)
                       .join("\n")}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {tpl.content
+                      .split("\n")
+                      .filter((line) => line.includes(":"))
+                      .slice(0, 4)
+                      .map((line, idx) => (
+                        <span
+                          key={`${tpl.id}-${idx}`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                            dark
+                              ? "bg-gray-700 text-gray-300"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {line.split(":")[0]}
+                        </span>
+                      ))}
                   </div>
                   <button className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl text-sm font-medium group-hover:opacity-90 transition-opacity">
                     Load Template →
@@ -4741,11 +5073,44 @@ export default function App() {
                         </button>
                       </>
                     )}
+                    <button
+                      onClick={async () => {
+                        await copyPrompt();
+                        openInChatGPT();
+                      }}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Copy + Open ChatGPT
+                    </button>
                   </div>
                 </div>
               </div>
 
               <div className="p-6">
+                <div
+                  className={`mb-5 p-4 rounded-xl border ${
+                    dark
+                      ? "bg-gray-900/50 border-gray-700"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+                  <label className={lbl}>
+                    Topic / Task for AI
+                  </label>
+                  <input
+                    value={promptTopic}
+                    onChange={(e) =>
+                      setPromptTopic(e.target.value)
+                    }
+                    placeholder="e.g. Explain Kubernetes networking from beginner to intermediate"
+                    className={inp}
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    This topic is auto-appended to copied prompt and the ChatGPT link.
+                  </p>
+                </div>
+
                 {/* How-to banner */}
                 <div
                   className={`flex gap-4 mb-5 p-4 rounded-xl ${

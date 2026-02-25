@@ -37,7 +37,11 @@ echo.
 
 echo [4/5] Installing Python dependencies...
 python -m pip install --upgrade pip
-python -m pip install fastapi uvicorn python-docx python-multipart
+if exist "backend\requirements.txt" (
+    python -m pip install -r backend\requirements.txt
+) else (
+    python -m pip install fastapi uvicorn python-docx python-multipart
+)
 if errorlevel 1 (
     echo ERROR: Failed to install Python packages
     pause

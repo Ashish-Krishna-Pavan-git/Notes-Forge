@@ -392,7 +392,7 @@ async def generate(req: GenerateRequest, st: AppState = Depends(get_state)) -> D
                 "success": True,
                 "filename": f"{base}.docx",
                 "download_url": f"/api/download/{base}.docx",
-                "warning": "PDF conversion unavailable, returned DOCX instead",
+                "warning": "PDF conversion unavailable (LibreOffice not found or failed). Returned DOCX instead. Install LibreOffice and restart backend for PDF export.",
             }
 
         if req.format == "html":
