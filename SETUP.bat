@@ -2,7 +2,7 @@
 title NotesForge Setup
 echo.
 echo ============================================
-echo    NotesForge v5.0 - Setup
+echo    NotesForge Professional - Setup
 echo    One-Click Installation
 echo ============================================
 echo.
@@ -72,8 +72,8 @@ echo    SETUP COMPLETE!
 echo ============================================
 echo.
 echo Next steps:
-echo 1. Copy .env.example to .env and set VITE_API_URL / backend env vars
-echo 2. Run START.bat
-echo 3. Open http://localhost:5173
+echo 1. Copy your Core.py, Config.py, Themes.py to backend\
+echo 2. Copy Config.json, themes.json to backend\
+echo 3. Double-click START.bat
 echo.
 pause

@@ -2,20 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-}
-
 * {
   box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  font-family: "SF Pro Display", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
 }
 
 /* Custom scrollbar */
@@ -92,9 +86,10 @@ body {
 }
 
 /* Focus styles */
-input:focus, textarea:focus, select:focus, button:focus-visible, a:focus-visible {
+input:focus, textarea:focus, select:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+  ring: 2px;
+  ring-color: #0ea5e9;
 }
 
 /* Button hover effects */
