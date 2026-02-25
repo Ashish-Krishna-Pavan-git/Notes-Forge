@@ -19,6 +19,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, validator
 
+# Optional PDF backends
+try:
+    from reportlab.lib.pagesizes import A4, LETTER
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Preformatted
+    from reportlab.platypus import HRFlowable
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
+
+try:
+    from docx2pdf import convert as docx2pdf_convert
+    DOCX2PDF_AVAILABLE = True
+except ImportError:
+    DOCX2PDF_AVAILABLE = False
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from Core import AppConfig, DocumentBuilder, TextParser
@@ -372,28 +390,74 @@ async def generate(req: GenerateRequest, st: AppState = Depends(get_state)) -> D
 
         if req.format == "pdf":
             pdf_path = tmp / f"{base}.pdf"
-            system = platform.system()
-            cmd = (
-                ["soffice", "--headless", "--convert-to", "pdf", str(docx_path), "--outdir", str(tmp)]
-                if system == "Windows"
-                else ["libreoffice", "--headless", "--convert-to", "pdf", str(docx_path), "--outdir", str(tmp)]
+            pdf_generated = False
+
+            # ── Method 1: docx2pdf (wraps LibreOffice/Word natively) ──────────
+            if DOCX2PDF_AVAILABLE and not pdf_generated:
+                try:
+                    docx2pdf_convert(str(docx_path), str(pdf_path))
+                    if pdf_path.exists() and pdf_path.stat().st_size > 0:
+                        pdf_generated = True
+                        logger.info("PDF generated via docx2pdf")
+                except Exception as e:
+                    logger.warning(f"docx2pdf failed: {e}")
+
+            # ── Method 2: LibreOffice (all platforms) ────────────────────────
+            if not pdf_generated:
+                system = platform.system()
+                # Candidate executables in priority order
+                if system == "Windows":
+                    lo_candidates = [
+                        "soffice",
+                        r"C:\Program Files\LibreOffice\program\soffice.exe",
+                        r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+                    ]
+                elif system == "Darwin":  # macOS
+                    lo_candidates = [
+                        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+                        "libreoffice",
+                        "soffice",
+                    ]
+                else:  # Linux
+                    lo_candidates = ["libreoffice", "soffice"]
+
+                for lo_exe in lo_candidates:
+                    try:
+                        cmd = [lo_exe, "--headless", "--convert-to", "pdf",
+                               str(docx_path), "--outdir", str(tmp)]
+                        subprocess.run(cmd, check=True, timeout=60,
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        if pdf_path.exists() and pdf_path.stat().st_size > 0:
+                            pdf_generated = True
+                            logger.info(f"PDF generated via LibreOffice ({lo_exe})")
+                            break
+                    except (subprocess.CalledProcessError, FileNotFoundError,
+                            subprocess.TimeoutExpired, PermissionError):
+                        continue
+
+            # ── Method 3: reportlab (pure-Python, no system deps) ────────────
+            if not pdf_generated and REPORTLAB_AVAILABLE:
+                try:
+                    _generate_pdf_reportlab(req.text, str(pdf_path))
+                    if pdf_path.exists() and pdf_path.stat().st_size > 0:
+                        pdf_generated = True
+                        logger.info("PDF generated via reportlab")
+                except Exception as e:
+                    logger.warning(f"reportlab PDF generation failed: {e}")
+
+            if pdf_generated:
+                return {
+                    "success": True,
+                    "filename": f"{base}.pdf",
+                    "download_url": f"/api/download/{base}.pdf",
+                }
+
+            # All methods failed — raise a proper error instead of silent fallback
+            raise HTTPException(
+                500,
+                "PDF generation failed. Install LibreOffice or 'pip install reportlab' "
+                "for PDF support. Alternatively, download as DOCX and convert manually.",
             )
-            try:
-                subprocess.run(cmd, check=True, timeout=40)
-                if pdf_path.exists():
-                    return {
-                        "success": True,
-                        "filename": f"{base}.pdf",
-                        "download_url": f"/api/download/{base}.pdf",
-                    }
-            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                pass
-            return {
-                "success": True,
-                "filename": f"{base}.docx",
-                "download_url": f"/api/download/{base}.docx",
-                "warning": "PDF conversion unavailable (LibreOffice not found or failed). Returned DOCX instead. Install LibreOffice and restart backend for PDF export.",
-            }
 
         if req.format == "html":
             try:
@@ -598,6 +662,120 @@ async def update_prompt(req: PromptRequest, st: AppState = Depends(get_state)) -
     st.prompt = req.prompt
     st.save_prompt()
     return {"success": True, "message": "Prompt saved"}
+
+
+def _generate_pdf_reportlab(text: str, output_path: str) -> None:
+    """Generate a PDF from NotesForge marker text using reportlab (no system deps)."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Preformatted, HRFlowable
+    from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
+
+    doc = SimpleDocTemplate(
+        output_path,
+        pagesize=A4,
+        leftMargin=inch,
+        rightMargin=inch,
+        topMargin=inch,
+        bottomMargin=inch,
+    )
+
+    base_styles = getSampleStyleSheet()
+
+    styles = {
+        "h1": ParagraphStyle("h1", parent=base_styles["Heading1"], fontSize=20, spaceAfter=10, textColor=colors.HexColor("#6200EA")),
+        "h2": ParagraphStyle("h2", parent=base_styles["Heading2"], fontSize=17, spaceAfter=8,  textColor=colors.HexColor("#651FFF")),
+        "h3": ParagraphStyle("h3", parent=base_styles["Heading3"], fontSize=14, spaceAfter=6,  textColor=colors.HexColor("#7C4DFF")),
+        "h4": ParagraphStyle("h4", parent=base_styles["Heading4"], fontSize=13, spaceAfter=5,  textColor=colors.HexColor("#B388FF")),
+        "h5": ParagraphStyle("h5", parent=base_styles["Heading5"], fontSize=12, spaceAfter=4),
+        "h6": ParagraphStyle("h6", parent=base_styles["Heading6"], fontSize=11, spaceAfter=4),
+        "body": ParagraphStyle("body", parent=base_styles["Normal"],  fontSize=11, spaceAfter=6, leading=16),
+        "bullet": ParagraphStyle("bullet", parent=base_styles["Normal"], fontSize=11, spaceAfter=4,
+                                 leftIndent=20, bulletIndent=10, leading=14),
+        "numbered": ParagraphStyle("numbered", parent=base_styles["Normal"], fontSize=11, spaceAfter=4,
+                                   leftIndent=20, leading=14),
+        "code": ParagraphStyle("code", parent=base_styles["Code"], fontSize=9, spaceAfter=6,
+                               backColor=colors.HexColor("#1E1E2E"), textColor=colors.HexColor("#D4D4D4"),
+                               leftIndent=12, rightIndent=12, fontName="Courier"),
+        "quote": ParagraphStyle("quote", parent=base_styles["Normal"], fontSize=11, spaceAfter=6,
+                                leftIndent=24, textColor=colors.HexColor("#555555"), borderPadding=(4, 0, 4, 8)),
+        "note": ParagraphStyle("note", parent=base_styles["Normal"], fontSize=10, spaceAfter=6,
+                               leftIndent=16, textColor=colors.HexColor("#333333")),
+        "center": ParagraphStyle("center", parent=base_styles["Normal"], alignment=TA_CENTER, fontSize=11, spaceAfter=6),
+        "right": ParagraphStyle("right", parent=base_styles["Normal"], alignment=TA_RIGHT, fontSize=11, spaceAfter=6),
+    }
+
+    parser = TextParser()
+    story = []
+    numbered_counter = [0]
+
+    def safe_para(content: str, style) -> Paragraph:
+        # Escape XML special chars except intentional tags
+        safe = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        try:
+            return Paragraph(safe, style)
+        except Exception:
+            return Paragraph(re.sub(r"<[^>]+>", "", safe), style)
+
+    lines = text.split("\n")
+    i = 0
+    while i < len(lines):
+        classified = parser.classify_line(lines[i])
+        t = classified.get("type", "text")
+        content = classified.get("content", "")
+
+        if t == "empty":
+            story.append(Spacer(1, 6))
+        elif t in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            story.append(safe_para(content, styles[t]))
+            story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#CCCCCC"), spaceAfter=4)
+                         if t == "h1" else Spacer(1, 2))
+            numbered_counter[0] = 0
+        elif t == "paragraph":
+            story.append(safe_para(content, styles["body"]))
+        elif t == "paragraph_center":
+            story.append(safe_para(content, styles["center"]))
+        elif t == "paragraph_right":
+            story.append(safe_para(content, styles["right"]))
+        elif t == "bullet":
+            level = classified.get("indent_level", 0)
+            indent = 20 + level * 18
+            bullet_style = ParagraphStyle(f"bullet_{level}", parent=styles["bullet"], leftIndent=indent)
+            story.append(Paragraph(f"• {re.sub(r'[&<>]', lambda m: {'&':'&amp;','<':'&lt;','>':'&gt;'}[m.group()], content)}", bullet_style))
+        elif t == "numbered":
+            numbered_counter[0] += 1
+            safe_c = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            story.append(Paragraph(f"{numbered_counter[0]}. {safe_c}", styles["numbered"]))
+        elif t == "code":
+            story.append(Preformatted(content, styles["code"]))
+        elif t == "quote":
+            story.append(safe_para(f"❝ {content}", styles["quote"]))
+        elif t == "note":
+            story.append(safe_para(f"📌 Note: {content}", styles["note"]))
+        elif t == "text":
+            story.append(safe_para(content, styles["body"]))
+        elif t == "table":
+            # Collect table rows and render as preformatted
+            table_lines = [content]
+            i += 1
+            while i < len(lines):
+                nc = parser.classify_line(lines[i])
+                if nc.get("type") == "table":
+                    table_lines.append(nc.get("content", ""))
+                    i += 1
+                else:
+                    break
+            # Simple text rendering of table
+            story.append(Preformatted("\n".join(table_lines), styles["code"]))
+            continue
+        i += 1
+
+    if not story:
+        story.append(Paragraph("(empty document)", styles["body"]))
+
+    doc.build(story)
 
 
 def _convert_to_markdown(text: str) -> str:
