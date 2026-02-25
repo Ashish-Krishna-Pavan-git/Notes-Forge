@@ -34,21 +34,68 @@ export async function apiGenerate(
   client: AxiosInstance,
   payload: GenerateRequest,
 ): Promise<GenerateResponse> {
-  const res = await client.post<GenerateResponse>("/api/generate", payload);
-  return res.data;
+  const res = await client.post<unknown>("/api/generate", payload);
+  const data = res.data;
+  if (
+    data &&
+    typeof data === "object" &&
+    "downloadUrl" in data &&
+    "fileId" in data
+  ) {
+    return data as GenerateResponse;
+  }
+  if (
+    data &&
+    typeof data === "object" &&
+    "download_url" in data &&
+    typeof (data as { download_url?: unknown }).download_url === "string"
+  ) {
+    const legacyUrl = (data as { download_url: string }).download_url;
+    const tail = legacyUrl.split("/").pop() ?? `legacy_${Date.now()}`;
+    const inferredId = tail.replace(/\.[^.]+$/, "");
+    return { downloadUrl: legacyUrl, fileId: inferredId };
+  }
+  throw new Error("Generate endpoint returned unexpected payload");
 }
 
 export async function apiTemplates(client: AxiosInstance): Promise<Template[]> {
-  const res = await client.get<Template[]>("/api/templates");
-  return res.data;
+  const paths = ["/api/templates", "/templates"];
+  for (const path of paths) {
+    try {
+      const res = await client.get<unknown>(path);
+      const data = res.data;
+      if (Array.isArray(data)) {
+        return data as Template[];
+      }
+      if (
+        data &&
+        typeof data === "object" &&
+        "templates" in data &&
+        Array.isArray((data as { templates: unknown }).templates)
+      ) {
+        return (data as { templates: Template[] }).templates;
+      }
+    } catch {
+      // try next path
+    }
+  }
+  throw new Error("Templates endpoint unavailable");
 }
 
 export async function apiRegenerateTemplate(
   client: AxiosInstance,
   payload: { templateId: string; topic: string; aiProvider?: "chatgpt" | "notebooklm" | "claude" },
 ): Promise<RegenerateTemplateResponse> {
-  const res = await client.post<RegenerateTemplateResponse>("/api/templates/regenerate", payload);
-  return res.data;
+  const paths = ["/api/templates/regenerate", "/templates/regenerate"];
+  for (const path of paths) {
+    try {
+      const res = await client.post<RegenerateTemplateResponse>(path, payload);
+      return res.data;
+    } catch {
+      // try next path
+    }
+  }
+  throw new Error("Template regeneration endpoint unavailable");
 }
 
 export async function apiCreateTheme(

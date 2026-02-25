@@ -67,6 +67,57 @@ const PROFESSIONAL_THEME: Theme = {
   margins: { top: 25, bottom: 25, left: 25, right: 25 },
 };
 
+const LOCAL_TEMPLATES: Template[] = [
+  {
+    id: "assignment",
+    name: "Assignment",
+    description: "Academic assignment/report layout",
+    defaultTheme: PROFESSIONAL_THEME,
+    aiPromptTemplate:
+      "Write a structured assignment on {topic} using NotesForge markers: H1:Title, H2:Overview, PARAGRAPH, BULLET, TABLE, CODE if needed.",
+    sampleContent: SAMPLE_EXAMPLE,
+  },
+  {
+    id: "resume",
+    name: "Resume",
+    description: "One page resume layout",
+    defaultTheme: PROFESSIONAL_THEME,
+    aiPromptTemplate:
+      "Generate a concise one-page resume for {topic} (role), with sections: H1:Name, H2:Profile, BULLET:Experience, BULLET:Skills, PARAGRAPH:Summary.",
+    sampleContent:
+      "H1: Candidate Name\nH2: Profile\nPARAGRAPH: Short profile statement.\nH2: Experience\nBULLET:\n- Role at Company A\n- Role at Company B\nH2: Skills\nBULLET:\n- Skill 1\n- Skill 2\nH2: Summary\nPARAGRAPH: One-line summary.",
+  },
+  {
+    id: "report",
+    name: "Report",
+    description: "Professional report",
+    defaultTheme: PROFESSIONAL_THEME,
+    aiPromptTemplate:
+      "Create a professional report for {topic} using NotesForge markers including H1, H2, PARAGRAPH, TABLE, BULLET, and Conclusion.",
+    sampleContent:
+      "H1: Professional Report\nH2: Executive Summary\nPARAGRAPH: Objective and scope.\nH2: Findings\nTABLE:\n| Area | Status | Note |\n| Risk | Medium | Follow-up required |\nH2: Recommendations\nBULLET:\n- Recommendation A\n- Recommendation B\nH2: Conclusion\nPARAGRAPH: Final summary.",
+  },
+  {
+    id: "meeting",
+    name: "Meeting Notes",
+    description: "Meeting minutes template",
+    defaultTheme: PROFESSIONAL_THEME,
+    aiPromptTemplate:
+      "Give meeting minutes for {topic} with H1, PARAGRAPH, BULLET for action items, and NUMBERED for agenda.",
+    sampleContent:
+      "H1: Meeting Minutes\nPARAGRAPH: Date, attendees, and objective.\nH2: Agenda\nNUMBERED:\n1. Review updates\n2. Discuss blockers\n3. Confirm actions\nH2: Action Items\nBULLET:\n- Owner A: complete task X\n- Owner B: send summary",
+  },
+  {
+    id: "cybersec",
+    name: "Cybersecurity Report",
+    description: "Incident or audit report for security",
+    defaultTheme: PROFESSIONAL_THEME,
+    aiPromptTemplate:
+      "Write a cybersecurity incident report for {topic} with sections: H1:Incident Title, H2:Executive Summary, PARAGRAPH, TABLE:Indicators, BULLET:Recommendations, CODE for IOCs if present.",
+    sampleContent: SAMPLE_EXAMPLE,
+  },
+];
+
 type BackendStatus = "checking" | "online" | "offline";
 type MobileTab = "edit" | "preview" | "settings";
 
@@ -216,6 +267,23 @@ export default function App() {
     [applyPreview, client, previewLocal, removeMetadata, status, theme, watermarkType, watermarkValue],
   );
 
+  const applyTemplateSet = useCallback(
+    async (list: Template[], fillContent: boolean) => {
+      setTemplates(list);
+      const remembered = localStorage.getItem("nf_v5_last_template");
+      const selected = list.find((item) => item.id === remembered) ?? list[0];
+      if (!selected) return;
+      setTemplateId(selected.id);
+      setPromptText(buildPrompt(topic, selected.name));
+      if (fillContent && !content.trim()) {
+        setTheme(selected.defaultTheme);
+        setContent(selected.sampleContent);
+        await runPreview(selected.sampleContent, selected.defaultTheme);
+      }
+    },
+    [content, runPreview, topic],
+  );
+
   useEffect(() => {
     void checkHealth();
     const timer = window.setInterval(() => void checkHealth(), 30000);
@@ -245,24 +313,19 @@ export default function App() {
     const loadTemplates = async () => {
       try {
         const list = await apiTemplates(client);
-        setTemplates(list);
-        const remembered = localStorage.getItem("nf_v5_last_template");
-        const selected = list.find((item) => item.id === remembered) ?? list[0];
-        if (selected) {
-          setTemplateId(selected.id);
-          setPromptText(buildPrompt(topic, selected.name));
-          if (!content.trim()) {
-            setTheme(selected.defaultTheme);
-            setContent(selected.sampleContent);
-            await runPreview(selected.sampleContent, selected.defaultTheme);
-          }
+        if (list.length === 0) {
+          await applyTemplateSet(LOCAL_TEMPLATES, true);
+          notify("info", "Backend returned no templates. Using local templates.");
+          return;
         }
+        await applyTemplateSet(list, true);
       } catch {
-        notify("error", "Failed to load templates");
+        await applyTemplateSet(LOCAL_TEMPLATES, true);
+        notify("info", "Failed to load templates from backend. Using local templates.");
       }
     };
     void loadTemplates();
-  }, [client, content, notify, runPreview, status, topic]);
+  }, [applyTemplateSet, client, notify, status]);
 
   useEffect(() => {
     const tName = templates.find((item) => item.id === templateId)?.name ?? "Template";
@@ -300,7 +363,18 @@ export default function App() {
       await runPreview(res.content);
       notify("success", "Template regenerated");
     } catch {
-      notify("error", "Template regeneration failed");
+      const template = templates.find((item) => item.id === templateId);
+      const fallbackPrompt = buildPrompt(topic, template?.name ?? "Template");
+      setPromptText(fallbackPrompt);
+      if (template?.sampleContent) {
+        const fallbackContent = template.sampleContent.replace(
+          /Cybersecurity Incident Summary/g,
+          `${topic} Summary`,
+        );
+        setContent(fallbackContent);
+        await runPreview(fallbackContent, template.defaultTheme);
+      }
+      notify("info", "Template regeneration endpoint unavailable. Used local fallback.");
     } finally {
       setRegenerating(false);
     }
