@@ -106,8 +106,16 @@ def create_app() -> FastAPI:
     async def health() -> Dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/health")
+    async def health_legacy() -> Dict[str, str]:
+        return {"status": "ok"}
+
     @app.get("/api/health/parser", response_model=ParserHealthResponse)
     async def parser_health() -> ParserHealthResponse:
+        return ParserHealthResponse(parser="ok", version=APP_VERSION)
+
+    @app.get("/health/parser", response_model=ParserHealthResponse)
+    async def parser_health_legacy() -> ParserHealthResponse:
         return ParserHealthResponse(parser="ok", version=APP_VERSION)
 
     @app.post("/api/preview", response_model=PreviewResponse)

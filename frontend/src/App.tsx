@@ -26,7 +26,6 @@ import { useDebounce } from "./lib/useDebounce";
 import {
   apiCreateTheme,
   apiGenerate,
-  apiHealth,
   apiPreview,
   apiRegenerateTemplate,
   apiTemplates,
@@ -77,7 +76,7 @@ interface Toast {
   tone: "success" | "error" | "info";
 }
 
-const API_URL = (import.meta as ImportMeta & { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL;
+const ENV_API_URL = (import.meta as ImportMeta & { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL;
 
 function buildPrompt(topic: string, templateName: string): string {
   return `Using NotesForge marker syntax (H1–H6, PARAGRAPH, BULLET, NUMBERED, TABLE, CODE), generate a structured document about '${topic}' for the '${templateName}' template. Keep sections concise, include sample TABLE and CODE if relevant, and ensure the content is deterministic. Output ONLY NotesForge markers content, no commentary.`;
@@ -112,7 +111,14 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const debouncedContent = useDebounce(content, 500);
-  const client = useMemo(() => (API_URL ? createApiClient(API_URL) : null), []);
+  const [apiBase, setApiBase] = useState<string>(ENV_API_URL ?? "");
+  const candidateBases = useMemo(() => {
+    const browserDefault = `${window.location.protocol}//${window.location.hostname}:8000`;
+    const persisted = localStorage.getItem("nf_v5_api_base") ?? "";
+    const raw = [ENV_API_URL ?? "", persisted, browserDefault, "http://127.0.0.1:8000", "http://localhost:8000"];
+    return Array.from(new Set(raw.map((v) => v.trim()).filter(Boolean)));
+  }, []);
+  const client = useMemo(() => (apiBase ? createApiClient(apiBase) : null), [apiBase]);
 
   const score = useMemo(() => {
     const base = Math.min(55, wordCount / 3) + Math.min(35, headingCount * 7) - Math.min(30, warnings.length * 4);
@@ -145,18 +151,33 @@ export default function App() {
   );
 
   const checkHealth = useCallback(async () => {
-    if (!client) {
-      setStatus("offline");
-      return;
-    }
     setStatus("checking");
-    try {
-      const ok = await apiHealth(client);
-      setStatus(ok ? "online" : "offline");
-    } catch {
-      setStatus("offline");
+    const orderedBases = Array.from(
+      new Set([apiBase, ...candidateBases].map((v) => v.trim()).filter(Boolean)),
+    );
+
+    for (const base of orderedBases) {
+      const probeClient = createApiClient(base);
+      for (const path of ["/api/health", "/health"]) {
+        try {
+          const probe = await probeClient.get<{ status?: string }>(path, {
+            timeout: 2500,
+          });
+          if (probe.data?.status === "ok") {
+            setStatus("online");
+            if (base !== apiBase) {
+              setApiBase(base);
+              localStorage.setItem("nf_v5_api_base", base);
+            }
+            return;
+          }
+        } catch {
+          // try next endpoint/base
+        }
+      }
     }
-  }, [client]);
+    setStatus("offline");
+  }, [apiBase, candidateBases]);
 
   const runPreview = useCallback(
     async (text: string, forcedTheme?: Theme) => {
@@ -302,7 +323,7 @@ export default function App() {
   };
 
   const generate = async () => {
-    if (!client || !content.trim()) return;
+    if (!client || !apiBase || !content.trim()) return;
     setGenerating(true);
     try {
       const payload: GenerateRequest = {
@@ -319,7 +340,7 @@ export default function App() {
         templateId: templateId || undefined,
       };
       const res = await apiGenerate(client, payload);
-      setDownloadUrl(`${API_URL}${res.downloadUrl}`);
+      setDownloadUrl(`${apiBase}${res.downloadUrl}`);
       notify("success", "Document generated");
     } catch {
       notify("error", "Generation failed");
@@ -331,115 +352,150 @@ export default function App() {
   const shareUrl = `${window.location.origin}${window.location.pathname}?sample=${encodeURIComponent(content || SAMPLE_EXAMPLE)}`;
   const chatGptUrl = `https://chat.openai.com/?q=${encodeURIComponent(promptText)}`;
 
-  if (!API_URL) {
-    return <div className="min-h-screen grid place-items-center p-6 text-red-700">Missing VITE_API_URL in frontend environment.</div>;
-  }
-
   return (
-    <div className="min-h-screen bg-slate-100 pb-16 md:pb-0">
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-300">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold"><Sparkles className="w-4 h-4" /> NotesForge v5.0</div>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_0%_0%,#dbeafe_0%,#f8fafc_42%,#e2e8f0_100%)] pb-16 md:pb-0 text-slate-800">
+      <header className="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur-xl shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 font-semibold text-lg tracking-tight">
+            <span className="w-9 h-9 rounded-xl bg-slate-900 text-white grid place-items-center shadow-lg">
+              <Sparkles className="w-4 h-4" />
+            </span>
+            NotesForge v5.0
+          </div>
           <div className="text-sm flex items-center gap-2">
             {status === "checking" && <Loader2 className="w-4 h-4 animate-spin text-amber-500" />}
             {status === "online" && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
             {status === "offline" && <AlertCircle className="w-4 h-4 text-red-600" />}
-            <span>{status === "offline" ? "Backend offline or starting. Please wait 10–15 seconds" : `Backend ${status}`}</span>
-            <button onClick={() => void checkHealth()} className="px-2 py-1 border rounded text-xs"><RefreshCw className="w-3 h-3 inline mr-1" />Retry</button>
+            <span className="hidden md:inline">
+              {status === "offline"
+                ? "Backend offline or starting. Please wait 10–15 seconds"
+                : `Backend ${status}`}
+            </span>
+            <button
+              onClick={() => void checkHealth()}
+              className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white hover:bg-slate-50 transition"
+            >
+              <RefreshCw className="w-3 h-3 inline mr-1" />
+              Retry
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <section className={`${mobileTab === "edit" ? "block" : "hidden"} lg:block bg-white rounded-xl border border-slate-300 p-3`}>
-          <div className="flex flex-wrap gap-2 mb-2">
-            <button onClick={() => void tryExample()} className="px-3 py-2 bg-slate-900 text-white rounded text-sm">Try Example</button>
-            <button onClick={() => void navigator.clipboard.writeText(notesforgeToMarkdown(content))} className="px-3 py-2 border rounded text-sm">Copy-as-Markdown</button>
-            <button onClick={() => void navigator.clipboard.writeText(content)} className="px-3 py-2 border rounded text-sm">Copy-as-NotesForge</button>
-            <a href={shareUrl} className="px-3 py-2 border rounded text-sm">Share Sample</a>
+      <main className="max-w-7xl mx-auto p-4 space-y-4">
+        <div className="rounded-3xl border border-white/80 bg-white/80 backdrop-blur-xl px-4 py-3 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.55)] flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <p className="text-sm font-semibold">Smart Backend Detection Active</p>
+            <p className="text-xs text-slate-500">
+              Active API: <span className="font-mono">{apiBase || "not detected yet"}</span>
+            </p>
           </div>
-          <label htmlFor="editor" className="block text-sm font-medium mb-1">Editor</label>
-          <textarea id="editor" value={content} onChange={(e) => setContent(e.target.value)} className="w-full h-[480px] font-mono text-sm p-3 border rounded-xl" />
-        </section>
+          {!ENV_API_URL && (
+            <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+              VITE_API_URL not set. Auto-detect fallback in use.
+            </span>
+          )}
+        </div>
 
-        <section className={`${mobileTab === "preview" ? "block" : "hidden"} lg:block bg-white rounded-xl border border-slate-300 p-3`}>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="font-semibold">Live Preview</h2>
-            {previewing && <Loader2 className="w-4 h-4 animate-spin" />}
-          </div>
-          <div className="grid grid-cols-4 gap-2 text-xs mb-2">
-            <div className="p-2 border rounded"><div>Words</div><strong>{wordCount}</strong></div>
-            <div className="p-2 border rounded"><div>Headings</div><strong>{headingCount}</strong></div>
-            <div className="p-2 border rounded"><div>Read min</div><strong>{readingTime.toFixed(2)}</strong></div>
-            <div className="p-2 border rounded"><div>Score</div><strong>{score}</strong></div>
-          </div>
-          <div className="h-[440px] overflow-auto border rounded-xl p-3 bg-slate-50">
-            {previewHtml ? <div dangerouslySetInnerHTML={{ __html: previewHtml }} /> : <p className="text-slate-500 text-sm">Preview will appear here.</p>}
-          </div>
-          {warnings.length > 0 && <p className="text-xs text-amber-700 mt-2">{warnings[0]}</p>}
-        </section>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <section className={`${mobileTab === "edit" ? "block" : "hidden"} lg:block rounded-3xl border border-white/80 bg-white/85 backdrop-blur-xl p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.5)]`}>
+            <div className="flex flex-wrap gap-2 mb-3">
+              <button onClick={() => void tryExample()} className="px-3 py-2 bg-slate-900 text-white rounded-xl text-sm hover:bg-slate-800 transition">Try Example</button>
+              <button onClick={() => void navigator.clipboard.writeText(notesforgeToMarkdown(content))} className="px-3 py-2 border border-slate-200 bg-white rounded-xl text-sm hover:bg-slate-50 transition">Copy-as-Markdown</button>
+              <button onClick={() => void navigator.clipboard.writeText(content)} className="px-3 py-2 border border-slate-200 bg-white rounded-xl text-sm hover:bg-slate-50 transition">Copy-as-NotesForge</button>
+              <a href={shareUrl} className="px-3 py-2 border border-slate-200 bg-white rounded-xl text-sm hover:bg-slate-50 transition">Share Sample</a>
+            </div>
+            <label htmlFor="editor" className="block text-sm font-medium mb-1">Editor</label>
+            <textarea
+              id="editor"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="w-full h-[500px] font-mono text-sm p-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300"
+            />
+          </section>
 
-        <section className={`${mobileTab === "settings" ? "block" : "hidden"} lg:block lg:col-span-2 bg-white rounded-xl border border-slate-300 p-3`}>
+          <section className={`${mobileTab === "preview" ? "block" : "hidden"} lg:block rounded-3xl border border-white/80 bg-white/85 backdrop-blur-xl p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.5)]`}>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-semibold text-base">Live Preview</h2>
+              {previewing && <Loader2 className="w-4 h-4 animate-spin text-slate-500" />}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-2">
+              <div className="p-2 border border-slate-200 rounded-xl bg-white"><div>Words</div><strong>{wordCount}</strong></div>
+              <div className="p-2 border border-slate-200 rounded-xl bg-white"><div>Headings</div><strong>{headingCount}</strong></div>
+              <div className="p-2 border border-slate-200 rounded-xl bg-white"><div>Read min</div><strong>{readingTime.toFixed(2)}</strong></div>
+              <div className="p-2 border border-slate-200 rounded-xl bg-white"><div>Score</div><strong>{score}</strong></div>
+            </div>
+            <div className="h-[460px] overflow-auto border border-slate-200 rounded-2xl p-3 bg-slate-50/80">
+              {previewHtml ? <div dangerouslySetInnerHTML={{ __html: previewHtml }} /> : <p className="text-slate-500 text-sm">Preview will appear here.</p>}
+            </div>
+            {warnings.length > 0 && <p className="text-xs text-amber-700 mt-2">{warnings[0]}</p>}
+          </section>
+        </div>
+
+        <section className={`${mobileTab === "settings" ? "block" : "hidden"} lg:block rounded-3xl border border-white/80 bg-white/85 backdrop-blur-xl p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.5)]`}>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-            <div className="border rounded-xl p-3">
+            <div className="border border-slate-200 rounded-2xl p-3 bg-white">
               <label className="text-sm font-medium block mb-1">Template</label>
-              <select value={templateId} onChange={(e) => void onTemplateChange(e.target.value)} className="w-full border rounded p-2 text-sm">
+              <select value={templateId} onChange={(e) => void onTemplateChange(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2 text-sm">
                 <option value="">Select template</option>
                 {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
               <label className="text-sm font-medium block mt-2 mb-1">Topic</label>
-              <input value={topic} onChange={(e) => setTopic(e.target.value)} className="w-full border rounded p-2 text-sm" />
+              <input value={topic} onChange={(e) => setTopic(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2 text-sm" />
               <label className="text-sm font-medium block mt-2 mb-1">AI Provider</label>
-              <select value={provider} onChange={(e) => setProvider(e.target.value as AiProvider)} className="w-full border rounded p-2 text-sm">
+              <select value={provider} onChange={(e) => setProvider(e.target.value as AiProvider)} className="w-full border border-slate-200 rounded-xl p-2 text-sm">
                 <option value="chatgpt">chatgpt</option><option value="notebooklm">notebooklm</option><option value="claude">claude</option>
               </select>
-              <button onClick={() => void regenerateTemplate()} className="w-full mt-2 bg-slate-900 text-white rounded p-2 text-sm">{regenerating ? "Regenerating..." : "Regenerate Template"}</button>
+              <button onClick={() => void regenerateTemplate()} className="w-full mt-2 bg-slate-900 text-white rounded-xl p-2 text-sm hover:bg-slate-800 transition">{regenerating ? "Regenerating..." : "Regenerate Template"}</button>
             </div>
-            <div className="border rounded-xl p-3">
+
+            <div className="border border-slate-200 rounded-2xl p-3 bg-white">
               <label className="text-sm font-medium block mb-1">Theme Name</label>
-              <input value={theme.name} onChange={(e) => setTheme((p) => ({ ...p, name: e.target.value }))} className="w-full border rounded p-2 text-sm" />
+              <input value={theme.name} onChange={(e) => setTheme((p) => ({ ...p, name: e.target.value }))} className="w-full border border-slate-200 rounded-xl p-2 text-sm" />
               <label className="text-sm font-medium block mt-2 mb-1">Primary Color</label>
-              <input type="color" value={theme.primaryColor} onChange={(e) => setTheme((p) => ({ ...p, primaryColor: e.target.value }))} className="w-full h-10 border rounded" />
+              <input type="color" value={theme.primaryColor} onChange={(e) => setTheme((p) => ({ ...p, primaryColor: e.target.value }))} className="w-full h-10 border border-slate-200 rounded-xl" />
               <label className="text-sm font-medium block mt-2 mb-1">Font</label>
-              <input value={theme.fontFamily} onChange={(e) => setTheme((p) => ({ ...p, fontFamily: e.target.value }))} className="w-full border rounded p-2 text-sm" />
-              <button onClick={() => void saveTheme()} className="w-full mt-2 border rounded p-2 text-sm">Save Theme</button>
+              <input value={theme.fontFamily} onChange={(e) => setTheme((p) => ({ ...p, fontFamily: e.target.value }))} className="w-full border border-slate-200 rounded-xl p-2 text-sm" />
+              <button onClick={() => void saveTheme()} className="w-full mt-2 border border-slate-200 rounded-xl p-2 text-sm hover:bg-slate-50 transition">Save Theme</button>
             </div>
-            <div className="border rounded-xl p-3">
+
+            <div className="border border-slate-200 rounded-2xl p-3 bg-white">
               <label className="text-sm font-medium block mb-1">AI Prompt Preview</label>
-              <textarea readOnly value={promptText} className="w-full h-32 border rounded p-2 text-xs" />
+              <textarea readOnly value={promptText} className="w-full h-32 border border-slate-200 rounded-xl p-2 text-xs bg-slate-50" />
               <div className="flex gap-2 mt-2">
-                <button onClick={() => void navigator.clipboard.writeText(promptText)} className="flex-1 border rounded p-2 text-xs"><Copy className="w-3 h-3 inline mr-1" />Copy Prompt</button>
-                <a href={chatGptUrl} target="_blank" rel="noreferrer" className="flex-1 border rounded p-2 text-xs text-center"><Send className="w-3 h-3 inline mr-1" />Open ChatGPT</a>
+                <button onClick={() => void navigator.clipboard.writeText(promptText)} className="flex-1 border border-slate-200 rounded-xl p-2 text-xs hover:bg-slate-50 transition"><Copy className="w-3 h-3 inline mr-1" />Copy Prompt</button>
+                <a href={chatGptUrl} target="_blank" rel="noreferrer" className="flex-1 border border-slate-200 rounded-xl p-2 text-xs text-center hover:bg-slate-50 transition"><Send className="w-3 h-3 inline mr-1" />Open ChatGPT</a>
               </div>
             </div>
-            <div className="border rounded-xl p-3">
+
+            <div className="border border-slate-200 rounded-2xl p-3 bg-white">
               <label className="text-sm font-medium block mb-1">Format</label>
-              <select value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)} className="w-full border rounded p-2 text-sm">
+              <select value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)} className="w-full border border-slate-200 rounded-xl p-2 text-sm">
                 <option value="docx">DOCX</option><option value="pdf">PDF</option><option value="html">HTML</option><option value="md">MD</option><option value="txt">TXT</option>
               </select>
               <label className="text-sm font-medium block mt-2 mb-1">Filename</label>
-              <input value={filename} onChange={(e) => setFilename(e.target.value)} className="w-full border rounded p-2 text-sm" />
+              <input value={filename} onChange={(e) => setFilename(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2 text-sm" />
               <div className="mt-2 text-sm space-y-1">
                 <label className="flex items-center gap-2"><input type="checkbox" checked={removeMetadata} onChange={(e) => setRemoveMetadata(e.target.checked)} />Remove metadata</label>
                 <label className="flex items-center gap-2"><input type="checkbox" checked={disableEditingDocx} onChange={(e) => setDisableEditingDocx(e.target.checked)} />Disable docx editing</label>
               </div>
-              {format === "pdf" && <input value={passwordProtectPdf} onChange={(e) => setPasswordProtectPdf(e.target.value)} placeholder="PDF password (optional)" className="w-full border rounded p-2 text-sm mt-2" />}
+              {format === "pdf" && <input value={passwordProtectPdf} onChange={(e) => setPasswordProtectPdf(e.target.value)} placeholder="PDF password (optional)" className="w-full border border-slate-200 rounded-xl p-2 text-sm mt-2" />}
               <div className="grid grid-cols-2 gap-1 mt-2">
-                <select value={watermarkType} onChange={(e) => setWatermarkType(e.target.value as WatermarkType)} className="border rounded p-2 text-sm"><option value="text">text</option><option value="image">image</option></select>
-                <input value={watermarkValue} onChange={(e) => setWatermarkValue(e.target.value)} placeholder="Watermark value" className="border rounded p-2 text-sm" />
+                <select value={watermarkType} onChange={(e) => setWatermarkType(e.target.value as WatermarkType)} className="border border-slate-200 rounded-xl p-2 text-sm"><option value="text">text</option><option value="image">image</option></select>
+                <input value={watermarkValue} onChange={(e) => setWatermarkValue(e.target.value)} placeholder="Watermark value" className="border border-slate-200 rounded-xl p-2 text-sm" />
               </div>
-              <button onClick={() => void generate()} className="w-full mt-2 bg-emerald-600 text-white rounded p-2 text-sm">{generating ? "Generating..." : "Generate"}</button>
+              <button onClick={() => void generate()} className="w-full mt-2 bg-emerald-600 text-white rounded-xl p-2 text-sm hover:bg-emerald-700 transition">{generating ? "Generating..." : "Generate"}</button>
               {downloadUrl && <a href={downloadUrl} className="block mt-2 text-sm text-blue-700 underline"><Download className="w-3 h-3 inline mr-1" />Download file</a>}
             </div>
           </div>
         </section>
       </main>
 
-      <nav className="fixed bottom-0 inset-x-0 md:hidden bg-white border-t border-slate-300 p-2">
+      <nav className="fixed bottom-0 inset-x-0 md:hidden bg-white/90 backdrop-blur border-t border-slate-300 p-2">
         <div className="grid grid-cols-3 gap-2">
-          <button className={`rounded p-2 text-sm ${mobileTab === "edit" ? "bg-slate-900 text-white" : "bg-slate-100"}`} onClick={() => setMobileTab("edit")}>Edit</button>
+          <button className={`rounded-xl p-2 text-sm ${mobileTab === "edit" ? "bg-slate-900 text-white" : "bg-slate-100"}`} onClick={() => setMobileTab("edit")}>Edit</button>
           <button
-            className={`rounded p-2 text-sm ${mobileTab === "preview" ? "bg-slate-900 text-white" : "bg-slate-100"}`}
+            className={`rounded-xl p-2 text-sm ${mobileTab === "preview" ? "bg-slate-900 text-white" : "bg-slate-100"}`}
             onClick={() => {
               setMobileTab("preview");
               void runPreview(content);
@@ -447,13 +503,13 @@ export default function App() {
           >
             Preview
           </button>
-          <button className={`rounded p-2 text-sm ${mobileTab === "settings" ? "bg-slate-900 text-white" : "bg-slate-100"}`} onClick={() => setMobileTab("settings")}>Settings</button>
+          <button className={`rounded-xl p-2 text-sm ${mobileTab === "settings" ? "bg-slate-900 text-white" : "bg-slate-100"}`} onClick={() => setMobileTab("settings")}>Settings</button>
         </div>
       </nav>
 
       <div className="fixed right-3 top-20 space-y-2 z-40">
         {toasts.map((t) => (
-          <div key={t.id} className={`text-sm px-3 py-2 rounded border shadow ${t.tone === "success" ? "bg-emerald-50 border-emerald-300" : t.tone === "error" ? "bg-red-50 border-red-300" : "bg-slate-50 border-slate-300"}`}>
+          <div key={t.id} className={`text-sm px-3 py-2 rounded-xl border shadow-lg ${t.tone === "success" ? "bg-emerald-50 border-emerald-300" : t.tone === "error" ? "bg-red-50 border-red-300" : "bg-slate-50 border-slate-300"}`}>
             {t.text}
           </div>
         ))}
