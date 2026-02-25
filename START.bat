@@ -1,67 +1,30 @@
 @echo off
-REM =====================================================
-REM NotesForge Professional - START (Corrected Version)
-REM Safe for Windows CMD (no Unicode parsing errors)
-REM Save encoding: ANSI or UTF-8 (without BOM)
-REM =====================================================
+setlocal
+title NotesForge v5.0 Startup
 
-title NotesForge Professional - Start
+cd /d "%~dp0"
 
-echo =====================================================
-echo ==              NotesForge Professional             ==
-echo =====================================================
+echo ==========================================
+echo NotesForge v5.0 - Starting Frontend + API
+echo ==========================================
 echo.
 
-REM ---- OPTIONAL: Switch drive safely (avoids errors) ----
-if exist "D:\" (
-    pushd /D "D:\"
-    echo Switched to D:\
-) else (
-    echo Drive D:\ not found — continuing in current directory.
+if not exist "frontend\package.json" (
+  echo [ERROR] frontend\package.json not found.
+  pause
+  exit /b 1
 )
 
-REM ---- CHECK REQUIRED TOOLS ----
-where node >nul 2>&1
-if errorlevel 1 (
-    echo [WARNING] Node.js not found in PATH.
-) else (
-    echo Node.js detected.
+if not exist "backend\backend_server.py" (
+  echo [ERROR] backend\backend_server.py not found.
+  pause
+  exit /b 1
 )
 
-where python >nul 2>&1
-if errorlevel 1 (
-    echo [WARNING] Python not found in PATH.
-) else (
-    echo Python detected.
-)
+start "NotesForge Frontend" cmd /k "cd /d frontend && npm run dev"
+start "NotesForge Backend" cmd /k "cd /d backend && python backend_server.py"
 
-echo.
-echo Starting services...
-echo.
-
-set "ROOT_DIR=%~dp0"
-set "FRONTEND_DIR=%ROOT_DIR%frontend"
-set "BACKEND_DIR=%ROOT_DIR%backend"
-
-if not exist "%FRONTEND_DIR%\package.json" (
-    echo [ERROR] Frontend folder not found: %FRONTEND_DIR%
-    pause
-    exit /b 1
-)
-
-if not exist "%BACKEND_DIR%\backend_server.py" (
-    echo [ERROR] Backend folder not found: %BACKEND_DIR%
-    pause
-    exit /b 1
-)
-
-REM Frontend
-start "" cmd /k "cd /d ""%FRONTEND_DIR%"" && npm run dev"
-
-REM Backend
-start "" cmd /k "cd /d ""%BACKEND_DIR%"" && python -m uvicorn backend_server:app --reload"
-
-REM =====================================================
-echo.
-echo All services started (check opened windows for logs).
+echo Services started in separate windows.
+echo Frontend: http://localhost:5173
+echo Backend : http://localhost:8000
 pause
