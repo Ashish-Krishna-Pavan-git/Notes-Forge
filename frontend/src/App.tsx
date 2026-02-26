@@ -66,7 +66,7 @@ import {
 // ═══════════════════════════════════════════════════════════════════
 
 const API =
-  (import.meta as any).env?.VITE_API_URL ?? "http://localhost:8000";
+  (import.meta as any).env?.VITE_API_URL ?? "https://notes-forge.onrender.com";
 
 const AUTOSAVE_MS = 30_000;
 const ANALYZE_DEBOUNCE_MS = 600;
