@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: notesforge-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    envVars:
+      - key: FASTAPI_HOST
+        value: 0.0.0.0
+      - key: FASTAPI_PORT
+        value: "10000"
+      - key: DOCX_TEMP_DIR
+        value: /tmp/notesforge
+      - key: STORAGE_BACKEND
+        value: local
+      - key: NF_CORS_ORIGINS
+        value: https://notes-forge-ruddy.vercel.app,https://notes-forge.onrender.com,http://localhost:5173,http://localhost:3000
