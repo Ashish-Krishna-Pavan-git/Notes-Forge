@@ -495,11 +495,14 @@ class DocumentExporter:
         theme: ThemePayload,
         formatting: FormattingOptions,
         security: GenerateSecurityPayload,
+        include_running_blocks: bool = True,
     ) -> str:
         css = css_from_theme(theme, formatting)
         watermark = watermark_html(security.watermark)
         html = render_preview_html(nodes, css, watermark)
-        return _inject_preview_running_blocks(html, security)
+        if include_running_blocks:
+            return _inject_preview_running_blocks(html, security)
+        return html
 
     def create_docx(
         self,
@@ -946,12 +949,20 @@ class DocumentExporter:
 
         if target_format == "pdf":
             file_id, pdf_path = self.store.reserve_path("pdf")
-            html_preview = self.create_preview_html(nodes, theme, formatting, security)
             attempts: list[str] = []
-            ok, method = _convert_html_to_pdf_weasyprint(html_preview, pdf_path)
+            # High-fidelity path first: generated DOCX -> PDF (closest to "Word Save As PDF")
+            ok, method = _convert_docx_to_pdf(docx_path, pdf_path)
             attempts.append(method)
             if not ok:
-                ok, method = _convert_docx_to_pdf(docx_path, pdf_path)
+                # Last-resort fallback renderer; layout may differ from Word.
+                html_preview = self.create_preview_html(
+                    nodes,
+                    theme,
+                    formatting,
+                    security,
+                    include_running_blocks=False,
+                )
+                ok, method = _convert_html_to_pdf_weasyprint(html_preview, pdf_path)
                 attempts.append(method)
             if not ok:
                 ok, method = _convert_nodes_to_pdf_reportlab(
@@ -961,8 +972,10 @@ class DocumentExporter:
             if not ok:
                 raise RuntimeError(f"PDF conversion failed: {' | '.join(attempts)}")
             warnings.extend(secure_pdf(pdf_path, security.passwordProtectPdf, security.removeMetadata))
-            if method == "reportlab":
-                warnings.append("Used simplified PDF renderer fallback for this export.")
+            if method in {"weasyprint", "reportlab"}:
+                warnings.append(
+                    "Used fallback PDF renderer; install LibreOffice/docx2pdf for Word-like PDF fidelity."
+                )
             return file_id, pdf_path, warnings
 
         if target_format == "html":
