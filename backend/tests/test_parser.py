@@ -51,6 +51,18 @@ class ParserTests(unittest.TestCase):
         self.assertIn(3, heading_levels)
         self.assertTrue(any(n.type == "pagebreak" for n in result.nodes))
 
+    def test_parser_merges_consecutive_table_markers_as_rows(self) -> None:
+        content = (
+            "H1: Table Demo\n"
+            "TABLE: Device | IP\n"
+            "TABLE: PC0 | 192.168.0.11\n"
+            "TABLE: Laptop1 | 192.168.1.13\n"
+        )
+        result = parse_notesforge(content)
+        tables = [n for n in result.nodes if n.type == "table"]
+        self.assertEqual(len(tables), 1)
+        self.assertEqual(len(tables[0].rows or []), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

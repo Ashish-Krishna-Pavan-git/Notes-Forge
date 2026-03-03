@@ -213,8 +213,20 @@ def parse_notesforge(content: str) -> ParseResult:
 
             next_idx = idx + 1
             while next_idx < len(lines):
-                nline = lines[next_idx].strip()
-                if _is_marker_line(lines[next_idx]):
+                nraw = lines[next_idx]
+                nline = nraw.strip()
+                next_marker = MARKER_RE.match(nraw)
+                if next_marker:
+                    next_name = next_marker.group(1).upper()
+                    if next_name == "TABLE":
+                        next_payload = next_marker.group(2).strip()
+                        next_row = _split_table_row(next_payload)
+                        if next_row:
+                            rows.append(next_row)
+                        else:
+                            warnings.append(f"Line {next_idx + 1}: TABLE row is empty.")
+                        next_idx += 1
+                        continue
                     break
                 if not nline:
                     next_idx += 1
@@ -278,7 +290,10 @@ def render_preview_html(
             level = max(1, min(6, node.level))
             fragments.append(f"<h{level}>{escape(node.text)}</h{level}>")
         elif node.type == "paragraph":
-            fragments.append(f'<p style="text-align:{escape(node.align)}">{escape(node.text)}</p>')
+            if node.align and node.align != "left":
+                fragments.append(f'<p style="text-align:{escape(node.align)}">{escape(node.text)}</p>')
+            else:
+                fragments.append(f"<p>{escape(node.text)}</p>")
         elif node.type == "bullet":
             items = node.items or []
             fragments.append("<ul>")

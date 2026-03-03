@@ -1,5 +1,7 @@
 import unittest
 from unittest.mock import patch
+import io
+import zipfile
 
 from fastapi.testclient import TestClient
 
@@ -93,6 +95,55 @@ class ApiIntegrationTests(unittest.TestCase):
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
         )
+
+    def test_generate_docx_reflects_theme_border_alignment_and_table_styles(self) -> None:
+        custom_theme = PROFESSIONAL_THEME.model_dump()
+        custom_theme["styles"] = {
+            "page_border_enabled": True,
+            "page_border_color": "#B91C1C",
+            "page_border_width": 2,
+            "page_border_style": "double",
+            "header_alignment": "left",
+            "footer_alignment": "right",
+            "header_show_page_numbers": False,
+            "footer_show_page_numbers": True,
+            "table_header_text": "#FFFFFF",
+            "table_odd_row": "#F3EDFF",
+        }
+        content = 'H1: "Theme Test"\nTABLE: "A | B"\nTABLE: "1 | 2"'
+        response = self.client.post(
+            "/api/generate",
+            json={
+                "content": content,
+                "theme": custom_theme,
+                "format": "docx",
+                "filename": "theme_reflect",
+                "security": {
+                    "headerText": "Header Demo",
+                    "footerText": "Footer Demo",
+                    "pageNumberMode": "page_x_of_y",
+                    "disableEditingDocx": False,
+                    "removeMetadata": False,
+                },
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        download = self.client.get(response.json()["downloadUrl"])
+        self.assertEqual(download.status_code, 200)
+
+        with zipfile.ZipFile(io.BytesIO(download.content)) as archive:
+            document_xml = archive.read("word/document.xml").decode("utf-8", "ignore")
+            header_xml = archive.read("word/header1.xml").decode("utf-8", "ignore")
+            footer_xml = archive.read("word/footer1.xml").decode("utf-8", "ignore")
+
+        document_xml_u = document_xml.upper()
+        self.assertIn("W:PGBORDERS", document_xml_u)
+        self.assertIn('w:jc w:val="left"', header_xml)
+        self.assertIn('w:jc w:val="right"', footer_xml)
+        self.assertIn("NUMPAGES", footer_xml)
+        self.assertIn("PAGE", footer_xml)
+        self.assertIn('W:FILL="F6F6F6"', document_xml_u)
+        self.assertIn('W:FILL="F3EDFF"', document_xml_u)
 
     def test_generate_and_download_textual_formats(self) -> None:
         for fmt, ctype_prefix in [

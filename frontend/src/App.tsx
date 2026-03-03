@@ -1865,6 +1865,9 @@ export default function App() {
         styles: {
           lineSpacing:
             config.spacing?.line_spacing || 1.4,
+          paragraph_spacing_before:
+            config.spacing
+              ?.paragraph_spacing_before ?? 0,
           paragraph_spacing_after:
             config.spacing
               ?.paragraph_spacing_after ?? 0,
@@ -1884,6 +1887,154 @@ export default function App() {
           paragraph_first_line_indent:
             config.spacing
               ?.paragraph_first_line_indent ?? 0,
+          paragraph_alignment:
+            config.spacing
+              ?.paragraph_alignment || "left",
+          body_color:
+            config.colors?.body || "#17202a",
+          code_background:
+            config.colors?.code_background ||
+            "#0f172a",
+          code_text:
+            config.colors?.code_text || "#e2e8f0",
+          table_header_text:
+            config.colors
+              ?.table_header_text || "#111827",
+          table_odd_row:
+            config.colors?.table_odd_row || "#ffffff",
+          table_even_row:
+            config.colors
+              ?.table_even_row || "#f8fafc",
+          link_color:
+            config.colors?.link || "#2563eb",
+          h1_family:
+            config.fonts?.h1_family ||
+            config.fonts?.family ||
+            "Calibri",
+          h2_family:
+            config.fonts?.h2_family ||
+            config.fonts?.family ||
+            "Calibri",
+          h3_family:
+            config.fonts?.h3_family ||
+            config.fonts?.family ||
+            "Calibri",
+          h4_family:
+            config.fonts?.h4_family ||
+            config.fonts?.family ||
+            "Calibri",
+          h5_family:
+            config.fonts?.h5_family ||
+            config.fonts?.family ||
+            "Calibri",
+          h6_family:
+            config.fonts?.h6_family ||
+            config.fonts?.family ||
+            "Calibri",
+          bullet_font_family:
+            config.fonts?.bullet_family ||
+            config.fonts?.family ||
+            "Calibri",
+          code_font_family:
+            config.fonts?.family_code ||
+            "Consolas",
+          code_font_size:
+            config.fonts?.sizes?.code || 10,
+          header_alignment:
+            config.header?.alignment || "center",
+          header_font_family:
+            config.header?.font_family ||
+            config.fonts?.family ||
+            "Calibri",
+          header_size:
+            config.header?.size ||
+            config.fonts?.sizes?.header ||
+            10,
+          header_color:
+            config.header?.color ||
+            config.colors?.h1 ||
+            "#1F3A5F",
+          header_bold:
+            config.header?.bold ?? false,
+          header_italic:
+            config.header?.italic ?? false,
+          header_separator:
+            config.header?.separator ?? false,
+          header_separator_color:
+            config.header?.separator_color ||
+            "#cccccc",
+          header_show_page_numbers:
+            config.header
+              ?.show_page_numbers ?? false,
+          footer_alignment:
+            config.footer?.alignment || "center",
+          footer_font_family:
+            config.footer?.font_family ||
+            config.fonts?.family ||
+            "Calibri",
+          footer_size:
+            config.footer?.size ||
+            config.fonts?.sizes?.footer ||
+            9,
+          footer_color:
+            config.footer?.color ||
+            config.colors?.h2 ||
+            "#1F3A5F",
+          footer_bold:
+            config.footer?.bold ?? false,
+          footer_italic:
+            config.footer?.italic ?? false,
+          footer_separator:
+            config.footer?.separator ?? false,
+          footer_separator_color:
+            config.footer?.separator_color ||
+            "#cccccc",
+          footer_show_page_numbers:
+            config.footer
+              ?.show_page_numbers ?? true,
+          page_number_position:
+            config.footer
+              ?.page_number_position ||
+            config.header
+              ?.page_number_position ||
+            "footer",
+          page_number_alignment:
+            config.footer
+              ?.page_number_alignment ||
+            config.header
+              ?.page_number_alignment ||
+            "center",
+          page_number_mode:
+            (config.footer?.page_format || "")
+              .toLowerCase()
+              .includes("of")
+              ? "page_x_of_y"
+              : "page_x",
+          page_size:
+            config.page?.size || "A4",
+          page_orientation:
+            config.page?.orientation ||
+            "portrait",
+          page_border_enabled:
+            config.page?.border?.enabled ??
+            config.page?.border_enabled ??
+            false,
+          page_border_width:
+            config.page?.border?.width ??
+            config.page?.border_width ??
+            1,
+          page_border_color:
+            config.page?.border?.color ??
+            config.page?.border_color ??
+            "#000000",
+          page_border_style:
+            config.page?.border?.style ??
+            config.page?.border_style ??
+            "single",
+          page_border_offset:
+            config.page?.border?.offset ??
+            config.page?.border_offset ??
+            24,
         },
       };
 
@@ -1911,11 +2062,26 @@ export default function App() {
           removeMetadata: false,
           disableEditingDocx: false,
           pageNumberMode:
-            (config.footer?.page_format || "")
-              .toLowerCase()
-              .includes("of")
-              ? "page_x_of_y"
-              : "page_x",
+            (
+              config.footer
+                ?.show_page_numbers ||
+              config.header
+                ?.show_page_numbers
+            )
+              ? (
+                  (
+                    config.footer
+                      ?.page_format ||
+                    config.header
+                      ?.page_format ||
+                    ""
+                  )
+                    .toLowerCase()
+                    .includes("of")
+                    ? "page_x_of_y"
+                    : "page_x"
+                )
+              : undefined,
           headerText: config.header?.enabled
             ? config.header?.text || ""
             : "",

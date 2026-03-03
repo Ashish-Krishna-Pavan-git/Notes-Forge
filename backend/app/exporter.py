@@ -6,10 +6,12 @@ import shutil
 import subprocess
 import tempfile
 import time
+from html import escape
 from typing import List, Sequence, Tuple
 from uuid import uuid4
 
 from docx import Document
+from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -61,6 +63,35 @@ def _style_num(styles: dict[str, object], *keys: str, default: float) -> float:
     return default
 
 
+def _style_bool(styles: dict[str, object], *keys: str, default: bool) -> bool:
+    for key in keys:
+        if key not in styles:
+            continue
+        raw = styles.get(key)
+        if isinstance(raw, bool):
+            return raw
+        if isinstance(raw, (int, float)):
+            return bool(raw)
+        if isinstance(raw, str):
+            v = raw.strip().lower()
+            if v in {"1", "true", "yes", "on"}:
+                return True
+            if v in {"0", "false", "no", "off"}:
+                return False
+    return default
+
+
+def _style_str(styles: dict[str, object], *keys: str, default: str) -> str:
+    for key in keys:
+        if key not in styles:
+            continue
+        raw = styles.get(key)
+        if raw is None:
+            continue
+        return str(raw).strip()
+    return default
+
+
 def _add_page_number(paragraph, mode: str) -> None:
     paragraph.add_run("Page ")
     fld_page = OxmlElement("w:fldSimple")
@@ -71,6 +102,161 @@ def _add_page_number(paragraph, mode: str) -> None:
         fld_total = OxmlElement("w:fldSimple")
         fld_total.set(qn("w:instr"), "NUMPAGES")
         paragraph._p.append(fld_total)
+
+
+def _docx_border_style(raw: str) -> str:
+    value = (raw or "").strip().lower()
+    mapping = {
+        "single": "single",
+        "double": "double",
+        "dashed": "dashed",
+        "dotted": "dotted",
+        "thick": "thick",
+    }
+    return mapping.get(value, "single")
+
+
+def _apply_paragraph_separator(paragraph, side: str, color: str, width_pt: float, style: str) -> None:
+    p_pr = paragraph._p.get_or_add_pPr()
+    p_bdr = p_pr.find(qn("w:pBdr"))
+    if p_bdr is None:
+        p_bdr = OxmlElement("w:pBdr")
+        p_pr.append(p_bdr)
+
+    edge = p_bdr.find(qn(f"w:{side}"))
+    if edge is None:
+        edge = OxmlElement(f"w:{side}")
+        p_bdr.append(edge)
+
+    color_hex = (color or "").strip().lstrip("#")
+    if len(color_hex) != 6:
+        color_hex = "BFBFBF"
+    sz = max(2, min(96, int(round(max(0.25, width_pt) * 8))))
+    edge.set(qn("w:val"), _docx_border_style(style))
+    edge.set(qn("w:sz"), str(sz))
+    edge.set(qn("w:space"), "1")
+    edge.set(qn("w:color"), color_hex)
+
+
+def _apply_page_borders(
+    section,
+    *,
+    enabled: bool,
+    width_pt: float,
+    color: str,
+    style: str,
+    offset_pt: float,
+) -> None:
+    if not enabled:
+        return
+
+    sect_pr = section._sectPr
+    pg_borders = sect_pr.find(qn("w:pgBorders"))
+    if pg_borders is None:
+        pg_borders = OxmlElement("w:pgBorders")
+        sect_pr.append(pg_borders)
+
+    pg_borders.set(qn("w:offsetFrom"), "page")
+    color_hex = (color or "").strip().lstrip("#")
+    if len(color_hex) != 6:
+        color_hex = "000000"
+    sz = max(2, min(96, int(round(max(0.25, width_pt) * 8))))
+    spacing = max(0, min(96, int(round(max(0.0, offset_pt)))))
+    border_style = _docx_border_style(style)
+
+    for side in ("top", "left", "bottom", "right"):
+        edge = pg_borders.find(qn(f"w:{side}"))
+        if edge is None:
+            edge = OxmlElement(f"w:{side}")
+            pg_borders.append(edge)
+        edge.set(qn("w:val"), border_style)
+        edge.set(qn("w:sz"), str(sz))
+        edge.set(qn("w:space"), str(spacing))
+        edge.set(qn("w:color"), color_hex)
+
+
+def _set_cell_borders(cell, *, color: str, width_pt: float, style: str) -> None:
+    tc_pr = cell._tc.get_or_add_tcPr()
+    tc_borders = tc_pr.find(qn("w:tcBorders"))
+    if tc_borders is None:
+        tc_borders = OxmlElement("w:tcBorders")
+        tc_pr.append(tc_borders)
+
+    color_hex = (color or "").strip().lstrip("#")
+    if len(color_hex) != 6:
+        color_hex = "D1D5DB"
+    sz = max(2, min(96, int(round(max(0.25, width_pt) * 8))))
+    border_style = _docx_border_style(style)
+    for side in ("top", "left", "bottom", "right"):
+        edge = tc_borders.find(qn(f"w:{side}"))
+        if edge is None:
+            edge = OxmlElement(f"w:{side}")
+            tc_borders.append(edge)
+        edge.set(qn("w:val"), border_style)
+        edge.set(qn("w:sz"), str(sz))
+        edge.set(qn("w:space"), "0")
+        edge.set(qn("w:color"), color_hex)
+
+
+def _set_cell_shading(cell, fill_hex: str) -> None:
+    cleaned = (fill_hex or "").strip().lstrip("#")
+    if len(cleaned) != 6:
+        return
+    tc_pr = cell._tc.get_or_add_tcPr()
+    shd = tc_pr.find(qn("w:shd"))
+    if shd is None:
+        shd = OxmlElement("w:shd")
+        tc_pr.append(shd)
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), cleaned)
+
+
+def _style_paragraph_runs(
+    paragraph,
+    *,
+    font_name: str,
+    size_pt: float,
+    color_hex: str,
+    bold: bool | None = None,
+    italic: bool | None = None,
+) -> None:
+    color = _hex_to_rgb(color_hex)
+    for run in paragraph.runs:
+        run.font.name = font_name
+        run.font.size = Pt(max(1.0, size_pt))
+        run.font.color.rgb = color
+        if bold is not None:
+            run.font.bold = bold
+        if italic is not None:
+            run.font.italic = italic
+
+
+def _inject_preview_running_blocks(html: str, security: GenerateSecurityPayload) -> str:
+    header_text = (security.headerText or "").strip()
+    footer_text = (security.footerText or "").strip()
+    show_page_number = security.pageNumberMode in {"page_x", "page_x_of_y"}
+    mode = security.pageNumberMode if show_page_number else "page_x"
+
+    injected = []
+    if header_text:
+        injected.append(f'<div class="nf-running-header">{escape(header_text)}</div>')
+
+    footer_parts = []
+    if footer_text:
+        footer_parts.append(f'<span class="nf-footer-text">{escape(footer_text)}</span>')
+    if show_page_number:
+        footer_parts.append(f'<span class="nf-page-num" data-mode="{mode}"></span>')
+    if footer_parts:
+        injected.append(f'<div class="nf-running-footer">{" ".join(footer_parts)}</div>')
+
+    if not injected:
+        return html
+    return html.replace(
+        '<div class="nf-preview-root">',
+        f'<div class="nf-preview-root">{"".join(injected)}',
+        1,
+    )
 
 
 def _find_libreoffice_binary() -> str | None:
@@ -312,7 +498,8 @@ class DocumentExporter:
     ) -> str:
         css = css_from_theme(theme, formatting)
         watermark = watermark_html(security.watermark)
-        return render_preview_html(nodes, css, watermark)
+        html = render_preview_html(nodes, css, watermark)
+        return _inject_preview_running_blocks(html, security)
 
     def create_docx(
         self,
@@ -327,30 +514,195 @@ class DocumentExporter:
 
         document = Document()
         section = document.sections[0]
+        styles = theme.styles if isinstance(theme.styles, dict) else {}
+
+        page_size = _style_str(styles, "page_size", "pageSize", default="A4").upper()
+        page_orientation = _style_str(
+            styles,
+            "page_orientation",
+            "pageOrientation",
+            default="portrait",
+        ).lower()
+        if page_size in {"A4", "A3", "LETTER", "LEGAL"}:
+            page_sizes_mm = {
+                "A4": (210.0, 297.0),
+                "A3": (297.0, 420.0),
+                "LETTER": (215.9, 279.4),
+                "LEGAL": (215.9, 355.6),
+            }
+            w_mm, h_mm = page_sizes_mm[page_size]
+            if page_orientation == "landscape":
+                section.orientation = WD_ORIENT.LANDSCAPE
+                section.page_width = Mm(h_mm)
+                section.page_height = Mm(w_mm)
+            else:
+                section.orientation = WD_ORIENT.PORTRAIT
+                section.page_width = Mm(w_mm)
+                section.page_height = Mm(h_mm)
+
         section.top_margin = _mm_or_default(formatting.margins.top, 25)
         section.bottom_margin = _mm_or_default(formatting.margins.bottom, 25)
         section.left_margin = _mm_or_default(formatting.margins.left, 25)
         section.right_margin = _mm_or_default(formatting.margins.right, 25)
 
-        if security.headerText:
-            header_para = section.header.paragraphs[0] if section.header.paragraphs else section.header.add_paragraph()
-            header_para.text = security.headerText
-            header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-        footer_para = section.footer.paragraphs[0] if section.footer.paragraphs else section.footer.add_paragraph()
-        if security.footerText:
-            footer_para.add_run(security.footerText + " ")
-        page_mode = security.pageNumberMode or "page_x"
-        _add_page_number(footer_para, page_mode)
-        footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
         font_name = _font_primary(theme.fontFamily)
+        body_color = _style_str(styles, "body_color", "bodyColor", default="#17202a")
+        code_font_name = _font_primary(
+            _style_str(
+                styles,
+                "code_font_family",
+                "codeFontFamily",
+                default="Consolas, Courier New, monospace",
+            )
+        )
+        bullet_font_name = _font_primary(
+            _style_str(styles, "bullet_font_family", "bulletFontFamily", default=font_name)
+        )
+        code_font_size = _style_num(styles, "code_font_size", "codeFontSize", default=10.0)
+        line_spacing = formatting.lineSpacing or theme.bodyStyle.lineHeight or 1.4
+
         normal_style = document.styles["Normal"]
         normal_style.font.name = font_name
         normal_style.font.size = Pt(theme.bodyStyle.size or 11)
-        normal_style.paragraph_format.line_spacing = formatting.lineSpacing or theme.bodyStyle.lineHeight or 1.4
+        normal_style.font.color.rgb = _hex_to_rgb(body_color)
+        normal_style.paragraph_format.line_spacing = line_spacing
 
-        styles = theme.styles if isinstance(theme.styles, dict) else {}
+        _apply_page_borders(
+            section,
+            enabled=_style_bool(styles, "page_border_enabled", "pageBorderEnabled", default=False),
+            width_pt=_style_num(
+                styles,
+                "page_border_width",
+                "pageBorderWidth",
+                default=1.0,
+            ),
+            color=_style_str(
+                styles,
+                "page_border_color",
+                "pageBorderColor",
+                default=theme.primaryColor,
+            ),
+            style=_style_str(
+                styles,
+                "page_border_style",
+                "pageBorderStyle",
+                default="single",
+            ),
+            offset_pt=_style_num(
+                styles,
+                "page_border_offset",
+                "pageBorderOffset",
+                default=24.0,
+            ),
+        )
+
+        header_para = section.header.paragraphs[0] if section.header.paragraphs else section.header.add_paragraph()
+        footer_para = section.footer.paragraphs[0] if section.footer.paragraphs else section.footer.add_paragraph()
+        header_para.text = (security.headerText or "").strip()
+        footer_para.text = (security.footerText or "").strip()
+
+        header_align = _style_str(styles, "header_alignment", "headerAlignment", default="center").lower()
+        footer_align = _style_str(styles, "footer_alignment", "footerAlignment", default="center").lower()
+        header_para.alignment = _docx_alignment(header_align)
+        footer_para.alignment = _docx_alignment(footer_align)
+
+        header_size = _style_num(styles, "header_size", "headerSize", default=10.0)
+        footer_size = _style_num(styles, "footer_size", "footerSize", default=9.0)
+        header_color = _style_str(styles, "header_color", "headerColor", default=theme.primaryColor)
+        footer_color = _style_str(styles, "footer_color", "footerColor", default=theme.primaryColor)
+        header_font = _font_primary(
+            _style_str(styles, "header_font_family", "headerFontFamily", default=font_name)
+        )
+        footer_font = _font_primary(
+            _style_str(styles, "footer_font_family", "footerFontFamily", default=font_name)
+        )
+        header_bold = _style_bool(styles, "header_bold", "headerBold", default=False)
+        footer_bold = _style_bool(styles, "footer_bold", "footerBold", default=False)
+        header_italic = _style_bool(styles, "header_italic", "headerItalic", default=False)
+        footer_italic = _style_bool(styles, "footer_italic", "footerItalic", default=False)
+        _style_paragraph_runs(
+            header_para,
+            font_name=header_font,
+            size_pt=header_size,
+            color_hex=header_color,
+            bold=header_bold,
+            italic=header_italic,
+        )
+        _style_paragraph_runs(
+            footer_para,
+            font_name=footer_font,
+            size_pt=footer_size,
+            color_hex=footer_color,
+            bold=footer_bold,
+            italic=footer_italic,
+        )
+
+        if _style_bool(styles, "header_separator", "headerSeparator", default=False):
+            _apply_paragraph_separator(
+                header_para,
+                "bottom",
+                _style_str(styles, "header_separator_color", "headerSeparatorColor", default="#CFCFCF"),
+                0.75,
+                "single",
+            )
+        if _style_bool(styles, "footer_separator", "footerSeparator", default=False):
+            _apply_paragraph_separator(
+                footer_para,
+                "top",
+                _style_str(styles, "footer_separator_color", "footerSeparatorColor", default="#CFCFCF"),
+                0.75,
+                "single",
+            )
+
+        page_mode = security.pageNumberMode or _style_str(
+            styles,
+            "page_number_mode",
+            "pageNumberMode",
+            default="page_x",
+        )
+        if page_mode not in {"page_x", "page_x_of_y"}:
+            page_mode = "page_x"
+        page_number_position = _style_str(
+            styles,
+            "page_number_position",
+            "pageNumberPosition",
+            default="footer",
+        ).lower()
+        if page_number_position not in {"header", "footer"}:
+            page_number_position = "footer"
+        show_header_page_numbers = _style_bool(
+            styles,
+            "header_show_page_numbers",
+            "headerShowPageNumbers",
+            default=False,
+        )
+        show_footer_page_numbers = _style_bool(
+            styles,
+            "footer_show_page_numbers",
+            "footerShowPageNumbers",
+            default=True,
+        )
+        page_number_alignment = _style_str(
+            styles,
+            "page_number_alignment",
+            "pageNumberAlignment",
+            default="",
+        ).lower()
+        if not page_number_alignment:
+            page_number_alignment = (
+                header_align if page_number_position == "header" else footer_align
+            )
+
+        page_para = header_para if page_number_position == "header" else footer_para
+        include_page_numbers = (
+            show_header_page_numbers if page_number_position == "header" else show_footer_page_numbers
+        )
+        if include_page_numbers:
+            if page_para.runs and page_para.runs[-1].text and not page_para.runs[-1].text.endswith(" "):
+                page_para.add_run(" ")
+            _add_page_number(page_para, page_mode)
+            page_para.alignment = _docx_alignment(page_number_alignment)
+
         paragraph_after_pt = _style_num(
             styles,
             "paragraph_spacing_after",
@@ -393,6 +745,45 @@ class DocumentExporter:
             "codeIndent",
             default=0.0,
         )
+        paragraph_alignment = _style_str(
+            styles,
+            "paragraph_alignment",
+            "paragraphAlignment",
+            default="left",
+        ).lower()
+        table_text_alignment = _style_str(
+            styles,
+            "table_text_alignment",
+            "tableTextAlignment",
+            default="left",
+        ).lower()
+        table_border_width = float(theme.tableStyle.borderWidth or 1)
+        table_border_color = theme.tableStyle.borderColor or "#d1d5db"
+        table_border_style = _style_str(
+            styles,
+            "table_border_style",
+            "tableBorderStyle",
+            default="single",
+        )
+        table_header_fill = theme.tableStyle.headerFill or "#f3f4f6"
+        table_header_text = _style_str(
+            styles,
+            "table_header_text",
+            "tableHeaderText",
+            default="#111827",
+        )
+        table_odd_fill = _style_str(
+            styles,
+            "table_odd_row",
+            "tableOddRow",
+            default="#FFFFFF",
+        )
+        table_even_fill = _style_str(
+            styles,
+            "table_even_row",
+            "tableEvenRow",
+            default="#F8FAFC",
+        )
 
         if security.watermark and security.watermark.type == "text" and security.watermark.value:
             p = document.add_paragraph(security.watermark.value)
@@ -416,63 +807,118 @@ class DocumentExporter:
                 p = document.add_heading(node.text, level=level)
                 p.paragraph_format.space_before = Pt(max(0.0, heading_before_pt))
                 p.paragraph_format.space_after = Pt(max(0.0, heading_after_pt))
+                p.paragraph_format.line_spacing = line_spacing
                 if p.runs:
                     token = getattr(theme.headingStyle, f"h{level}")
                     run = p.runs[0]
-                    run.font.name = font_name
+                    run.font.name = _font_primary(
+                        _style_str(
+                            styles,
+                            f"h{level}_family",
+                            f"h{level}Family",
+                            default=font_name,
+                        )
+                    )
                     run.font.size = Pt(token.size or max(12, 26 - (level * 2)))
                     run.font.bold = str(token.weight or "600") in {"600", "700", "800", "900"}
                     run.font.color.rgb = _hex_to_rgb(token.color or theme.primaryColor)
             elif node.type == "paragraph":
                 p = document.add_paragraph(node.text)
-                p.alignment = _docx_alignment(node.align)
+                effective_align = node.align if node.align and node.align != "left" else paragraph_alignment
+                p.alignment = _docx_alignment(effective_align)
                 p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
                 p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
+                p.paragraph_format.line_spacing = line_spacing
                 p.paragraph_format.first_line_indent = Inches(max(0.0, paragraph_first_indent_em) * 0.15)
+                _style_paragraph_runs(
+                    p,
+                    font_name=font_name,
+                    size_pt=float(theme.bodyStyle.size or 11),
+                    color_hex=body_color,
+                )
             elif node.type == "bullet":
                 for item in node.items or []:
                     p = document.add_paragraph(item, style="List Bullet")
+                    p.alignment = _docx_alignment(paragraph_alignment)
                     p.paragraph_format.left_indent = Inches(max(0.0, bullet_base_indent_in))
                     p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
                     p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
+                    p.paragraph_format.line_spacing = line_spacing
+                    _style_paragraph_runs(
+                        p,
+                        font_name=bullet_font_name,
+                        size_pt=float(theme.bodyStyle.size or 11),
+                        color_hex=body_color,
+                    )
             elif node.type == "numbered":
                 for item in node.items or []:
                     p = document.add_paragraph(item, style="List Number")
+                    p.alignment = _docx_alignment(paragraph_alignment)
                     p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
                     p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
+                    p.paragraph_format.line_spacing = line_spacing
+                    _style_paragraph_runs(
+                        p,
+                        font_name=bullet_font_name,
+                        size_pt=float(theme.bodyStyle.size or 11),
+                        color_hex=body_color,
+                    )
             elif node.type == "code":
                 p = document.add_paragraph(node.text)
                 p.paragraph_format.left_indent = Inches(max(0.0, code_indent_in))
                 p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
                 p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
-                for run in p.runs:
-                    run.font.name = "Consolas"
-                    run.font.size = Pt(10)
+                p.paragraph_format.line_spacing = line_spacing
+                _style_paragraph_runs(
+                    p,
+                    font_name=code_font_name,
+                    size_pt=code_font_size,
+                    color_hex=_style_str(styles, "code_text", "codeText", default="#1f2937"),
+                )
             elif node.type == "ascii":
                 p = document.add_paragraph(node.text)
                 p.paragraph_format.left_indent = Inches(max(0.0, code_indent_in))
-                for run in p.runs:
-                    run.font.name = "Consolas"
-                    run.font.size = Pt(9)
+                p.paragraph_format.line_spacing = line_spacing
+                _style_paragraph_runs(
+                    p,
+                    font_name=code_font_name,
+                    size_pt=max(8.0, code_font_size - 1.0),
+                    color_hex=_style_str(styles, "code_text", "codeText", default="#1f2937"),
+                )
             elif node.type == "table":
                 rows = node.rows or []
                 if not rows:
                     continue
                 cols = len(rows[0])
                 table = document.add_table(rows=len(rows), cols=cols)
+                table.style = "Table Grid"
                 for r_idx, row in enumerate(rows):
                     for c_idx in range(cols):
                         value = row[c_idx] if c_idx < len(row) else ""
                         cell = table.cell(r_idx, c_idx)
                         cell.text = value
-                        if r_idx == 0 and cell.paragraphs and cell.paragraphs[0].runs:
-                            cell.paragraphs[0].runs[0].font.bold = True
-                            fill = (theme.tableStyle.headerFill or "").lstrip("#")
-                            if len(fill) == 6:
-                                tc_pr = cell._tc.get_or_add_tcPr()
-                                shd = OxmlElement("w:shd")
-                                shd.set(qn("w:fill"), fill)
-                                tc_pr.append(shd)
+                        _set_cell_borders(
+                            cell,
+                            color=table_border_color,
+                            width_pt=table_border_width,
+                            style=table_border_style,
+                        )
+                        if r_idx == 0:
+                            _set_cell_shading(cell, table_header_fill)
+                        elif r_idx % 2 == 1:
+                            _set_cell_shading(cell, table_odd_fill)
+                        else:
+                            _set_cell_shading(cell, table_even_fill)
+                        for para in cell.paragraphs:
+                            para.alignment = _docx_alignment(table_text_alignment)
+                            para.paragraph_format.line_spacing = line_spacing
+                            _style_paragraph_runs(
+                                para,
+                                font_name=font_name,
+                                size_pt=float(theme.bodyStyle.size or 11),
+                                color_hex=table_header_text if r_idx == 0 else body_color,
+                                bold=True if r_idx == 0 else None,
+                            )
             elif node.type == "pagebreak":
                 document.add_page_break()
 
