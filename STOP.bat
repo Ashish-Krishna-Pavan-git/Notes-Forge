@@ -13,6 +13,10 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000') do (
     taskkill /F /PID %%a >nul 2>&1
     echo ✅ Backend stopped (PID: %%a)
 )
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :10000') do (
+    taskkill /F /PID %%a >nul 2>&1
+    echo ✅ Backend stopped (PID: %%a)
+)
 echo.
 
 echo [2/2] Stopping Frontend (Port 5173)...

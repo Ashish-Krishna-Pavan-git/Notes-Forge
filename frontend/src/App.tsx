@@ -9,8 +9,9 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import axios, { AxiosError } from "axios";
 import DOMPurify from "dompurify";
+import { API_BASE, API_HEALTH_TIMEOUT_MS, HAS_EXPLICIT_API_URL } from "./lib/config";
+import { apiGet, apiPost, getErrorMessage, withRetry } from "./lib/api";
 import {
   Sparkles,
   FileText,
@@ -65,8 +66,7 @@ import {
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════
 
-const API =
-  (import.meta as any).env?.VITE_API_URL ?? "http://localhost:8000";
+const API = API_BASE;
 
 const AUTOSAVE_MS = 30_000;
 const ANALYZE_DEBOUNCE_MS = 600;
@@ -102,6 +102,9 @@ interface ThemeInfo {
   description: string;
   user_created?: boolean;
   builtin?: boolean;
+  colors?: Record<string, string>;
+  fonts?: Partial<FontsConfig>;
+  spacing?: Record<string, number>;
 }
 
 interface MarkerError {
@@ -127,6 +130,15 @@ interface RecentExport {
   warning?: string;
 }
 
+interface ApiTemplate {
+  id: string;
+  name: string;
+  description: string;
+  defaultTheme?: Record<string, unknown>;
+  sampleContent: string;
+  aiPromptTemplate: string;
+}
+
 type TabId =
   | "editor"
   | "templates"
@@ -135,8 +147,8 @@ type TabId =
   | "guide"
   | "shortcuts";
 type SettingsTabId = "themes" | "fonts" | "colors" | "spacing" | "page";
-type ConnectionStatus = "checking" | "online" | "offline";
-type ExportFormat = "docx" | "pdf" | "md" | "html";
+type ConnectionStatus = "checking" | "waking" | "online" | "error";
+type ExportFormat = "docx" | "pdf" | "md" | "html" | "txt";
 
 interface FontsConfig {
   family?: string;
@@ -232,8 +244,32 @@ const VALID_MARKERS = new Set([
   "H4", "H5", "H6", "PARAGRAPH", "PARA", "BULLET", "NUMBERED",
   "CODE", "TABLE", "QUOTE", "NOTE", "IMPORTANT", "IMAGE", "LINK",
   "HIGHLIGHT", "FOOTNOTE", "TOC", "ASCII", "DIAGRAM", "LABEL",
-  "CENTER", "RIGHT", "WATERMARK",
+  "CENTER", "RIGHT", "JUSTIFY", "WATERMARK", "PAGEBREAK",
 ]);
+
+const MARKER_AUTOCOMPLETE = [
+  "H1:",
+  "H2:",
+  "H3:",
+  "H4:",
+  "H5:",
+  "H6:",
+  "PARAGRAPH:",
+  "CENTER:",
+  "RIGHT:",
+  "JUSTIFY:",
+  "BULLET:",
+  "NUMBERED:",
+  "CODE:",
+  "ASCII:",
+  "TABLE:",
+  "IMAGE:",
+  "LINK:",
+  "HIGHLIGHT:",
+  "FOOTNOTE:",
+  "TOC:",
+  "PAGEBREAK:",
+];
 
 const PIPE_REQUIRED_MARKERS = new Set(["IMAGE", "LINK", "HIGHLIGHT"]);
 
@@ -306,6 +342,170 @@ const BUILTIN_THEME_KEYS = new Set([
   "creative",
   "startup",
 ]);
+
+const FALLBACK_THEME_CATALOG: Record<string, ThemeInfo> = {
+  professional: {
+    name: "Professional",
+    description: "Balanced default for business and academic documents.",
+    builtin: true,
+    colors: {
+      h1: "#1F3A5F",
+      h2: "#2C5282",
+      h3: "#2B6CB0",
+      table_header_bg: "#E2E8F0",
+    },
+    fonts: { family: "Calibri" },
+    spacing: { line_spacing: 1.4 },
+  },
+  modern: {
+    name: "Modern",
+    description: "Clean modern styling with blue accents.",
+    builtin: true,
+    colors: {
+      h1: "#0F172A",
+      h2: "#1D4ED8",
+      h3: "#0284C7",
+      table_header_bg: "#DBEAFE",
+    },
+    fonts: { family: "Segoe UI" },
+    spacing: { line_spacing: 1.35 },
+  },
+  academic: {
+    name: "Academic",
+    description: "Conservative typography optimized for reports.",
+    builtin: true,
+    colors: {
+      h1: "#111827",
+      h2: "#374151",
+      h3: "#4B5563",
+      table_header_bg: "#E5E7EB",
+    },
+    fonts: { family: "Times New Roman" },
+    spacing: { line_spacing: 1.6 },
+  },
+  corporate: {
+    name: "Corporate Red",
+    description: "Executive style with strong heading contrast.",
+    builtin: true,
+    colors: {
+      h1: "#B91C1C",
+      h2: "#DC2626",
+      h3: "#EF4444",
+      table_header_bg: "#FEE2E2",
+    },
+    fonts: { family: "Arial" },
+    spacing: { line_spacing: 1.35 },
+  },
+  creative: {
+    name: "Creative Vibrant",
+    description: "Colorful theme for creative project documents.",
+    builtin: true,
+    colors: {
+      h1: "#F97316",
+      h2: "#F59E0B",
+      h3: "#EC4899",
+      table_header_bg: "#FEF3C7",
+    },
+    fonts: { family: "Candara" },
+    spacing: { line_spacing: 1.35 },
+  },
+  startup: {
+    name: "Startup Pitch",
+    description: "Pitch-deck-like style for startup notes.",
+    builtin: true,
+    colors: {
+      h1: "#0E7490",
+      h2: "#0284C7",
+      h3: "#0369A1",
+      table_header_bg: "#CFFAFE",
+    },
+    fonts: { family: "Calibri" },
+    spacing: { line_spacing: 1.3 },
+  },
+};
+
+function mergeThemeIntoConfig(
+  prev: AppConfigState,
+  themeKey: string,
+  theme?: ThemeInfo
+): AppConfigState {
+  const preset =
+    FALLBACK_THEME_CATALOG[themeKey.toLowerCase()] || {};
+  const mergedColors = {
+    ...prev.colors,
+    ...(preset.colors || {}),
+    ...(theme?.colors || {}),
+  };
+  const mergedFonts = {
+    ...prev.fonts,
+    ...(preset.fonts || {}),
+    ...(theme?.fonts || {}),
+  };
+  const mergedSpacing = {
+    ...prev.spacing,
+    ...(preset.spacing || {}),
+    ...(theme?.spacing || {}),
+  };
+  return {
+    ...prev,
+    app: { ...(prev.app || {}), theme: themeKey },
+    colors: mergedColors,
+    fonts: mergedFonts,
+    spacing: mergedSpacing,
+    header: {
+      ...(prev.header || {}),
+      color: mergedColors.h1 || prev.header?.color,
+    },
+    footer: {
+      ...(prev.footer || {}),
+      color: mergedColors.h2 || prev.footer?.color,
+    },
+  };
+}
+
+function themeSwatches(
+  themeKey: string,
+  theme?: ThemeInfo
+): string[] {
+  const preset =
+    FALLBACK_THEME_CATALOG[themeKey.toLowerCase()] || {};
+  const colors = {
+    ...(preset.colors || {}),
+    ...(theme?.colors || {}),
+  };
+  return [
+    colors.h1 || "#1F3A5F",
+    colors.h2 || "#374151",
+    colors.h3 || "#6B7280",
+    colors.table_header_bg || "#D1D5DB",
+  ];
+}
+
+const LOCAL_THEME_STORE_KEY = "nf_local_themes";
+
+function readLocalThemeCatalog(): Record<string, ThemeInfo> {
+  try {
+    const raw = localStorage.getItem(LOCAL_THEME_STORE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalThemeCatalog(
+  data: Record<string, ThemeInfo>
+): void {
+  try {
+    localStorage.setItem(
+      LOCAL_THEME_STORE_KEY,
+      JSON.stringify(data)
+    );
+  } catch {
+    /* ignore local storage failures */
+  }
+}
 
 const DEFAULT_FONT_OPTIONS = [
   "Arial",
@@ -435,6 +635,29 @@ const SHORTCUTS = [
 // ═══════════════════════════════════════════════════════════════════
 // TEMPLATES
 // ═══════════════════════════════════════════════════════════════════
+
+const SAMPLE_EXAMPLE = `H1: NotesForge - Cybersecurity Incident Summary
+H2: Executive Summary
+PARAGRAPH: A brief summary of the incident, its impact, and immediate actions taken.
+H2: Details
+PARAGRAPH: The incident occurred on 2026-02-24 at 22:15 IST. Affected systems included DB server and internal API.
+BULLET: Initial detection via IDS alert.
+BULLET: Systems isolated.
+BULLET: Forensic snapshot taken.
+H2: Indicators of Compromise (IOCs)
+TABLE: Type | Value | Notes
+TABLE: IP | 203.0.113.45 | Suspicious outbound traffic
+TABLE: Hash | e3b0c442... | Malware sample hash
+H2: Recommendations
+NUMBERED: Rotate compromised credentials.
+NUMBERED: Patch vulnerable services.
+NUMBERED: Run a full internal audit.
+CODE: curl -X GET "https://internal-api.local/health" -H "Authorization: Bearer <token>"
+PAGEBREAK:
+H2: Appendix
+ASCII: +-----------------------+
+ASCII: | Incident Flow Diagram |
+ASCII: +-----------------------+`;
 
 const TEMPLATES: readonly {
   id: string;
@@ -587,6 +810,40 @@ CODE: "[Example code line 3]"
 
 NOTE: "[Important note about usage.]"`,
   },
+  {
+    id: "research",
+    name: "Research Notes",
+    category: "Academic",
+    icon: "🔬",
+    content: `H1: "Research Notes - [Topic]"
+H2: "Objective"
+PARAGRAPH: "[Define research objective and expected outcomes.]"
+H2: "Sources"
+BULLET: "[Source 1]"
+BULLET: "[Source 2]"
+H2: "Findings"
+TABLE: "Finding | Evidence | Confidence"
+TABLE: "[F1] | [Dataset/Ref] | [High/Medium/Low]"
+H2: "Next Steps"
+NUMBERED: "[Step 1]"
+NUMBERED: "[Step 2]"`,
+  },
+  {
+    id: "interview",
+    name: "Interview Prep",
+    category: "Business",
+    icon: "💼",
+    content: `H1: "Interview Preparation - [Role]"
+H2: "Core Topics"
+BULLET: "[Topic 1]"
+BULLET: "[Topic 2]"
+BULLET: "[Topic 3]"
+H2: "Practice Plan"
+NUMBERED: "[Practice action 1]"
+NUMBERED: "[Practice action 2]"
+H2: "Technical Snippet"
+CODE: "[Code or pseudocode line]"`,
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════
@@ -648,6 +905,37 @@ function validateMarkersInText(text: string): MarkerError[] {
     }
   }
 
+  return errors;
+}
+
+function validateStrictModeLines(text: string): MarkerError[] {
+  const errors: MarkerError[] = [];
+  const lines = text.split("\n");
+  for (let idx = 0; idx < lines.length; idx++) {
+    const raw = lines[idx];
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const match = raw.match(/^\s*([A-Z][A-Z0-9-]*):(.*)$/);
+    if (!match) {
+      errors.push({
+        line: idx + 1,
+        column: 0,
+        message:
+          "Strict Mode: every non-empty line must start with a valid marker (e.g., PARAGRAPH: ...).",
+        severity: "warning",
+      });
+      continue;
+    }
+    const marker = match[1];
+    if (!VALID_MARKERS.has(marker)) {
+      errors.push({
+        line: idx + 1,
+        column: 0,
+        message: `Strict Mode: unknown marker "${marker}".`,
+        severity: "warning",
+      });
+    }
+  }
   return errors;
 }
 
@@ -758,6 +1046,11 @@ function buildPreviewHTML(
           `<p class="text-sm leading-relaxed mb-2 text-right" style="color:${cBody}">${content}</p>`
         );
         break;
+      case "JUSTIFY":
+        parts.push(
+          `<p class="text-sm leading-relaxed mb-2" style="color:${cBody};text-align:justify">${content}</p>`
+        );
+        break;
       case "BULLET": {
         const raw = rawRest.trim().replace(/^["']|["']$/g, "");
         const indent =
@@ -865,6 +1158,11 @@ function buildPreviewHTML(
           `<pre class="text-xs font-mono leading-none mb-1" style="color:${cBody}">${content}</pre>`
         );
         break;
+      case "PAGEBREAK":
+        parts.push(
+          `<div class="my-4 border-t-2 border-dashed border-gray-300 pt-2 text-[11px] uppercase tracking-wide text-gray-400">Page Break</div>`
+        );
+        break;
       default:
         parts.push(
           `<p class="text-xs text-gray-400" style="color:${cBody}">${escapeHtml(
@@ -875,6 +1173,87 @@ function buildPreviewHTML(
   }
 
   return DOMPurify.sanitize(parts.join(""));
+}
+
+function analyzeTextLocally(text: string): AnalysisResult {
+  const lines = text.split("\n");
+  const statistics: Record<string, number> = {};
+  const classifications: ClassRow[] = [];
+
+  const markerTypeMap: Record<string, string> = {
+    HEADING: "h1",
+    H1: "h1",
+    SUBHEADING: "h2",
+    H2: "h2",
+    "SUB-SUBHEADING": "h3",
+    H3: "h3",
+    H4: "h4",
+    H5: "h5",
+    H6: "h6",
+    PARAGRAPH: "paragraph",
+    PARA: "paragraph",
+    BULLET: "bullet",
+    NUMBERED: "numbered",
+    CODE: "code",
+    TABLE: "table",
+    ASCII: "ascii",
+    DIAGRAM: "ascii",
+    TOC: "toc",
+    NOTE: "note",
+    IMPORTANT: "note",
+    QUOTE: "quote",
+    IMAGE: "image",
+    LINK: "link",
+    HIGHLIGHT: "highlight",
+    FOOTNOTE: "footnote",
+    PAGEBREAK: "pagebreak",
+  };
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    let type = "empty";
+    let content = "";
+    let indent_level = 0;
+    let marker: string | undefined;
+
+    if (trimmed) {
+      const m = trimmed.match(/^([A-Z][A-Z0-9-]*):\s*(.*)$/);
+      if (m) {
+        marker = m[1].toUpperCase();
+        type = markerTypeMap[marker] || marker.toLowerCase();
+        content = m[2] || "";
+        if (marker === "BULLET" && content) {
+          const leading =
+            content.length - content.trimStart().length;
+          indent_level = Math.max(
+            0,
+            Math.floor(leading / 2)
+          );
+        }
+      } else {
+        type = "text";
+        content = trimmed;
+      }
+    }
+
+    statistics[type] = (statistics[type] || 0) + 1;
+    classifications.push({
+      line_number: idx + 1,
+      original: line,
+      type,
+      content,
+      marker,
+      indent_level,
+    });
+  });
+
+  return {
+    success: true,
+    total_lines: lines.length,
+    statistics,
+    classifications,
+    preview: classifications.slice(0, 20),
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -933,6 +1312,9 @@ export default function App() {
   const [replaceQ, setReplaceQ] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [splitPreview, setSplitPreview] = useState(false);
+  const [strictMode, setStrictMode] = useState(
+    () => localStorage.getItem("nf_strict_mode") === "1"
+  );
   const [showDrafts, setShowDrafts] = useState(false);
   const [showASCII, setShowASCII] = useState(false);
   const [showFontPreview, setShowFontPreview] = useState(false);
@@ -941,6 +1323,9 @@ export default function App() {
     () => localStorage.getItem("nf_onboard_done") !== "1"
   );
   const [onboardingExpanded, setOnboardingExpanded] = useState(true);
+  const [markerSuggestions, setMarkerSuggestions] = useState<
+    string[]
+  >([]);
 
   // ── Generation State ──────────────────────────────────────────
   const [generating, setGenerating] = useState(false);
@@ -955,6 +1340,7 @@ export default function App() {
   // ── Connection ────────────────────────────────────────────────
   const [online, setOnline] =
     useState<ConnectionStatus>("checking");
+  const [backendVersion, setBackendVersion] = useState("...");
 
   // ── Analysis ──────────────────────────────────────────────────
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(
@@ -964,7 +1350,7 @@ export default function App() {
 
   // ── Config / Themes ───────────────────────────────────────────
   const [themes, setThemes] = useState<Record<string, ThemeInfo>>(
-    {}
+    FALLBACK_THEME_CATALOG
   );
   const [currentTheme, setCurrentTheme] = useState("professional");
   const [config, setConfig] = useState<AppConfigState>({
@@ -986,6 +1372,23 @@ export default function App() {
   // ── AI Prompt ─────────────────────────────────────────────────
   const [promptText, setPromptText] = useState(FALLBACK_PROMPT);
   const [promptTopic, setPromptTopic] = useState("");
+  const [templateTopic, setTemplateTopic] = useState(
+    "Cybersecurity Incident"
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState(
+    () =>
+      localStorage.getItem("nf_last_template") ||
+      "quickstart"
+  );
+  const [aiProvider, setAiProvider] = useState<
+    "chatgpt" | "notebooklm" | "claude"
+  >("chatgpt");
+  const [apiTemplates, setApiTemplates] = useState<ApiTemplate[]>(
+    []
+  );
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [regeneratingTemplate, setRegeneratingTemplate] =
+    useState(false);
   const [promptCopied, setPromptCopied] = useState(false);
   const [promptEditing, setPromptEditing] = useState(false);
   const [promptSaving, setPromptSaving] = useState(false);
@@ -1002,6 +1405,9 @@ export default function App() {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const lineNumRef = useRef<HTMLDivElement>(null);
+  const healthCheckInFlight = useRef(false);
+  const themeFallbackNotified = useRef(false);
+  const analyzeFallbackNotified = useRef(false);
 
   // ═════════════════════════════════════════════════════════════
   // DERIVED / MEMOIZED VALUES
@@ -1016,6 +1422,39 @@ export default function App() {
         : [],
     [debouncedText]
   );
+
+  const strictErrors = useMemo(
+    () =>
+      strictMode && debouncedText.trim()
+        ? validateStrictModeLines(debouncedText)
+        : [],
+    [strictMode, debouncedText]
+  );
+
+  const allMarkerErrors = useMemo(
+    () => [...markerErrors, ...strictErrors],
+    [markerErrors, strictErrors]
+  );
+
+  const selectedApiTemplate = useMemo(
+    () =>
+      apiTemplates.find((tpl) => tpl.id === selectedTemplateId) ||
+      null,
+    [apiTemplates, selectedTemplateId]
+  );
+
+  const effectiveTemplates = useMemo(() => {
+    if (apiTemplates.length > 0) {
+      return apiTemplates.map((tpl) => ({
+        id: tpl.id,
+        name: tpl.name,
+        category: "Professional",
+        icon: "🧩",
+        content: tpl.sampleContent,
+      }));
+    }
+    return TEMPLATES;
+  }, [apiTemplates]);
 
   const previewHTML = useMemo(
     () =>
@@ -1106,44 +1545,188 @@ export default function App() {
   // ═════════════════════════════════════════════════════════════
 
   const checkHealth = useCallback(async () => {
+    if (healthCheckInFlight.current) return false;
+    healthCheckInFlight.current = true;
+    setOnline((prev) =>
+      prev === "online" ? "online" : "waking"
+    );
+    const startedAt = Date.now();
     try {
-      await axios.get(`${API}/health`, { timeout: 2000 });
-      setOnline("online");
+      try {
+        const health = await withRetry(
+          () =>
+            apiGet<{ status: string }>("/api/health", {
+              timeout: API_HEALTH_TIMEOUT_MS,
+            }),
+          { attempts: 5, baseDelayMs: 500, maxDelayMs: 2500 }
+        );
+        if (health?.status === "ok") {
+          setOnline("online");
+          try {
+            const ver = await apiGet<{
+              name?: string;
+              version?: string;
+            }>("/api/version", { timeout: API_HEALTH_TIMEOUT_MS });
+            if (ver?.version) setBackendVersion(ver.version);
+          } catch {
+            try {
+              const parser = await apiGet<{ version?: string }>(
+                "/api/health/parser",
+                { timeout: API_HEALTH_TIMEOUT_MS }
+              );
+              if (parser?.version) setBackendVersion(parser.version);
+            } catch {
+              setBackendVersion("unknown");
+            }
+          }
+          return true;
+        }
+      } catch {
+        // ignore and continue legacy fallback
+      }
+
+      // legacy compatibility fallback while backend wakes up
+      while (Date.now() - startedAt < 10_000) {
+        try {
+          await apiGet("/health", {
+            timeout: API_HEALTH_TIMEOUT_MS,
+          });
+          setOnline("online");
+          return true;
+        } catch {
+          setOnline("waking");
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000)
+          );
+        }
+      }
+
+      setOnline("error");
+      return false;
+    } finally {
+      healthCheckInFlight.current = false;
+    }
+  }, []);
+
+  const loadTemplateCatalog = useCallback(async () => {
+    setLoadingTemplates(true);
+    try {
+      const payload = await withRetry(
+        () =>
+          apiGet<ApiTemplate[] | { templates?: ApiTemplate[] }>(
+            "/api/templates",
+            { timeout: 8000 }
+          ),
+        { attempts: 4, baseDelayMs: 600, maxDelayMs: 2500 }
+      );
+      const list = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.templates)
+          ? payload.templates
+          : [];
+      if (list.length > 0) {
+        setApiTemplates(list);
+        setWarn(null);
+      } else {
+        setWarn(
+          "Template API returned empty list. Using built-in templates."
+        );
+      }
     } catch {
-      setOnline("offline");
+      setWarn(
+        "Failed to load templates from backend. Using built-in templates while backend wakes."
+      );
+    } finally {
+      setLoadingTemplates(false);
     }
   }, []);
 
   const loadThemes = useCallback(async () => {
+    const localThemes = readLocalThemeCatalog();
+    const baseCatalog: Record<string, ThemeInfo> = {
+      ...FALLBACK_THEME_CATALOG,
+      ...localThemes,
+    };
     try {
-      const r = await axios.get(`${API}/api/themes`);
-      if (r.data.success) {
-        setThemes(r.data.themes);
-        setCurrentTheme(r.data.current_theme);
+      const r = await apiGet<{
+        success?: boolean;
+        themes?: Record<string, ThemeInfo & Record<string, unknown>>;
+        current_theme?: string;
+      }>("/api/themes");
+      if (
+        r.success &&
+        r.themes &&
+        Object.keys(r.themes).length > 0
+      ) {
+        const merged = { ...baseCatalog };
+        Object.entries(r.themes).forEach(([key, rawTheme]) => {
+          const rawColors =
+            rawTheme?.colors &&
+            typeof rawTheme.colors === "object"
+              ? (rawTheme.colors as Record<string, string>)
+              : {};
+          const primary =
+            typeof rawTheme?.primaryColor === "string"
+              ? rawTheme.primaryColor
+              : "";
+          const resolved: ThemeInfo = {
+            ...(merged[key] || {}),
+            ...rawTheme,
+            colors: {
+              ...(merged[key]?.colors || {}),
+              ...(primary
+                ? { h1: primary, h2: primary }
+                : {}),
+              ...rawColors,
+            },
+          };
+          merged[key] = resolved;
+        });
+        setThemes(merged);
+        if (r.current_theme) setCurrentTheme(r.current_theme);
+      } else {
+        setThemes(baseCatalog);
       }
     } catch {
-      /* silent */
+      setThemes(baseCatalog);
+      if (!themeFallbackNotified.current) {
+        setWarn(
+          "Theme list API is unavailable on this backend. Using built-in themes locally."
+        );
+        themeFallbackNotified.current = true;
+      }
     }
   }, []);
 
   const loadConfig = useCallback(async () => {
     try {
-      const r = await axios.get(`${API}/api/config`);
-      if (r.data.success) setConfig(r.data.config);
+      const r = await apiGet<{
+        success?: boolean;
+        config?: AppConfigState;
+      }>("/api/config");
+      if (r.success && r.config) setConfig(r.config);
+      else {
+        const local = localStorage.getItem("nf_local_config");
+        if (local) setConfig(JSON.parse(local));
+      }
     } catch {
-      /* silent */
+      try {
+        const local = localStorage.getItem("nf_local_config");
+        if (local) setConfig(JSON.parse(local));
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 
   const loadPrompt = useCallback(async () => {
     try {
-      const r = await axios.get(`${API}/api/prompt`);
-      if (
-        r.data.success &&
-        r.data.prompt &&
-        r.data.prompt.trim().length > 20
-      )
-        setPromptText(r.data.prompt);
+      const r = await apiGet<{
+        success?: boolean;
+        prompt?: string;
+      }>("/api/prompt");
+      if (r.success && r.prompt && r.prompt.trim().length > 20)
+        setPromptText(r.prompt);
     } catch {
       /* silent */
     }
@@ -1156,12 +1739,14 @@ export default function App() {
     }
     setAnalyzing(true);
     try {
-      const r = await axios.post(`${API}/api/analyze`, {
+      const r = await apiPost<AnalysisResult>("/api/analyze", {
         text: debouncedText,
       });
-      if (r.data.success) setAnalysis(r.data);
+      if (r.success) setAnalysis(r);
+      else setAnalysis(analyzeTextLocally(debouncedText));
     } catch {
-      /* silent */
+      setAnalysis(analyzeTextLocally(debouncedText));
+      analyzeFallbackNotified.current = true;
     } finally {
       setAnalyzing(false);
     }
@@ -1174,25 +1759,141 @@ export default function App() {
     setSuccess(null);
     setWarn(null);
     try {
-      const r = await axios.post(`${API}/api/generate`, {
+      const themePayload = {
+        name: themes[currentTheme]?.name || currentTheme,
+        primaryColor:
+          config.colors?.h1 || config.header?.color || "#1F3A5F",
+        fontFamily:
+          config.fonts?.family || "Calibri, Arial, sans-serif",
+        headingStyle: {
+          h1: {
+            size: config.fonts?.sizes?.h1 || 24,
+            weight: "700",
+            color:
+              config.colors?.h1 ||
+              config.header?.color ||
+              "#1F3A5F",
+          },
+          h2: {
+            size: config.fonts?.sizes?.h2 || 20,
+            weight: "600",
+            color:
+              config.colors?.h2 ||
+              config.header?.color ||
+              "#1F3A5F",
+          },
+        },
+        bodyStyle: {
+          size: config.fonts?.sizes?.body || 11,
+          lineHeight: config.spacing?.line_spacing || 1.4,
+        },
+        margins: {
+          top: (config.page?.margins?.top || 1) * 25.4,
+          bottom: (config.page?.margins?.bottom || 1) * 25.4,
+          left: (config.page?.margins?.left || 1) * 25.4,
+          right: (config.page?.margins?.right || 1) * 25.4,
+        },
+      };
+
+      const r = await apiPost<{
+        success?: boolean;
+        downloadUrl?: string;
+        download_url?: string;
+        fileId?: string;
+        filename?: string;
+        requestedFormat?: string;
+        requested_format?: string;
+        actualFormat?: string;
+        actual_format?: string;
+        warning?: string;
+        warnings?: string[];
+        error?: string;
+      }>("/api/generate", {
+        content: text,
         text,
         format,
         filename: customName || undefined,
+        strictMode,
+        theme: themePayload,
+        security: {
+          removeMetadata: false,
+          disableEditingDocx: false,
+          pageNumberMode:
+            (config.footer?.page_format || "")
+              .toLowerCase()
+              .includes("of")
+              ? "page_x_of_y"
+              : "page_x",
+          headerText: config.header?.enabled
+            ? config.header?.text || ""
+            : "",
+          footerText: config.footer?.enabled
+            ? config.footer?.text || ""
+            : "",
+          watermark:
+            config.watermark?.enabled &&
+            (config.watermark?.text ||
+              config.watermark?.image_path)
+              ? {
+                  type:
+                    config.watermark?.type === "image"
+                      ? "image"
+                      : "text",
+                  value:
+                    config.watermark?.type === "image"
+                      ? config.watermark?.image_path || ""
+                      : config.watermark?.text || "",
+                  position:
+                    config.watermark?.position === "top"
+                      ? "header"
+                      : "center",
+                }
+              : undefined,
+        },
       });
-      if (r.data.success) {
+      const downloadUrl = r.downloadUrl || r.download_url;
+      const actualFormatRaw =
+        r.actualFormat || r.actual_format || format;
+      const actualFormat = (
+        ["docx", "pdf", "html", "md", "txt"].includes(
+          String(actualFormatRaw).toLowerCase()
+        )
+          ? String(actualFormatRaw).toLowerCase()
+          : format
+      ) as ExportFormat;
+      const normalizedBase = (customName || "notesforge_output")
+        .replace(/[^a-z0-9_\- ]/gi, "")
+        .trim()
+        .replace(/\s+/g, "_");
+      const filename =
+        r.filename ||
+        `${normalizedBase || "notesforge_output"}.${
+          actualFormat === "txt" ? "txt" : actualFormat
+        }`;
+      const warningMessage =
+        r.warning ||
+        (Array.isArray(r.warnings) && r.warnings.length > 0
+          ? r.warnings.join(" | ")
+          : "");
+      if (r.success || downloadUrl) {
+        const resolvedUrl = downloadUrl
+          ? /^https?:\/\//i.test(downloadUrl)
+            ? downloadUrl
+            : `${API}${downloadUrl.startsWith("/") ? "" : "/"}${downloadUrl}`
+          : "";
         const a = document.createElement("a");
-        a.href = `${API}${r.data.download_url}`;
-        a.download = r.data.filename;
+        a.href = resolvedUrl;
+        a.download = filename;
         a.click();
-        setSuccess(`✅ ${r.data.filename} downloaded!`);
-        if (r.data.warning) setWarn(r.data.warning);
+        setSuccess(`✅ ${filename} downloaded!`);
+        if (warningMessage) setWarn(warningMessage);
         const entry: RecentExport = {
           id: Date.now().toString(),
-          filename: r.data.filename,
-          download_url: r.data.download_url,
-          format,
+          filename,
+          download_url: resolvedUrl,
+          format: actualFormat,
           createdAt: Date.now(),
-          warning: r.data.warning,
+          warning: warningMessage || undefined,
         };
         setRecentExports((prev) => {
           const next = [entry, ...prev].slice(
@@ -1206,17 +1907,23 @@ export default function App() {
           return next;
         });
       } else {
-        setError(r.data.error || "Generation failed");
+        setError(r.error || "Generation failed");
       }
     } catch (e) {
-      const axErr = e as AxiosError<{ detail?: string }>;
-      setError(
-        axErr?.response?.data?.detail || "Generation failed"
-      );
+      setError(getErrorMessage(e));
     } finally {
       setGenerating(false);
     }
-  }, [text, format, customName, generating]);
+  }, [
+    text,
+    format,
+    customName,
+    generating,
+    strictMode,
+    config,
+    themes,
+    currentTheme,
+  ]);
 
   // ═════════════════════════════════════════════════════════════
   // SETTINGS / THEMES
@@ -1225,23 +1932,48 @@ export default function App() {
   const applyTheme = useCallback(
     async (name: string) => {
       try {
-        const r = await axios.post(`${API}/api/themes/apply`, {
+        const r = await apiPost<{
+          success?: boolean;
+          config?: AppConfigState;
+        }>("/api/themes/apply", {
           theme_name: name,
         });
-        if (r.data.success) {
+        if (r.success) {
           setCurrentTheme(name);
-          if (r.data.config) setConfig(r.data.config);
-          else await loadConfig();
+          if (r.config) setConfig(r.config);
+          else
+            setConfig((prev) =>
+              mergeThemeIntoConfig(prev, name, themes[name])
+            );
           setDirty(false);
           setSuccess(
             `✅ Theme applied: ${themes[name]?.name || name}`
           );
         }
       } catch {
-        setError("Failed to apply theme");
+        setCurrentTheme(name);
+        setConfig((prev) =>
+          mergeThemeIntoConfig(prev, name, themes[name])
+        );
+        localStorage.setItem(
+          "nf_local_config",
+          JSON.stringify(
+            mergeThemeIntoConfig(config, name, themes[name])
+          )
+        );
+        setDirty(false);
+        setSuccess(
+          `✅ Theme applied locally: ${themes[name]?.name || name}`
+        );
+        if (!themeFallbackNotified.current) {
+          setWarn(
+            "Theme apply API is unavailable. Theme changes are local until backend is updated."
+          );
+          themeFallbackNotified.current = true;
+        }
       }
     },
-    [themes, loadConfig]
+    [themes, config]
   );
 
   const saveSettings = useCallback(async () => {
@@ -1259,7 +1991,7 @@ export default function App() {
       for (const section of sections) {
         const val = config[section];
         if (val) {
-          await axios.post(`${API}/api/config/update`, {
+          await apiPost("/api/config/update", {
             path: section,
             value: val,
           });
@@ -1268,7 +2000,14 @@ export default function App() {
       setDirty(false);
       setSuccess("✅ Settings saved!");
     } catch {
-      setError("Failed to save settings");
+      localStorage.setItem(
+        "nf_local_config",
+        JSON.stringify(config)
+      );
+      setDirty(false);
+      setSuccess(
+        "✅ Settings saved locally (backend config API unavailable)"
+      );
     }
   }, [config]);
 
@@ -1287,15 +2026,27 @@ export default function App() {
       return;
     }
     setSavingTheme(true);
+    const localThemePayload: ThemeInfo = {
+      name: newThemeName,
+      description: newThemeDesc || "Custom theme",
+      user_created: true,
+      colors: { ...(config.colors || {}) },
+      fonts: { ...(config.fonts || {}) },
+      spacing: { ...(config.spacing || {}) },
+    };
     try {
-      await axios.post(`${API}/api/themes/save`, {
+      await apiPost("/api/themes/save", {
         key: savedKey,
         name: newThemeName,
         description: newThemeDesc,
         config,
       });
-      await axios.post(`${API}/api/themes/apply`, {
+      await apiPost("/api/themes/apply", {
         theme_name: savedKey,
+      });
+      saveLocalThemeCatalog({
+        ...readLocalThemeCatalog(),
+        [savedKey]: localThemePayload,
       });
       await loadThemes();
       await loadConfig();
@@ -1308,8 +2059,37 @@ export default function App() {
         `✅ Theme "${newThemeName}" saved and applied!`
       );
     } catch (e) {
-      const axErr = e as AxiosError<{ detail?: string }>;
-      setError(axErr?.response?.data?.detail || "Save failed");
+      setThemes((prev) => ({
+        ...prev,
+        [savedKey]: localThemePayload,
+      }));
+      saveLocalThemeCatalog({
+        ...readLocalThemeCatalog(),
+        [savedKey]: localThemePayload,
+      });
+      setCurrentTheme(savedKey);
+      setConfig((prev) =>
+        mergeThemeIntoConfig(prev, savedKey, localThemePayload)
+      );
+      localStorage.setItem(
+        "nf_local_config",
+        JSON.stringify(
+          mergeThemeIntoConfig(config, savedKey, localThemePayload)
+        )
+      );
+      setDirty(false);
+      setNewThemeKey("");
+      setNewThemeName("");
+      setNewThemeDesc("");
+      setSuccess(
+        `✅ Theme "${newThemeName}" saved locally (backend save unavailable)`
+      );
+      if (!themeFallbackNotified.current) {
+        setWarn(
+          "Theme save endpoint is unavailable on this backend. Saved locally for this session."
+        );
+        themeFallbackNotified.current = true;
+      }
     } finally {
       setSavingTheme(false);
     }
@@ -1327,18 +2107,29 @@ export default function App() {
       if (!window.confirm(`Delete "${themes[key]?.name}"?`))
         return;
       try {
-        await axios.post(`${API}/api/themes/delete`, { key });
+        await apiPost("/api/themes/delete", { key });
+        const local = { ...readLocalThemeCatalog() };
+        delete local[key];
+        saveLocalThemeCatalog(local);
         await loadThemes();
         if (currentTheme === key) {
           setCurrentTheme("professional");
           await loadConfig();
         }
         setSuccess("✅ Deleted");
-      } catch (e) {
-        const axErr = e as AxiosError<{ detail?: string }>;
-        setError(
-          axErr?.response?.data?.detail || "Delete failed"
-        );
+      } catch {
+        const local = { ...readLocalThemeCatalog() };
+        delete local[key];
+        saveLocalThemeCatalog(local);
+        setThemes((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        if (currentTheme === key) {
+          setCurrentTheme("professional");
+        }
+        setSuccess("✅ Theme removed locally");
       }
     },
     [themes, currentTheme, loadThemes, loadConfig]
@@ -1351,7 +2142,7 @@ export default function App() {
   const savePrompt = useCallback(async () => {
     setPromptSaving(true);
     try {
-      await axios.post(`${API}/api/prompt`, {
+      await apiPost("/api/prompt", {
         prompt: promptText,
       });
       setPromptEditing(false);
@@ -1383,6 +2174,53 @@ export default function App() {
       "noopener,noreferrer"
     );
   }, [composedPrompt]);
+
+  const regenerateTemplateContent = useCallback(async () => {
+    const topic = templateTopic.trim();
+    if (!selectedTemplateId || !topic) {
+      setError("Select a template and enter topic first");
+      return;
+    }
+    setRegeneratingTemplate(true);
+    try {
+      const r = await apiPost<{
+        content?: string;
+        prompt?: string;
+      }>("/api/templates/regenerate", {
+        templateId: selectedTemplateId,
+        topic,
+        aiProvider,
+      });
+      if (r?.content) {
+        handleText(r.content);
+        setTab("editor");
+        setShowPreview(true);
+        setSuccess("✅ Template regenerated and loaded");
+      }
+      if (r?.prompt) {
+        setPromptText(r.prompt);
+      }
+    } catch {
+      const fallback =
+        selectedApiTemplate?.aiPromptTemplate?.replace(
+          "{topic}",
+          topic
+        ) ||
+        `Using NotesForge marker syntax (H1–H6, PARAGRAPH, BULLET, NUMBERED, TABLE, CODE), generate structured content about '${topic}' for '${selectedTemplateId}' template. Output only markers.`;
+      setPromptText(fallback);
+      setWarn(
+        "Template regenerate API unavailable. Prompt prepared locally."
+      );
+    } finally {
+      setRegeneratingTemplate(false);
+    }
+  }, [
+    templateTopic,
+    selectedTemplateId,
+    aiProvider,
+    selectedApiTemplate,
+    handleText,
+  ]);
 
   const dismissOnboarding = useCallback(() => {
     setShowOnboarding(false);
@@ -1422,6 +2260,48 @@ export default function App() {
       setDirty(true);
     },
     []
+  );
+
+  const refreshMarkerSuggestions = useCallback(
+    (value: string, cursor: number) => {
+      const lineStart =
+        value.lastIndexOf("\n", Math.max(0, cursor - 1)) + 1;
+      const currentChunk = value.slice(lineStart, cursor);
+      const prefix = currentChunk.trimStart().toUpperCase();
+      if (!prefix || prefix.includes(":")) {
+        setMarkerSuggestions([]);
+        return;
+      }
+      const next = MARKER_AUTOCOMPLETE.filter((m) =>
+        m.startsWith(prefix)
+      ).slice(0, 6);
+      setMarkerSuggestions(next);
+    },
+    []
+  );
+
+  const applyMarkerSuggestion = useCallback(
+    (marker: string) => {
+      const el = taRef.current;
+      if (!el) return;
+      const cursor = el.selectionStart ?? text.length;
+      const lineStart =
+        text.lastIndexOf("\n", Math.max(0, cursor - 1)) + 1;
+      const leading =
+        text
+          .slice(lineStart, cursor)
+          .match(/^\s*/)?.[0] || "";
+      const value =
+        `${text.slice(0, lineStart)}${leading}${marker} ${text.slice(cursor)}`;
+      handleText(value);
+      setMarkerSuggestions([]);
+      window.requestAnimationFrame(() => {
+        const pos = lineStart + leading.length + marker.length + 1;
+        el.focus();
+        el.setSelectionRange(pos, pos);
+      });
+    },
+    [text, handleText]
   );
 
   // ═════════════════════════════════════════════════════════════
@@ -1583,6 +2463,7 @@ export default function App() {
 
     checkHealth();
     loadThemes();
+    loadTemplateCatalog();
     loadConfig();
     loadPrompt();
 
@@ -1590,6 +2471,14 @@ export default function App() {
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (online !== "online") return;
+    loadThemes();
+    loadTemplateCatalog();
+    loadConfig();
+    loadPrompt();
+  }, [online, loadThemes, loadTemplateCatalog, loadConfig, loadPrompt]);
 
   useEffect(() => {
     if (!showOnboarding || !text.trim()) return;
@@ -1601,6 +2490,23 @@ export default function App() {
     document.documentElement.classList.toggle("dark", dark);
     localStorage.setItem("nf_dark", dark ? "1" : "0");
   }, [dark]);
+
+  useEffect(() => {
+    localStorage.setItem("nf_strict_mode", strictMode ? "1" : "0");
+  }, [strictMode]);
+
+  useEffect(() => {
+    localStorage.setItem("nf_last_template", selectedTemplateId);
+  }, [selectedTemplateId]);
+
+  useEffect(() => {
+    if (
+      apiTemplates.length > 0 &&
+      !apiTemplates.some((tpl) => tpl.id === selectedTemplateId)
+    ) {
+      setSelectedTemplateId(apiTemplates[0].id);
+    }
+  }, [apiTemplates, selectedTemplateId]);
 
   // Autosave
   useEffect(() => {
@@ -1738,6 +2644,7 @@ export default function App() {
     { label: 'CODE: "code"', color: "slate" },
     { label: 'TABLE: "A | B"', color: "teal" },
     { label: 'NOTE: "Info"', color: "green" },
+    { label: "PAGEBREAK:", color: "gray" },
   ];
 
   // ═══════════════════════════════════════════════════════════
@@ -1784,16 +2691,19 @@ export default function App() {
                   className={`w-1.5 h-1.5 rounded-full ${
                     online === "online"
                       ? "bg-green-400 animate-pulse"
-                      : online === "offline"
+                      : online === "error"
                         ? "bg-red-400"
                         : "bg-yellow-400"
                   }`}
                 />
                 {online === "online"
-                  ? "Online"
-                  : online === "offline"
-                    ? "Offline"
-                    : "…"}
+                  ? "Connected"
+                  : online === "error"
+                    ? "Backend error"
+                    : "Waking backend"}
+              </span>
+              <span className="px-2.5 py-1 rounded-lg text-xs bg-white/10">
+                API v{backendVersion}
               </span>
 
               {savedAt && (
@@ -1895,6 +2805,32 @@ export default function App() {
             )
         )}
 
+        {!HAS_EXPLICIT_API_URL && (
+          <div
+            className={`${card} mb-4 p-3 text-sm border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300`}
+          >
+            `VITE_API_URL` is not set. Using default backend: {API}
+          </div>
+        )}
+
+        {online !== "online" && (
+          <div
+            className={`${card} mb-4 p-3 flex items-center justify-between gap-3 border-red-200 dark:border-red-800`}
+          >
+            <div className="text-sm text-red-600 dark:text-red-300">
+              {online === "error"
+                ? "Backend offline or unreachable. Please retry."
+                : "Backend offline or starting. Please wait 10–15 seconds."}
+            </div>
+            <button
+              onClick={checkHealth}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* ══════════════════════════════════════════════════════
             EDITOR TAB
         ══════════════════════════════════════════════════════ */}
@@ -1967,6 +2903,17 @@ export default function App() {
                     </span>
                   )}
                 </button>
+                <button
+                  onClick={() => setStrictMode((v) => !v)}
+                  title="Strict Mode"
+                  className={`px-2 py-1 rounded-lg text-xs font-semibold border ${
+                    strictMode
+                      ? "bg-red-100 dark:bg-red-900/40 text-red-600 border-red-300 dark:border-red-700"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-700 border-transparent"
+                  }`}
+                >
+                  Strict {strictMode ? "ON" : "OFF"}
+                </button>
 
                 <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
                 <span className="text-xs text-gray-400">
@@ -1979,22 +2926,24 @@ export default function App() {
                   {stats.mins} min read
                 </span>
 
-                {markerErrors.length > 0 && (
+                {allMarkerErrors.length > 0 && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" />
-                    {markerErrors.length} error
-                    {markerErrors.length > 1 ? "s" : ""}
+                    {allMarkerErrors.length} warning
+                    {allMarkerErrors.length > 1 ? "s" : ""}
                   </span>
                 )}
 
                 <div className="flex-1" />
                 <button
-                  onClick={() =>
-                    handleText(TEMPLATES[0].content)
-                  }
+                  onClick={() => {
+                    handleText(SAMPLE_EXAMPLE);
+                    setShowPreview(true);
+                    setSplitPreview(true);
+                  }}
                   className="text-xs text-purple-500 hover:underline px-2"
                 >
-                  Load Starter
+                  Try Example
                 </button>
                 <button
                   onClick={() => handleText("")}
@@ -2069,16 +3018,16 @@ export default function App() {
               )}
 
               {/* Marker Errors */}
-              {markerErrors.length > 0 && (
+              {allMarkerErrors.length > 0 && (
                 <div className={`${card} p-4`}>
                   <div className="flex items-center gap-2 mb-3">
                     <AlertTriangle className="w-4 h-4 text-red-500" />
                     <span className="font-semibold text-sm">
-                      Marker Errors ({markerErrors.length})
+                      Marker Checks ({allMarkerErrors.length})
                     </span>
                   </div>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {markerErrors.map((err, i) => (
+                    {allMarkerErrors.map((err, i) => (
                       <div
                         key={i}
                         className={`flex items-start gap-2 p-2 rounded-lg text-xs ${
@@ -2273,7 +3222,44 @@ export default function App() {
                     <textarea
                       ref={taRef}
                       value={text}
-                      onChange={(e) => handleText(e.target.value)}
+                      onChange={(e) => {
+                        handleText(e.target.value);
+                        refreshMarkerSuggestions(
+                          e.target.value,
+                          e.target.selectionStart
+                        );
+                      }}
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Tab" &&
+                          markerSuggestions.length > 0
+                        ) {
+                          e.preventDefault();
+                          applyMarkerSuggestion(
+                            markerSuggestions[0]
+                          );
+                          return;
+                        }
+                        if (
+                          e.ctrlKey &&
+                          e.key.toLowerCase() === " "
+                        ) {
+                          e.preventDefault();
+                          const pos =
+                            e.currentTarget.selectionStart ??
+                            text.length;
+                          refreshMarkerSuggestions(
+                            e.currentTarget.value,
+                            pos
+                          );
+                        }
+                      }}
+                      onClick={(e) =>
+                        refreshMarkerSuggestions(
+                          e.currentTarget.value,
+                          e.currentTarget.selectionStart
+                        )
+                      }
                       onScroll={(e) => {
                         if (lineNumRef.current) {
                           lineNumRef.current.scrollTop =
@@ -2293,6 +3279,37 @@ export default function App() {
                       }`}
                     />
                   </div>
+
+                  {markerSuggestions.length > 0 && (
+                    <div
+                      className={`px-4 py-2 border-t ${
+                        dark
+                          ? "border-gray-700 bg-gray-900/70"
+                          : "border-gray-200 bg-gray-50"
+                      }`}
+                    >
+                      <p className="text-[11px] text-gray-500 mb-1">
+                        Marker autocomplete (Tab to insert):
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {markerSuggestions.map((marker) => (
+                          <button
+                            key={marker}
+                            onClick={() =>
+                              applyMarkerSuggestion(marker)
+                            }
+                            className={`px-2 py-1 rounded-md text-xs font-mono border ${
+                              dark
+                                ? "border-gray-600 hover:bg-gray-700"
+                                : "border-gray-300 hover:bg-white"
+                            }`}
+                          >
+                            {marker}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {splitPreview && (
                     <div
@@ -2347,6 +3364,9 @@ export default function App() {
                     </option>
                     <option value="html">
                       HTML (.html)
+                    </option>
+                    <option value="txt">
+                      Text (.txt)
                     </option>
                   </select>
                   <button
@@ -2731,12 +3751,21 @@ export default function App() {
             </div>
 
             {/* Template Cards */}
+            {loadingTemplates && (
+              <div
+                className={`${card} p-3 text-xs text-gray-500 flex items-center gap-2`}
+              >
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Loading template catalog…
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {TEMPLATES.map((tpl) => (
+              {effectiveTemplates.map((tpl) => (
                 <div
                   key={tpl.id}
                   onClick={() => {
                     handleText(tpl.content);
+                    setSelectedTemplateId(tpl.id);
                     setTab("editor");
                     setSuccess(`✅ Loaded: ${tpl.name}`);
                   }}
@@ -2905,6 +3934,109 @@ export default function App() {
                   Open Settings
                 </button>
               </div>
+
+              <div className="px-6 pb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div
+                  className={`rounded-xl border p-4 ${
+                    dark
+                      ? "border-gray-700 bg-gray-800"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <h3 className="font-semibold text-sm mb-2">
+                    Strict Marker Playbook
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    In strict mode, every non-empty line must start with a marker.
+                  </p>
+                  <pre
+                    className={`text-xs rounded-lg p-3 overflow-auto ${
+                      dark
+                        ? "bg-gray-900 text-gray-300"
+                        : "bg-white text-gray-700"
+                    }`}
+                  >
+{`H1: "Document Title"
+H2: "Overview"
+PARAGRAPH: "Single paragraph line."
+CENTER: "Centered text"
+RIGHT: "Right aligned text"
+JUSTIFY: "Justified paragraph."
+BULLET: "Main bullet"
+BULLET: "  Nested bullet"
+CODE: "print('hello')"
+ASCII: "+---+"
+TABLE: "Col A | Col B"
+TABLE: "A1 | B1"
+PAGEBREAK:
+H2: "Next Page"`}
+                  </pre>
+                  <button
+                    onClick={() => {
+                      handleText(`H1: "Document Title"\nH2: "Overview"\nPARAGRAPH: "Single paragraph line."\nCENTER: "Centered text"\nRIGHT: "Right aligned text"\nJUSTIFY: "Justified paragraph."\nBULLET: "Main bullet"\nBULLET: "  Nested bullet"\nCODE: "print('hello')"\nASCII: "+---+"\nTABLE: "Col A | Col B"\nTABLE: "A1 | B1"\nPAGEBREAK:\nH2: "Next Page"`);
+                      setTab("editor");
+                      setStrictMode(true);
+                      setSuccess("✅ Strict marker example loaded");
+                    }}
+                    className="mt-3 px-3 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Load Strict Example
+                  </button>
+                </div>
+
+                <div
+                  className={`rounded-xl border p-4 ${
+                    dark
+                      ? "border-gray-700 bg-gray-800"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <h3 className="font-semibold text-sm mb-2">
+                    Full Control Guide
+                  </h3>
+                  <div className="space-y-2 text-xs text-gray-500">
+                    <p>
+                      <strong>Alignment:</strong> use `CENTER:`, `RIGHT:`, `JUSTIFY:` markers.
+                    </p>
+                    <p>
+                      <strong>Indent:</strong> use spaces inside `BULLET:` and set spacing controls in Settings → Spacing.
+                    </p>
+                    <p>
+                      <strong>Page breaks:</strong> insert `PAGEBREAK:` where next section should start.
+                    </p>
+                    <p>
+                      <strong>Page numbers:</strong> Settings → Page → Header/Footer → Page format (`Page X` or `Page X of Y`).
+                    </p>
+                    <p>
+                      <strong>Fonts available:</strong> {availableFonts.length} text fonts, {availableCodeFonts.length} code fonts.
+                    </p>
+                    <p>
+                      <strong>Theme customization:</strong> use Themes/Fonts/Colors/Spacing/Page tabs, then Save Settings.
+                    </p>
+                    <p>
+                      <strong>Template + Prompt flow:</strong> Templates tab → pick template, AI Prompt tab → regenerate with topic, then generate.
+                    </p>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setTab("prompt")}
+                      className="px-3 py-2 rounded-lg text-xs font-medium bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      Open AI Prompt
+                    </button>
+                    <button
+                      onClick={() => setTab("settings")}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium border ${
+                        dark
+                          ? "border-gray-600 hover:bg-gray-700"
+                          : "border-gray-300 hover:bg-gray-100"
+                      }`}
+                    >
+                      Open Settings
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -3022,18 +4154,33 @@ export default function App() {
                         </p>
 
                         {/* Built-in Themes Grid */}
-                        {themes && Object.keys(themes).length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                            {Object.entries(themes).map(
-                              ([key, theme]: [string, any]) => {
-                                if (
-                                  !BUILTIN_THEME_KEYS.has(
-                                    key.toLowerCase()
-                                  )
+                        {(() => {
+                          const themeSource =
+                            themes &&
+                            Object.keys(themes).length > 0
+                              ? themes
+                              : FALLBACK_THEME_CATALOG;
+                          const builtinThemeEntries =
+                            Object.entries(themeSource).filter(
+                              ([key]) =>
+                                BUILTIN_THEME_KEYS.has(
+                                  key.toLowerCase()
                                 )
-                                  return null;
-
-                                return (
+                            );
+                          if (builtinThemeEntries.length === 0) {
+                            return (
+                              <div className="text-center py-8 text-gray-400">
+                                <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                                <p className="text-sm">
+                                  Loading themes...
+                                </p>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                              {builtinThemeEntries.map(
+                                ([key, theme]: [string, any]) => (
                                   <div
                                     key={key}
                                     className={`p-4 rounded-lg border-2 cursor-pointer transition ${
@@ -3056,17 +4203,7 @@ export default function App() {
 
                                     {/* Color Swatches */}
                                     <div className="flex gap-1.5 mb-4">
-                                      {[
-                                        theme.colors?.h1 ||
-                                          "#000000",
-                                        theme.colors?.h2 ||
-                                          "#333333",
-                                        theme.colors?.h3 ||
-                                          "#666666",
-                                        theme.colors
-                                          ?.table_header_bg ||
-                                          "#999999",
-                                      ].map((color, i) => (
+                                      {themeSwatches(key, theme).map((color, i) => (
                                         <div
                                           key={i}
                                           className="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600"
@@ -3094,18 +4231,11 @@ export default function App() {
                                         : "Apply"}
                                     </button>
                                   </div>
-                                );
-                              }
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8 text-gray-400">
-                            <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
-                            <p className="text-sm">
-                              Loading themes...
-                            </p>
-                          </div>
-                        )}
+                                )
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Save as New Theme */}
                         <div className="border-t dark:border-gray-700 pt-6 mt-6">
@@ -3258,17 +4388,7 @@ export default function App() {
                                         </div>
 
                                         <div className="flex gap-1.5 mb-3">
-                                          {[
-                                            theme.colors?.h1 ||
-                                              "#000000",
-                                            theme.colors?.h2 ||
-                                              "#333333",
-                                            theme.colors?.h3 ||
-                                              "#666666",
-                                            theme.colors
-                                              ?.table_header_bg ||
-                                              "#999999",
-                                          ].map((color, i) => (
+                                          {themeSwatches(key, theme).map((color, i) => (
                                             <div
                                               key={i}
                                               className="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600"
@@ -5095,19 +6215,91 @@ export default function App() {
                       : "bg-gray-50 border-gray-200"
                   }`}
                 >
-                  <label className={lbl}>
-                    Topic / Task for AI
-                  </label>
-                  <input
-                    value={promptTopic}
-                    onChange={(e) =>
-                      setPromptTopic(e.target.value)
-                    }
-                    placeholder="e.g. Explain Kubernetes networking from beginner to intermediate"
-                    className={inp}
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>
+                        Topic / Task for AI
+                      </label>
+                      <input
+                        value={promptTopic}
+                        onChange={(e) =>
+                          setPromptTopic(e.target.value)
+                        }
+                        placeholder="e.g. Explain Kubernetes networking from beginner to intermediate"
+                        className={inp}
+                      />
+                    </div>
+                    <div>
+                      <label className={lbl}>
+                        Template
+                      </label>
+                      <select
+                        value={selectedTemplateId}
+                        onChange={(e) =>
+                          setSelectedTemplateId(
+                            e.target.value
+                          )
+                        }
+                        className={inp}
+                      >
+                        {apiTemplates.length > 0
+                          ? apiTemplates.map((tpl) => (
+                              <option key={tpl.id} value={tpl.id}>
+                                {tpl.name}
+                              </option>
+                            ))
+                          : TEMPLATES.map((tpl) => (
+                              <option key={tpl.id} value={tpl.id}>
+                                {tpl.name}
+                              </option>
+                            ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                    <div>
+                      <label className={lbl}>Regenerate Topic</label>
+                      <input
+                        value={templateTopic}
+                        onChange={(e) =>
+                          setTemplateTopic(e.target.value)
+                        }
+                        placeholder="e.g. Cloud Security Audit"
+                        className={inp}
+                      />
+                    </div>
+                    <div>
+                      <label className={lbl}>AI Provider</label>
+                      <select
+                        value={aiProvider}
+                        onChange={(e) =>
+                          setAiProvider(
+                            e.target
+                              .value as "chatgpt" | "notebooklm" | "claude"
+                          )
+                        }
+                        className={inp}
+                      >
+                        <option value="chatgpt">ChatGPT</option>
+                        <option value="notebooklm">NotebookLM</option>
+                        <option value="claude">Claude</option>
+                      </select>
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        onClick={regenerateTemplateContent}
+                        disabled={regeneratingTemplate}
+                        className="w-full px-3 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2"
+                      >
+                        {regeneratingTemplate && (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        )}
+                        Regenerate Content
+                      </button>
+                    </div>
+                  </div>
                   <p className="text-xs text-gray-500 mt-2">
-                    This topic is auto-appended to copied prompt and the ChatGPT link.
+                    Prompt copy/open uses topic above. Regenerate fetches strict marker content from selected template endpoint.
                   </p>
                 </div>
 

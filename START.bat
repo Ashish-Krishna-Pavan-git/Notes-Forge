@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 REM =====================================================
 REM NotesForge Professional - START (Corrected Version)
 REM Safe for Windows CMD (no Unicode parsing errors)
@@ -11,14 +12,6 @@ echo =====================================================
 echo ==              NotesForge Professional             ==
 echo =====================================================
 echo.
-
-REM ---- OPTIONAL: Switch drive safely (avoids errors) ----
-if exist "D:\" (
-    pushd /D "D:\"
-    echo Switched to D:\
-) else (
-    echo Drive D:\ not found — continuing in current directory.
-)
 
 REM ---- CHECK REQUIRED TOOLS ----
 where node >nul 2>&1
@@ -58,8 +51,8 @@ if not exist "%BACKEND_DIR%\backend_server.py" (
 REM Frontend
 start "" cmd /k "cd /d ""%FRONTEND_DIR%"" && npm run dev"
 
-REM Backend
-start "" cmd /k "cd /d ""%BACKEND_DIR%"" && python -m uvicorn backend_server:app --reload"
+REM Backend (canonical app entrypoint)
+start "" cmd /k "cd /d ""%BACKEND_DIR%"" && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 10000"
 
 REM =====================================================
 echo.
