@@ -316,21 +316,15 @@ def get_state() -> AppState:
     return _app_state
 
 
-app = FastAPI()
-
-origins = [
-    "https://notes-forge-ruddy.vercel.app",
-    "https://notes-forge.onrender.com",
-    "*",
-]
-
+app = FastAPI(title="NotesForge API", version="6.2")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
