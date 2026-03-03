@@ -19,7 +19,6 @@ api.interceptors.response.use(
     const duration = started ? Date.now() - started : null;
     if (duration !== null) {
       // Keep lightweight telemetry in console for production debugging.
-      // eslint-disable-next-line no-console
       console.warn(
         `[API] ${error.config?.method?.toUpperCase()} ${error.config?.url} failed in ${duration}ms`
       );
@@ -87,4 +86,3 @@ export async function apiPost<T = any>(
   const res = await api.post<T>(url, data, config);
   return res.data;
 }
-

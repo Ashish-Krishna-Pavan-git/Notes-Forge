@@ -2593,7 +2593,6 @@ export default function App() {
 
     const iv = setInterval(checkHealth, HEALTH_INTERVAL_MS);
     return () => clearInterval(iv);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
