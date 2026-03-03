@@ -2,10 +2,10 @@
   "app": {
     "name": "NotesForge Professional",
     "version": "6.2",
-    "theme": "flm"
+    "theme": "corporate"
   },
   "fonts": {
-    "family": "Tahoma",
+    "family": "Arial",
     "family_code": "Tahoma",
     "h1_family": "Trebuchet MS",
     "h2_family": "Trebuchet MS",
@@ -28,16 +28,16 @@
     }
   },
   "colors": {
-    "h1": "#6200EA",
-    "h2": "#651FFF",
-    "h3": "#7C4DFF",
+    "h1": "#B91C1C",
+    "h2": "#DC2626",
+    "h3": "#EF4444",
     "h4": "#B388FF",
     "h5": "#333333",
     "h6": "#555555",
     "body": "#1F1F1F",
     "code_background": "#1E1E2E",
     "code_text": "#D4D4D4",
-    "table_header_bg": "#6200EA",
+    "table_header_bg": "#FEE2E2",
     "table_header_text": "#FFFFFF",
     "table_odd_row": "#F3EDFF",
     "table_even_row": "#FFFFFF",
@@ -88,7 +88,7 @@
     "enabled": true,
     "text": "Frontlines Edu Tech",
     "size": 10,
-    "color": "#ff7b00",
+    "color": "#B91C1C",
     "bold": true,
     "italic": false,
     "alignment": "center",
@@ -105,7 +105,7 @@
     "enabled": true,
     "text": "",
     "size": 8,
-    "color": "#6200EA",
+    "color": "#DC2626",
     "bold": false,
     "italic": true,
     "alignment": "right",

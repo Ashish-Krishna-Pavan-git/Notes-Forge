@@ -245,7 +245,8 @@ PDF export supports two paths:
 - modern exporter path with theme/security payloads
 - legacy LibreOffice conversion path
 
-If PDF conversion is unavailable, backend returns a warning and falls back to DOCX (`actualFormat=docx`).
+If system converters are unavailable, backend attempts a pure-Python PDF fallback renderer (`reportlab`).
+If all PDF paths fail, backend returns a warning and falls back to DOCX (`actualFormat=docx`).
 
 ## Deployment Contract Verification
 

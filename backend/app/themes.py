@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from html import escape
-from typing import Dict
+from typing import Dict, Mapping
 
 from .models import FormattingOptions, ThemePayload, WatermarkPayload
 
@@ -20,7 +20,34 @@ PROFESSIONAL_THEME = ThemePayload(
 )
 
 
+def _style_num(styles: Mapping[str, object], *keys: str, default: float) -> float:
+    for key in keys:
+        if key not in styles:
+            continue
+        raw = styles.get(key)
+        try:
+            return float(raw)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+    return default
+
+
 def _heading_css(theme: ThemePayload) -> str:
+    styles = theme.styles if isinstance(theme.styles, dict) else {}
+    heading_before_pt = _style_num(
+        styles,
+        "heading_spacing_before",
+        "headingSpacingBefore",
+        default=10.0,
+    )
+    heading_after_pt = _style_num(
+        styles,
+        "heading_spacing_after",
+        "headingSpacingAfter",
+        default=6.0,
+    )
+    before_rem = max(0.0, (heading_before_pt * 1.333) / 16.0)
+    after_rem = max(0.0, (heading_after_pt * 1.333) / 16.0)
     chunks = []
     for level in range(1, 7):
         key = f"h{level}"
@@ -28,17 +55,35 @@ def _heading_css(theme: ThemePayload) -> str:
         size = token.size if token.size else max(12, 26 - (level * 2))
         weight = token.weight if token.weight else ("700" if level == 1 else "600")
         color = token.color if token.color else theme.primaryColor
-        chunks.append(f"{key}{{font-size:{size}px;font-weight:{weight};color:{color};margin:0.8rem 0 0.4rem;}}")
+        chunks.append(
+            f"{key}{{font-size:{size}px;font-weight:{weight};color:{color};"
+            f"margin:{before_rem:.3f}rem 0 {after_rem:.3f}rem;}}"
+        )
     return "".join(chunks)
 
 
 def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
+    styles = theme.styles if isinstance(theme.styles, dict) else {}
     body_size = theme.bodyStyle.size or 11
     line_height = formatting.lineSpacing or theme.bodyStyle.lineHeight or 1.4
     margins = formatting.margins
     table_border = theme.tableStyle.borderColor or "#ddd"
     table_width = theme.tableStyle.borderWidth or 1
     table_header = theme.tableStyle.headerFill or "#f6f6f6"
+    paragraph_after_pt = _style_num(
+        styles,
+        "paragraph_spacing_after",
+        "paragraphSpacingAfter",
+        default=6.0,
+    )
+    paragraph_after_rem = max(0.0, (paragraph_after_pt * 1.333) / 16.0)
+    first_line_indent = _style_num(
+        styles,
+        "paragraph_first_line_indent",
+        "paragraphFirstLineIndent",
+        default=0.0,
+    )
+    first_line_indent_em = max(0.0, first_line_indent)
 
     return (
         "@page{"
@@ -48,7 +93,7 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
         f"{theme.fontFamily};font-size:{body_size}px;line-height:{line_height};"
         f"padding:{margins.top}px {margins.right}px {margins.bottom}px {margins.left}px;color:#17202a;"
         "}"
-        "p{margin:0.4rem 0;}"
+        f"p{{margin:0 0 {paragraph_after_rem:.3f}rem 0;text-indent:{first_line_indent_em:.3f}em;}}"
         "ul,ol{margin:0.4rem 0 0.8rem 1.3rem;}"
         "pre{background:#0f172a;color:#e2e8f0;padding:0.75rem;border-radius:8px;overflow:auto;}"
         f"table{{width:100%;border-collapse:collapse;margin:0.6rem 0;}}"

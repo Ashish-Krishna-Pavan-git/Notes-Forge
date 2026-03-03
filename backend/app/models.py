@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -49,7 +49,7 @@ class ThemePayload(BaseModel):
     bodyStyle: BodyStyle = Field(default_factory=BodyStyle)
     tableStyle: TableStyle = Field(default_factory=TableStyle)
     margins: Margins = Field(default_factory=Margins)
-    styles: Dict[str, str] = Field(default_factory=dict)
+    styles: Dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="allow")
 

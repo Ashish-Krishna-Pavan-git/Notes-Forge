@@ -58,6 +58,100 @@ MEDIA_TYPES: Dict[str, str] = {
     "txt": "text/plain; charset=utf-8",
 }
 
+BUILTIN_THEME_CATALOG: Dict[str, Dict[str, Any]] = {
+    "professional": {
+        "name": "Professional",
+        "description": "Balanced default for business and academic documents.",
+        "builtin": True,
+        "colors": {
+            "h1": "#1F3A5F",
+            "h2": "#2C5282",
+            "h3": "#2B6CB0",
+            "table_header_bg": "#E2E8F0",
+        },
+        "fonts": {"family": "Calibri"},
+        "spacing": {"line_spacing": 1.4},
+    },
+    "modern": {
+        "name": "Modern",
+        "description": "Clean modern styling with blue accents.",
+        "builtin": True,
+        "colors": {
+            "h1": "#0F172A",
+            "h2": "#1D4ED8",
+            "h3": "#0284C7",
+            "table_header_bg": "#DBEAFE",
+        },
+        "fonts": {"family": "Segoe UI"},
+        "spacing": {"line_spacing": 1.35},
+    },
+    "academic": {
+        "name": "Academic",
+        "description": "Conservative typography optimized for reports.",
+        "builtin": True,
+        "colors": {
+            "h1": "#111827",
+            "h2": "#374151",
+            "h3": "#4B5563",
+            "table_header_bg": "#E5E7EB",
+        },
+        "fonts": {"family": "Times New Roman"},
+        "spacing": {"line_spacing": 1.6},
+    },
+    "corporate": {
+        "name": "Corporate Red",
+        "description": "Executive style with strong heading contrast.",
+        "builtin": True,
+        "colors": {
+            "h1": "#B91C1C",
+            "h2": "#DC2626",
+            "h3": "#EF4444",
+            "table_header_bg": "#FEE2E2",
+        },
+        "fonts": {"family": "Arial"},
+        "spacing": {"line_spacing": 1.35},
+    },
+    "creative": {
+        "name": "Creative Vibrant",
+        "description": "Colorful theme for creative project documents.",
+        "builtin": True,
+        "colors": {
+            "h1": "#F97316",
+            "h2": "#F59E0B",
+            "h3": "#EC4899",
+            "table_header_bg": "#FEF3C7",
+        },
+        "fonts": {"family": "Candara"},
+        "spacing": {"line_spacing": 1.35},
+    },
+    "startup": {
+        "name": "Startup Pitch",
+        "description": "Pitch-deck-like style for startup notes.",
+        "builtin": True,
+        "colors": {
+            "h1": "#0E7490",
+            "h2": "#0284C7",
+            "h3": "#0369A1",
+            "table_header_bg": "#CFFAFE",
+        },
+        "fonts": {"family": "Calibri"},
+        "spacing": {"line_spacing": 1.3},
+    },
+    "minimal": {
+        "name": "Minimal",
+        "description": "Neutral monochrome styling for clean exports.",
+        "builtin": True,
+        "colors": {
+            "h1": "#111827",
+            "h2": "#374151",
+            "h3": "#4B5563",
+            "table_header_bg": "#E5E7EB",
+        },
+        "fonts": {"family": "Calibri"},
+        "spacing": {"line_spacing": 1.35},
+    },
+}
+
 
 class ConfigUpdateRequest(BaseModel):
     path: str = Field(..., min_length=1, max_length=200)
@@ -106,16 +200,49 @@ def _default_config() -> Dict[str, Any]:
             "family": "Calibri",
             "family_code": "Fira Code",
             "available_fonts": [
-                "Calibri",
                 "Arial",
-                "Times New Roman",
+                "Arial Black",
+                "Bahnschrift",
+                "Book Antiqua",
+                "Calibri",
+                "Cambria",
+                "Candara",
+                "Century Gothic",
+                "Comic Sans MS",
+                "Consolas",
+                "Constantia",
+                "Corbel",
+                "Courier New",
+                "Franklin Gothic Medium",
+                "Garamond",
                 "Georgia",
+                "Helvetica",
+                "Lucida Console",
+                "Lucida Sans Unicode",
+                "Monaco",
+                "Palatino Linotype",
+                "Segoe UI",
+                "Tahoma",
+                "Times New Roman",
+                "Trebuchet MS",
                 "Verdana",
+                "Fira Code",
+                "Source Code Pro",
                 "Roboto",
                 "Open Sans",
-                "Consolas",
             ],
-            "available_code_fonts": ["Fira Code", "Consolas", "Courier New", "Monaco"],
+            "available_code_fonts": [
+                "Consolas",
+                "Courier New",
+                "Fira Code",
+                "JetBrains Mono",
+                "Source Code Pro",
+                "Cascadia Code",
+                "Menlo",
+                "Monaco",
+                "Lucida Console",
+                "Inconsolata",
+            ],
             "sizes": {"h1": 24, "h2": 20, "h3": 16, "body": 11, "code": 10},
         },
         "header": {
@@ -136,6 +263,38 @@ def _default_config() -> Dict[str, Any]:
         "spacing": {"line_spacing": 1.4},
         "watermark": {"enabled": False},
     }
+
+
+def _apply_theme_to_config(config_data: Dict[str, Any], theme_payload: Dict[str, Any]) -> None:
+    colors = theme_payload.get("colors")
+    if isinstance(colors, dict):
+        target = config_data.setdefault("colors", {})
+        if isinstance(target, dict):
+            target.update({k: v for k, v in colors.items() if isinstance(v, (str, int, float))})
+
+    fonts = theme_payload.get("fonts")
+    if isinstance(fonts, dict):
+        target = config_data.setdefault("fonts", {})
+        if isinstance(target, dict):
+            target.update({k: v for k, v in fonts.items() if isinstance(v, (str, int, float))})
+
+    spacing = theme_payload.get("spacing")
+    if isinstance(spacing, dict):
+        target = config_data.setdefault("spacing", {})
+        if isinstance(target, dict):
+            target.update({k: v for k, v in spacing.items() if isinstance(v, (str, int, float))})
+
+    for section in ("header", "footer", "page", "watermark"):
+        section_data = theme_payload.get(section)
+        if isinstance(section_data, dict):
+            target = config_data.setdefault(section, {})
+            if isinstance(target, dict):
+                target.update(section_data)
+
+    if isinstance(config_data.get("header"), dict) and isinstance(config_data.get("colors"), dict):
+        config_data["header"]["color"] = config_data["colors"].get("h1", config_data["header"].get("color"))
+    if isinstance(config_data.get("footer"), dict) and isinstance(config_data.get("colors"), dict):
+        config_data["footer"]["color"] = config_data["colors"].get("h2", config_data["footer"].get("color"))
 
 
 class AppState:
@@ -418,47 +577,7 @@ def create_app() -> FastAPI:
     # compatibility themes endpoints used by existing frontend
     @app.get("/api/themes")
     async def list_themes_compat() -> Dict[str, Any]:
-        builtin = {
-            "professional": {
-                "name": "Professional",
-                "description": "Balanced default for business and academic documents.",
-                "builtin": True,
-                "colors": {
-                    "h1": "#1F3A5F",
-                    "h2": "#2C5282",
-                    "h3": "#2B6CB0",
-                    "table_header_bg": "#E2E8F0",
-                },
-                "fonts": {"family": "Calibri"},
-                "spacing": {"line_spacing": 1.4},
-            },
-            "modern": {
-                "name": "Modern",
-                "description": "Clean modern styling with blue accents.",
-                "builtin": True,
-                "colors": {
-                    "h1": "#0F172A",
-                    "h2": "#1D4ED8",
-                    "h3": "#0284C7",
-                    "table_header_bg": "#DBEAFE",
-                },
-                "fonts": {"family": "Segoe UI"},
-                "spacing": {"line_spacing": 1.35},
-            },
-            "academic": {
-                "name": "Academic",
-                "description": "Conservative typography optimized for reports.",
-                "builtin": True,
-                "colors": {
-                    "h1": "#111827",
-                    "h2": "#374151",
-                    "h3": "#4B5563",
-                    "table_header_bg": "#E5E7EB",
-                },
-                "fonts": {"family": "Times New Roman"},
-                "spacing": {"line_spacing": 1.6},
-            },
-        }
+        builtin = BUILTIN_THEME_CATALOG
 
         custom: Dict[str, Dict[str, Any]] = {}
         for key, value in state.theme_store.items():
@@ -492,6 +611,11 @@ def create_app() -> FastAPI:
         state.current_theme = req.theme_name.strip().lower()
         app_cfg = state.config_data.setdefault("app", {})
         app_cfg["theme"] = state.current_theme
+        selected = state.theme_store.get(state.current_theme) or BUILTIN_THEME_CATALOG.get(
+            state.current_theme
+        )
+        if isinstance(selected, dict):
+            _apply_theme_to_config(state.config_data, selected)
         state.save_config()
         return {"success": True, "current_theme": state.current_theme, "config": state.config_data}
 

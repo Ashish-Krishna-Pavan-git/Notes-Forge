@@ -1782,16 +1782,57 @@ export default function App() {
               config.header?.color ||
               "#1F3A5F",
           },
+          h3: {
+            size: config.fonts?.sizes?.h3 || 16,
+            weight: "600",
+            color:
+              config.colors?.h3 ||
+              config.colors?.h2 ||
+              config.header?.color ||
+              "#2B6CB0",
+          },
         },
         bodyStyle: {
           size: config.fonts?.sizes?.body || 11,
           lineHeight: config.spacing?.line_spacing || 1.4,
+        },
+        tableStyle: {
+          borderWidth: 1,
+          borderColor:
+            config.colors?.table_border ||
+            "#d1d5db",
+          headerFill:
+            config.colors?.table_header_bg ||
+            "#f3f4f6",
         },
         margins: {
           top: (config.page?.margins?.top || 1) * 25.4,
           bottom: (config.page?.margins?.bottom || 1) * 25.4,
           left: (config.page?.margins?.left || 1) * 25.4,
           right: (config.page?.margins?.right || 1) * 25.4,
+        },
+        styles: {
+          lineSpacing:
+            config.spacing?.line_spacing || 1.4,
+          paragraph_spacing_after:
+            config.spacing
+              ?.paragraph_spacing_after ?? 0,
+          heading_spacing_before:
+            config.spacing
+              ?.heading_spacing_before ?? 0,
+          heading_spacing_after:
+            config.spacing
+              ?.heading_spacing_after ?? 0,
+          bullet_base_indent:
+            config.spacing?.bullet_base_indent ?? 0.25,
+          bullet_indent_per_level:
+            config.spacing
+              ?.bullet_indent_per_level ?? 0.25,
+          code_indent:
+            config.spacing?.code_indent ?? 0,
+          paragraph_first_line_indent:
+            config.spacing
+              ?.paragraph_first_line_indent ?? 0,
         },
       };
 
@@ -1940,7 +1981,10 @@ export default function App() {
         });
         if (r.success) {
           setCurrentTheme(name);
-          if (r.config) setConfig(r.config);
+          if (r.config)
+            setConfig(
+              mergeThemeIntoConfig(r.config, name, themes[name])
+            );
           else
             setConfig((prev) =>
               mergeThemeIntoConfig(prev, name, themes[name])
@@ -2005,9 +2049,10 @@ export default function App() {
         JSON.stringify(config)
       );
       setDirty(false);
-      setSuccess(
-        "✅ Settings saved locally (backend config API unavailable)"
+      setWarn(
+        "Cloud settings API unavailable. Saved locally in this browser."
       );
+      setSuccess("✅ Settings saved locally");
     }
   }, [config]);
 

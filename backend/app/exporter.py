@@ -13,7 +13,7 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Mm, Pt, RGBColor
+from docx.shared import Inches, Mm, Pt, RGBColor
 
 from .models import FormattingOptions, GenerateSecurityPayload, ThemePayload
 from .parser import Node, render_preview_html, to_markdown, to_plain_text
@@ -47,6 +47,18 @@ def _docx_alignment(value: str) -> WD_ALIGN_PARAGRAPH:
     if value == "justify":
         return WD_ALIGN_PARAGRAPH.JUSTIFY
     return WD_ALIGN_PARAGRAPH.LEFT
+
+
+def _style_num(styles: dict[str, object], *keys: str, default: float) -> float:
+    for key in keys:
+        if key not in styles:
+            continue
+        raw = styles.get(key)
+        try:
+            return float(raw)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+    return default
 
 
 def _add_page_number(paragraph, mode: str) -> None:
@@ -132,6 +144,130 @@ def _convert_html_to_pdf_weasyprint(html: str, pdf_path: Path) -> Tuple[bool, st
         return False, f"weasyprint failed: {exc}"
 
 
+def _nodes_to_plain_lines(nodes: Sequence[Node]) -> list[str]:
+    lines: list[str] = []
+    for node in nodes:
+        if node.type == "heading":
+            lines.append(node.text.strip())
+            lines.append("")
+        elif node.type == "paragraph":
+            lines.append(node.text.strip())
+            lines.append("")
+        elif node.type == "bullet":
+            for item in node.items or []:
+                lines.append(f"- {item}".strip())
+            lines.append("")
+        elif node.type == "numbered":
+            for idx, item in enumerate(node.items or [], start=1):
+                lines.append(f"{idx}. {item}".strip())
+            lines.append("")
+        elif node.type == "code":
+            lines.append("CODE:")
+            for ln in node.text.splitlines() or [""]:
+                lines.append(f"  {ln}")
+            lines.append("")
+        elif node.type == "ascii":
+            lines.append(node.text)
+        elif node.type == "table":
+            for row in node.rows or []:
+                lines.append(" | ".join(row))
+            lines.append("")
+        elif node.type == "pagebreak":
+            lines.append("__NF_PAGE_BREAK__")
+    return lines or ["(empty document)"]
+
+
+def _convert_nodes_to_pdf_reportlab(
+    nodes: Sequence[Node],
+    theme: ThemePayload,
+    formatting: FormattingOptions,
+    security: GenerateSecurityPayload,
+    pdf_path: Path,
+) -> Tuple[bool, str]:
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+        from reportlab.pdfgen import canvas
+    except Exception as exc:
+        return False, f"reportlab unavailable: {exc}"
+
+    try:
+        lines = _nodes_to_plain_lines(nodes)
+        page_w, page_h = A4
+        margin_top = (formatting.margins.top or 25) * mm
+        margin_bottom = (formatting.margins.bottom or 25) * mm
+        margin_left = (formatting.margins.left or 25) * mm
+        margin_right = (formatting.margins.right or 25) * mm
+        usable_h = max(60.0, page_h - margin_top - margin_bottom)
+
+        font_size = float(theme.bodyStyle.size or 11)
+        line_height = max(12.0, font_size * 1.55)
+        max_lines = max(5, int(usable_h // line_height) - 2)
+
+        pages: list[list[str]] = []
+        cur: list[str] = []
+        for ln in lines:
+            if ln == "__NF_PAGE_BREAK__":
+                pages.append(cur)
+                cur = []
+                continue
+            cur.append(ln)
+            if len(cur) >= max_lines:
+                pages.append(cur)
+                cur = []
+        if cur or not pages:
+            pages.append(cur)
+
+        c = canvas.Canvas(str(pdf_path), pagesize=A4)
+        c.setAuthor("NotesForge")
+        c.setTitle("NotesForge Export")
+        try:
+            c.setSubject(theme.name or "NotesForge Document")
+        except Exception:
+            pass
+
+        for p_idx, page_lines in enumerate(pages, start=1):
+            y = page_h - margin_top
+            if security.headerText:
+                c.setFont("Helvetica-Bold", 10)
+                c.drawString(margin_left, y, str(security.headerText))
+                y -= line_height
+
+            c.setFont("Helvetica", font_size)
+            for ln in page_lines:
+                text = (ln or "").replace("\t", "    ")
+                max_chars = max(20, int((page_w - margin_left - margin_right) / (font_size * 0.55)))
+                while len(text) > max_chars:
+                    c.drawString(margin_left, y, text[:max_chars])
+                    text = text[max_chars:]
+                    y -= line_height
+                    if y < margin_bottom + line_height:
+                        break
+                if y < margin_bottom + line_height:
+                    break
+                c.drawString(margin_left, y, text)
+                y -= line_height
+
+            footer_parts: list[str] = []
+            if security.footerText:
+                footer_parts.append(str(security.footerText))
+            mode = security.pageNumberMode or "page_x"
+            if mode == "page_x_of_y":
+                footer_parts.append(f"Page {p_idx} of {len(pages)}")
+            else:
+                footer_parts.append(f"Page {p_idx}")
+            c.setFont("Helvetica", 9)
+            c.drawString(margin_left, margin_bottom * 0.55, " | ".join(footer_parts))
+            c.showPage()
+
+        c.save()
+        if pdf_path.exists() and pdf_path.stat().st_size > 0:
+            return True, "reportlab"
+        return False, "reportlab produced no file"
+    except Exception as exc:
+        return False, f"reportlab failed: {exc}"
+
+
 class FileStore:
     def __init__(self, base_dir: str, ttl_seconds: int = 60 * 60 * 6) -> None:
         root = Path(base_dir) if base_dir else Path(tempfile.gettempdir()) / "notesforge_exports"
@@ -212,6 +348,51 @@ class DocumentExporter:
         normal_style = document.styles["Normal"]
         normal_style.font.name = font_name
         normal_style.font.size = Pt(theme.bodyStyle.size or 11)
+        normal_style.paragraph_format.line_spacing = formatting.lineSpacing or theme.bodyStyle.lineHeight or 1.4
+
+        styles = theme.styles if isinstance(theme.styles, dict) else {}
+        paragraph_after_pt = _style_num(
+            styles,
+            "paragraph_spacing_after",
+            "paragraphSpacingAfter",
+            default=0.0,
+        )
+        paragraph_before_pt = _style_num(
+            styles,
+            "paragraph_spacing_before",
+            "paragraphSpacingBefore",
+            default=0.0,
+        )
+        heading_before_pt = _style_num(
+            styles,
+            "heading_spacing_before",
+            "headingSpacingBefore",
+            default=10.0,
+        )
+        heading_after_pt = _style_num(
+            styles,
+            "heading_spacing_after",
+            "headingSpacingAfter",
+            default=6.0,
+        )
+        paragraph_first_indent_em = _style_num(
+            styles,
+            "paragraph_first_line_indent",
+            "paragraphFirstLineIndent",
+            default=0.0,
+        )
+        bullet_base_indent_in = _style_num(
+            styles,
+            "bullet_base_indent",
+            "bulletBaseIndent",
+            default=0.25,
+        )
+        code_indent_in = _style_num(
+            styles,
+            "code_indent",
+            "codeIndent",
+            default=0.0,
+        )
 
         if security.watermark and security.watermark.type == "text" and security.watermark.value:
             p = document.add_paragraph(security.watermark.value)
@@ -233,6 +414,8 @@ class DocumentExporter:
             if node.type == "heading":
                 level = max(1, min(6, node.level))
                 p = document.add_heading(node.text, level=level)
+                p.paragraph_format.space_before = Pt(max(0.0, heading_before_pt))
+                p.paragraph_format.space_after = Pt(max(0.0, heading_after_pt))
                 if p.runs:
                     token = getattr(theme.headingStyle, f"h{level}")
                     run = p.runs[0]
@@ -243,19 +426,31 @@ class DocumentExporter:
             elif node.type == "paragraph":
                 p = document.add_paragraph(node.text)
                 p.alignment = _docx_alignment(node.align)
+                p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
+                p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
+                p.paragraph_format.first_line_indent = Inches(max(0.0, paragraph_first_indent_em) * 0.15)
             elif node.type == "bullet":
                 for item in node.items or []:
-                    document.add_paragraph(item, style="List Bullet")
+                    p = document.add_paragraph(item, style="List Bullet")
+                    p.paragraph_format.left_indent = Inches(max(0.0, bullet_base_indent_in))
+                    p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
+                    p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
             elif node.type == "numbered":
                 for item in node.items or []:
-                    document.add_paragraph(item, style="List Number")
+                    p = document.add_paragraph(item, style="List Number")
+                    p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
+                    p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
             elif node.type == "code":
                 p = document.add_paragraph(node.text)
+                p.paragraph_format.left_indent = Inches(max(0.0, code_indent_in))
+                p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
+                p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
                 for run in p.runs:
                     run.font.name = "Consolas"
                     run.font.size = Pt(10)
             elif node.type == "ascii":
                 p = document.add_paragraph(node.text)
+                p.paragraph_format.left_indent = Inches(max(0.0, code_indent_in))
                 for run in p.runs:
                     run.font.name = "Consolas"
                     run.font.size = Pt(9)
@@ -300,13 +495,23 @@ class DocumentExporter:
         if target_format == "pdf":
             file_id, pdf_path = self.store.reserve_path("pdf")
             html_preview = self.create_preview_html(nodes, theme, formatting, security)
+            attempts: list[str] = []
             ok, method = _convert_html_to_pdf_weasyprint(html_preview, pdf_path)
+            attempts.append(method)
             if not ok:
                 ok, method = _convert_docx_to_pdf(docx_path, pdf_path)
+                attempts.append(method)
             if not ok:
-                warnings.append(f"PDF conversion failed: {method}")
+                ok, method = _convert_nodes_to_pdf_reportlab(
+                    nodes, theme, formatting, security, pdf_path
+                )
+                attempts.append(method)
+            if not ok:
+                warnings.append(f"PDF conversion failed: {' | '.join(attempts)}")
                 return docx_id, docx_path, warnings
             warnings.extend(secure_pdf(pdf_path, security.passwordProtectPdf, security.removeMetadata))
+            if method == "reportlab":
+                warnings.append("Used simplified PDF renderer fallback for this export.")
             return file_id, pdf_path, warnings
 
         if target_format == "html":

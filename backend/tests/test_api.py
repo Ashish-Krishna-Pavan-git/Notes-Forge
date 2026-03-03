@@ -112,6 +112,19 @@ class ApiIntegrationTests(unittest.TestCase):
         self.assertEqual(after.status_code, 200)
         self.assertEqual(after.json()["config"]["spacing"]["line_spacing"], 1.6)
 
+    def test_apply_theme_updates_config(self) -> None:
+        applied = self.client.post(
+            "/api/themes/apply",
+            json={"theme_name": "corporate"},
+        )
+        self.assertEqual(applied.status_code, 200)
+        payload = applied.json()
+        self.assertTrue(payload.get("success"))
+        cfg = payload.get("config", {})
+        self.assertEqual(cfg.get("app", {}).get("theme"), "corporate")
+        self.assertEqual(cfg.get("fonts", {}).get("family"), "Arial")
+        self.assertEqual(cfg.get("colors", {}).get("h1"), "#B91C1C")
+
     @patch("app.exporter._convert_docx_to_pdf", return_value=(False, "converter unavailable"))
     @patch("app.exporter._convert_html_to_pdf_weasyprint", return_value=(False, "weasyprint unavailable"))
     def test_generate_pdf_fallback_contract(self, _mock_weasy, _mock_docx) -> None:
