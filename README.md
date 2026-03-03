@@ -246,7 +246,7 @@ PDF export supports two paths:
 - legacy LibreOffice conversion path
 
 If system converters are unavailable, backend attempts a pure-Python PDF fallback renderer (`reportlab`).
-If all PDF paths fail, backend returns a warning and falls back to DOCX (`actualFormat=docx`).
+If all PDF paths fail, backend returns HTTP 503 and does **not** fallback to DOCX for PDF requests.
 
 ## Deployment Contract Verification
 

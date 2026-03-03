@@ -33,10 +33,11 @@ ASCII: +-----------------------+
 
 
 PROMPT_FORMAT = (
-    "Using NotesForge marker syntax (H1–H6, PARAGRAPH, BULLET, NUMBERED, TABLE, CODE), "
-    "generate a structured document about '{topic}' for the '{templateName}' template. "
-    "Keep sections concise, include sample TABLE and CODE if relevant, and ensure the content is deterministic. "
-    "Output ONLY NotesForge markers content, no commentary."
+    "Using strict NotesForge marker syntax (H1-H6, PARAGRAPH, CENTER, RIGHT, JUSTIFY, BULLET, NUMBERED, "
+    "TABLE, CODE, ASCII, PAGEBREAK), generate a structured document about '{topic}' for the '{templateName}' template. "
+    "Every non-empty line must start with a marker and a colon. No free text lines. "
+    "Keep sections concise, include TABLE and CODE where relevant, and produce deterministic output. "
+    "Output ONLY NotesForge markers content with no commentary."
 )
 
 
@@ -52,7 +53,7 @@ class TemplateRepo:
                 name="Assignment",
                 description="Academic assignment/report layout",
                 defaultTheme=PROFESSIONAL_THEME,
-                aiPromptTemplate="Write a structured assignment on {topic} using NotesForge markers: H1:Title, H2:Overview, PARAGRAPH, BULLET, TABLE, CODE if needed.",
+                aiPromptTemplate="Write a strict marker-based assignment on {topic}: H1, H2, PARAGRAPH, BULLET, TABLE, NUMBERED, CODE. Every non-empty line must begin with a marker.",
                 sampleContent=SAMPLE_EXAMPLE,
             ),
             TemplateDefinition(
@@ -60,13 +61,14 @@ class TemplateRepo:
                 name="Resume",
                 description="One page resume layout",
                 defaultTheme=PROFESSIONAL_THEME,
-                aiPromptTemplate="Generate a concise one-page resume for {topic} (role), with sections: H1:Name, H2:Profile, BULLET:Experience, BULLET:Skills, PARAGRAPH:Summary.",
+                aiPromptTemplate="Generate a strict marker one-page resume for {topic}: H1, H2, PARAGRAPH, BULLET, TABLE (optional). Use marker-prefixed lines only.",
                 sampleContent=(
                     "H1: Alex Candidate\n"
                     "H2: Profile\nPARAGRAPH: Product-focused engineer with 5+ years of experience.\n"
                     "H2: Experience\nBULLET: Senior Engineer at Example Corp (2022-Present)\n"
                     "BULLET: Software Engineer at Delta Labs (2019-2022)\n"
                     "H2: Skills\nBULLET: Python, TypeScript, FastAPI, React\n"
+                    "H2: Contact\nTABLE: Channel | Value\nTABLE: Email | alex@example.com\nTABLE: Location | Bengaluru, IN\n"
                     "H2: Summary\nPARAGRAPH: Builds reliable platforms with strong communication.\n"
                 ),
             ),
@@ -75,11 +77,13 @@ class TemplateRepo:
                 name="Report",
                 description="Professional report",
                 defaultTheme=PROFESSIONAL_THEME,
-                aiPromptTemplate="Create a professional report for {topic} using NotesForge markers including H1, H2, PARAGRAPH, TABLE, BULLET, and Conclusion.",
+                aiPromptTemplate="Create a professional strict-marker report for {topic} with H1, H2, PARAGRAPH, TABLE, BULLET, NUMBERED, PAGEBREAK and a conclusion section.",
                 sampleContent=(
                     "H1: Professional Report\nH2: Overview\nPARAGRAPH: Scope and objective.\n"
                     "H2: Findings\nTABLE: Item | Status | Notes\nTABLE: Control 1 | Pass | Healthy\n"
-                    "H2: Actions\nBULLET: Action one\nBULLET: Action two\nH2: Conclusion\nPARAGRAPH: Final summary.\n"
+                    "H2: Actions\nBULLET: Action one\nBULLET: Action two\n"
+                    "PAGEBREAK:\n"
+                    "H2: Conclusion\nPARAGRAPH: Final summary.\n"
                 ),
             ),
             TemplateDefinition(
@@ -87,10 +91,11 @@ class TemplateRepo:
                 name="Meeting Notes",
                 description="Meeting minutes template",
                 defaultTheme=PROFESSIONAL_THEME,
-                aiPromptTemplate="Give meeting minutes for {topic} with H1, PARAGRAPH, BULLET for action items, and NUMBERED for agenda.",
+                aiPromptTemplate="Generate strict marker meeting notes for {topic} using H1, H2, PARAGRAPH, NUMBERED, BULLET, TABLE and PAGEBREAK markers.",
                 sampleContent=(
                     "H1: Meeting Notes\nPARAGRAPH: Date, attendees, and purpose.\n"
                     "H2: Agenda\nNUMBERED: Review updates\nNUMBERED: Discuss blockers\n"
+                    "H2: Decisions\nTABLE: Decision | Owner | Due\nTABLE: Release milestone approved | PM | 2026-03-15\n"
                     "H2: Action Items\nBULLET: Owner A complete task X by Friday\n"
                 ),
             ),
@@ -99,7 +104,7 @@ class TemplateRepo:
                 name="Cybersecurity Report",
                 description="Incident or audit report for security",
                 defaultTheme=PROFESSIONAL_THEME,
-                aiPromptTemplate="Write a cybersecurity incident report for {topic} with sections: H1:Incident Title, H2:Executive Summary, PARAGRAPH, TABLE:Indicators, BULLET:Recommendations, CODE for IOCs if present.",
+                aiPromptTemplate="Write a strict-marker cybersecurity incident report for {topic} including H1, H2, PARAGRAPH, TABLE indicators, BULLET recommendations, CODE IOCs and PAGEBREAK.",
                 sampleContent=SAMPLE_EXAMPLE,
             ),
             TemplateDefinition(
@@ -107,7 +112,7 @@ class TemplateRepo:
                 name="Technical Notes",
                 description="Engineering notes with code and diagrams",
                 defaultTheme=PROFESSIONAL_THEME,
-                aiPromptTemplate="Create technical notes for {topic} using H1, H2, PARAGRAPH, CODE, ASCII, BULLET and TABLE markers only.",
+                aiPromptTemplate="Create strict marker technical notes for {topic} using H1, H2, PARAGRAPH, BULLET, TABLE, CODE, ASCII and optional PAGEBREAK markers.",
                 sampleContent=(
                     "H1: Technical Notes - Service Architecture\n"
                     "H2: Summary\nPARAGRAPH: High-level overview of the service architecture.\n"
@@ -123,7 +128,7 @@ class TemplateRepo:
                 name="Research Notes",
                 description="Structured research capture with findings",
                 defaultTheme=PROFESSIONAL_THEME,
-                aiPromptTemplate="Generate structured research notes for {topic} using H1, H2, PARAGRAPH, TABLE, BULLET and NUMBERED markers.",
+                aiPromptTemplate="Generate strict marker research notes for {topic} using H1, H2, PARAGRAPH, BULLET, TABLE, NUMBERED, CODE where relevant.",
                 sampleContent=(
                     "H1: Research Notes - Topic Overview\n"
                     "H2: Objective\nPARAGRAPH: Define the research objective and expected outcome.\n"
@@ -137,11 +142,12 @@ class TemplateRepo:
                 name="Interview Prep",
                 description="Interview preparation template",
                 defaultTheme=PROFESSIONAL_THEME,
-                aiPromptTemplate="Build interview preparation notes for {topic} using H1, H2, PARAGRAPH, BULLET, NUMBERED and CODE markers.",
+                aiPromptTemplate="Build strict marker interview prep notes for {topic} with H1, H2, PARAGRAPH, BULLET, NUMBERED, TABLE and CODE markers.",
                 sampleContent=(
                     "H1: Interview Preparation - Backend Engineer\n"
                     "H2: Core Topics\nBULLET: API design\nBULLET: Databases\nBULLET: System design\n"
                     "H2: Practice Plan\nNUMBERED: Solve 2 coding problems daily.\nNUMBERED: Review one system design case daily.\n"
+                    "H2: Progress Tracker\nTABLE: Week | Focus | Status\nTABLE: 1 | DSA + APIs | In progress\n"
                     "H2: Key Snippet\nCODE: def solve_problem(input_data):\n"
                 ),
             ),

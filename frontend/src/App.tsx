@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import DOMPurify from "dompurify";
 import { API_BASE, API_HEALTH_TIMEOUT_MS, HAS_EXPLICIT_API_URL } from "./lib/config";
-import { apiGet, apiPost, getErrorMessage, withRetry } from "./lib/api";
+import { api, apiGet, apiPost, getErrorMessage, withRetry } from "./lib/api";
 import {
   Sparkles,
   FileText,
@@ -557,37 +557,61 @@ const DEFAULT_CODE_FONT_OPTIONS = [
 // FALLBACK AI PROMPT
 // ═══════════════════════════════════════════════════════════════════
 
-const FALLBACK_PROMPT = `You are NotesForge Formatter — an expert at transforming raw notes, images, or unstructured text into perfectly structured NotesForge marker format.
+const FALLBACK_PROMPT = `You are NotesForge Formatter v6.2.
 
-## YOUR TASK
-Convert whatever the user provides into clean NotesForge marker syntax. The output is pasted directly into NotesForge to generate a professional Word document.
+TASK:
+Convert user input into STRICT NotesForge marker syntax for direct export.
 
-## AVAILABLE MARKERS
+STRICT RULES:
+1. Every non-empty line MUST start with a valid marker and colon.
+2. No markdown fences, no explanations, no extra commentary.
+3. Use deterministic structure and concise professional language.
+4. Keep all data in marker lines only (no free text lines).
 
-HEADING: "Title"         — H1 main heading
-SUBHEADING: "Name"       — H2 section heading
-SUB-SUBHEADING: "Name"   — H3 sub-section
-H4: / H5: / H6:         — Lower headings
-PARAGRAPH: "Text"        — Body paragraph
-BULLET: "Item"           — Bullet point (indent with 2 spaces: "  Sub-item")
-NUMBERED: "1. Step"      — Numbered list
-CODE: "code line"        — Monospace code (one per line, they stack)
-TABLE: "Col1 | Col2"     — Pipe-separated table rows (first row = header)
-QUOTE: "Quoted text"     — Block-quote
-NOTE: "Important info"   — Callout box
-HIGHLIGHT: "Text" | "yellow"  — Highlighted text
-LINK: "Label" | "https://url" — Hyperlink
-IMAGE: "path" | "Caption" | "center"
-FOOTNOTE: "Reference"    — Footnote
-TOC:                     — Table of contents
+VALID MARKERS:
+H1:
+H2:
+H3:
+H4:
+H5:
+H6:
+PARAGRAPH:
+CENTER:
+RIGHT:
+JUSTIFY:
+BULLET:
+NUMBERED:
+CODE:
+ASCII:
+TABLE:
+PAGEBREAK:
+NOTE:
+QUOTE:
+TOC:
+LINK:
+IMAGE:
+HIGHLIGHT:
+FOOTNOTE:
 
-## RULES
-1. Output ONLY markers — no markdown, no extra commentary
-2. Every line must start with a valid MARKER:
-3. Wrap content in double quotes
-4. Maintain logical structure: Heading → Subheading → Content
-5. Use BULLET for lists, CODE for code, TABLE for tabular data
-`;
+OUTPUT PATTERN:
+H1: Title
+H2: Section
+PARAGRAPH: Summary sentence.
+BULLET: Item 1
+BULLET: Item 2
+TABLE: Header A | Header B | Header C
+TABLE: Value A1 | Value B1 | Value C1
+CODE: command --flag value
+PAGEBREAK:
+H2: Next Section
+
+QUALITY:
+- Include TABLE when the topic has structured data.
+- Include CODE when technical actions are relevant.
+- Use PAGEBREAK between major sections in long documents.
+- Prefer clear heading hierarchy and short paragraphs.
+
+Return ONLY NotesForge marker lines.`;
 
 // ═══════════════════════════════════════════════════════════════════
 // SHORTCUTS DATA
@@ -1922,10 +1946,38 @@ export default function App() {
             ? downloadUrl
             : `${API}${downloadUrl.startsWith("/") ? "" : "/"}${downloadUrl}`
           : "";
-        const a = document.createElement("a");
-        a.href = resolvedUrl;
-        a.download = filename;
-        a.click();
+        try {
+          const fileResp = await api.get<Blob>(resolvedUrl, {
+            responseType: "blob",
+            timeout: 120000,
+          });
+          const contentType =
+            fileResp.headers?.["content-type"] ||
+            "application/octet-stream";
+          const blob = new Blob([fileResp.data], {
+            type: contentType,
+          });
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
+        } catch {
+          // Last-resort fallback for strict browser policies.
+          const a = document.createElement("a");
+          a.href = resolvedUrl;
+          a.download = filename;
+          a.target = "_blank";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setWarn(
+            "Could not stream file directly; opened download link in a new tab."
+          );
+        }
         setSuccess(`✅ ${filename} downloaded!`);
         if (warningMessage) setWarn(warningMessage);
         const entry: RecentExport = {

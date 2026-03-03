@@ -501,21 +501,22 @@ def create_app() -> FastAPI:
             margins=req.theme.margins,
             lineSpacing=req.theme.bodyStyle.lineHeight or 1.4,
         )
-        file_id, output_path, warnings = state.exporter.create_export_file(
-            target_format=req.format,
-            nodes=parsed.nodes,
-            theme=req.theme,
-            formatting=formatting,
-            security=req.security,
-        )
+        try:
+            file_id, output_path, warnings = state.exporter.create_export_file(
+                target_format=req.format,
+                nodes=parsed.nodes,
+                theme=req.theme,
+                formatting=formatting,
+                security=req.security,
+            )
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=str(exc),
+            )
         all_warnings = [*parsed.warnings, *warnings]
 
         actual_format = output_path.suffix.lower().lstrip(".") or req.format
-        if req.format == "pdf" and actual_format != "pdf":
-            all_warnings.insert(
-                0,
-                "PDF conversion is unavailable on this server right now. Generated DOCX fallback instead.",
-            )
 
         if all_warnings:
             logger.warning(

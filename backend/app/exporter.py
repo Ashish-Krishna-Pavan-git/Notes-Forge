@@ -507,8 +507,7 @@ class DocumentExporter:
                 )
                 attempts.append(method)
             if not ok:
-                warnings.append(f"PDF conversion failed: {' | '.join(attempts)}")
-                return docx_id, docx_path, warnings
+                raise RuntimeError(f"PDF conversion failed: {' | '.join(attempts)}")
             warnings.extend(secure_pdf(pdf_path, security.passwordProtectPdf, security.removeMetadata))
             if method == "reportlab":
                 warnings.append("Used simplified PDF renderer fallback for this export.")

@@ -94,6 +94,32 @@ class ApiIntegrationTests(unittest.TestCase):
             )
         )
 
+    def test_generate_and_download_textual_formats(self) -> None:
+        for fmt, ctype_prefix in [
+            ("html", "text/html"),
+            ("md", "text/markdown"),
+            ("txt", "text/plain"),
+        ]:
+            response = self.client.post(
+                "/api/generate",
+                json={
+                    "content": SAMPLE_EXAMPLE,
+                    "theme": PROFESSIONAL_THEME.model_dump(),
+                    "format": fmt,
+                    "filename": f"notesforge_output_{fmt}",
+                    "security": {"disableEditingDocx": False, "removeMetadata": False},
+                    "templateId": "assignment",
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertEqual(payload.get("requestedFormat"), fmt)
+            self.assertEqual(payload.get("actualFormat"), fmt)
+            self.assertTrue(payload.get("filename", "").endswith(f".{fmt}"))
+            download = self.client.get(payload["downloadUrl"])
+            self.assertEqual(download.status_code, 200)
+            self.assertTrue(download.headers["content-type"].startswith(ctype_prefix))
+
     def test_config_endpoints(self) -> None:
         current = self.client.get("/api/config")
         self.assertEqual(current.status_code, 200)
@@ -127,7 +153,8 @@ class ApiIntegrationTests(unittest.TestCase):
 
     @patch("app.exporter._convert_docx_to_pdf", return_value=(False, "converter unavailable"))
     @patch("app.exporter._convert_html_to_pdf_weasyprint", return_value=(False, "weasyprint unavailable"))
-    def test_generate_pdf_fallback_contract(self, _mock_weasy, _mock_docx) -> None:
+    @patch("app.exporter._convert_nodes_to_pdf_reportlab", return_value=(False, "reportlab unavailable"))
+    def test_generate_pdf_fallback_contract(self, _mock_reportlab, _mock_weasy, _mock_docx) -> None:
         response = self.client.post(
             "/api/generate",
             json={
@@ -139,20 +166,9 @@ class ApiIntegrationTests(unittest.TestCase):
                 "templateId": "assignment",
             },
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 503)
         payload = response.json()
-        self.assertEqual(payload.get("requestedFormat"), "pdf")
-        self.assertEqual(payload.get("actualFormat"), "docx")
-        self.assertTrue(payload.get("warning"))
-        self.assertIn("PDF conversion", payload.get("warning", ""))
-
-        download = self.client.get(payload["downloadUrl"])
-        self.assertEqual(download.status_code, 200)
-        self.assertTrue(
-            download.headers["content-type"].startswith(
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-        )
+        self.assertIn("PDF conversion failed", payload.get("detail", ""))
 
 
 if __name__ == "__main__":
