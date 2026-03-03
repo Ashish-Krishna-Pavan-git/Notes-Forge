@@ -510,9 +510,16 @@ def create_app() -> FastAPI:
                 security=req.security,
             )
         except RuntimeError as exc:
+            detail = str(exc)
+            if req.format == "pdf":
+                detail = (
+                    f"{detail}. Install backend dependencies: "
+                    "pip install -r backend/requirements.txt. "
+                    "For Render set Root Directory=backend and Build Command='pip install -r requirements.txt'."
+                )
             raise HTTPException(
                 status_code=503,
-                detail=str(exc),
+                detail=detail,
             )
         all_warnings = [*parsed.warnings, *warnings]
 

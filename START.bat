@@ -48,6 +48,22 @@ if not exist "%BACKEND_DIR%\backend_server.py" (
     exit /b 1
 )
 
+echo Checking backend Python dependencies...
+cd /d "%BACKEND_DIR%"
+python -c "import importlib,sys;mods=['fastapi','docx','weasyprint','reportlab'];missing=[m for m in mods if importlib.util.find_spec(m) is None];sys.exit(1 if missing else 0)" >nul 2>&1
+if errorlevel 1 (
+    echo Some backend dependencies are missing. Installing from requirements.txt...
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
+    if errorlevel 1 (
+        echo [ERROR] Failed to install backend dependencies.
+        echo Please run: cd backend ^&^& pip install -r requirements.txt
+        pause
+        exit /b 1
+    )
+)
+cd /d "%ROOT_DIR%"
+
 REM Frontend
 start "" cmd /k "cd /d ""%FRONTEND_DIR%"" && npm run dev"
 
