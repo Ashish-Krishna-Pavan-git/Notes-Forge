@@ -35,6 +35,22 @@ class ParserTests(unittest.TestCase):
             any(n.type == "paragraph" and n.align == "center" for n in result.nodes)
         )
 
+    def test_parser_supports_legacy_heading_markers(self) -> None:
+        content = (
+            "HEADING: Legacy Title\n"
+            "SUBHEADING: Legacy Section\n"
+            "SUB-SUBHEADING: Legacy Subsection\n"
+            "PARA: body copy\n"
+            "PAGE_BREAK:\n"
+            "PARAGRAPH: after break\n"
+        )
+        result = parse_notesforge(content)
+        heading_levels = [n.level for n in result.nodes if n.type == "heading"]
+        self.assertIn(1, heading_levels)
+        self.assertIn(2, heading_levels)
+        self.assertIn(3, heading_levels)
+        self.assertTrue(any(n.type == "pagebreak" for n in result.nodes))
+
 
 if __name__ == "__main__":
     unittest.main()

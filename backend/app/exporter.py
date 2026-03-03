@@ -467,6 +467,12 @@ class DocumentExporter:
                         cell.text = value
                         if r_idx == 0 and cell.paragraphs and cell.paragraphs[0].runs:
                             cell.paragraphs[0].runs[0].font.bold = True
+                            fill = (theme.tableStyle.headerFill or "").lstrip("#")
+                            if len(fill) == 6:
+                                tc_pr = cell._tc.get_or_add_tcPr()
+                                shd = OxmlElement("w:shd")
+                                shd.set(qn("w:fill"), fill)
+                                tc_pr.append(shd)
             elif node.type == "pagebreak":
                 document.add_page_break()
 

@@ -1815,6 +1815,33 @@ export default function App() {
               config.header?.color ||
               "#2B6CB0",
           },
+          h4: {
+            size: config.fonts?.sizes?.h4 || 14,
+            weight: "600",
+            color:
+              config.colors?.h4 ||
+              config.colors?.h3 ||
+              config.colors?.h2 ||
+              "#2B6CB0",
+          },
+          h5: {
+            size: config.fonts?.sizes?.h5 || 13,
+            weight: "600",
+            color:
+              config.colors?.h5 ||
+              config.colors?.h4 ||
+              config.colors?.h3 ||
+              "#334155",
+          },
+          h6: {
+            size: config.fonts?.sizes?.h6 || 12,
+            weight: "600",
+            color:
+              config.colors?.h6 ||
+              config.colors?.h5 ||
+              config.colors?.h4 ||
+              "#475569",
+          },
         },
         bodyStyle: {
           size: config.fonts?.sizes?.body || 11,

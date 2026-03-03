@@ -7,7 +7,7 @@ from typing import List, Sequence
 
 
 MARKER_RE = re.compile(
-    r"^\s*(H[1-6]|PARAGRAPH|CENTER|RIGHT|JUSTIFY|BULLET|NUMBERED|CODE|ASCII|TABLE|PAGEBREAK)\s*:\s*(.*)$",
+    r"^\s*(HEADING|SUBHEADING|SUB-SUBHEADING|H[1-6]|PARAGRAPH|PARA|CENTER|RIGHT|JUSTIFY|BULLET|NUMBERED|CODE|ASCII|TABLE|PAGEBREAK|PAGE_BREAK|QUOTE|NOTE|IMPORTANT|TOC|IMAGE|LINK|HIGHLIGHT|FOOTNOTE)\s*:\s*(.*)$",
     re.IGNORECASE,
 )
 
@@ -69,12 +69,41 @@ def parse_notesforge(content: str) -> ParseResult:
         marker = marker_match.group(1).upper()
         payload = marker_match.group(2).strip()
 
-        if marker.startswith("H") and marker[1:].isdigit():
+        if marker in {"HEADING", "H1"}:
+            nodes.append(Node(type="heading", level=1, text=payload))
+            idx += 1
+            continue
+
+        if marker in {"SUBHEADING", "H2"}:
+            nodes.append(Node(type="heading", level=2, text=payload))
+            idx += 1
+            continue
+
+        if marker in {"SUB-SUBHEADING", "H3"}:
+            nodes.append(Node(type="heading", level=3, text=payload))
+            idx += 1
+            continue
+
+        if marker in {"H4", "H5", "H6"}:
             nodes.append(Node(type="heading", level=int(marker[1:]), text=payload))
             idx += 1
             continue
 
-        if marker in {"PARAGRAPH", "CENTER", "RIGHT", "JUSTIFY"}:
+        if marker in {
+            "PARAGRAPH",
+            "PARA",
+            "CENTER",
+            "RIGHT",
+            "JUSTIFY",
+            "QUOTE",
+            "NOTE",
+            "IMPORTANT",
+            "TOC",
+            "IMAGE",
+            "LINK",
+            "HIGHLIGHT",
+            "FOOTNOTE",
+        }:
             paragraph_lines = [payload] if payload else []
             next_idx = idx + 1
             while next_idx < len(lines):
@@ -86,9 +115,18 @@ def parse_notesforge(content: str) -> ParseResult:
                 next_idx += 1
             align = {
                 "PARAGRAPH": "left",
+                "PARA": "left",
                 "CENTER": "center",
                 "RIGHT": "right",
                 "JUSTIFY": "justify",
+                "QUOTE": "left",
+                "NOTE": "left",
+                "IMPORTANT": "left",
+                "TOC": "left",
+                "IMAGE": "left",
+                "LINK": "left",
+                "HIGHLIGHT": "left",
+                "FOOTNOTE": "left",
             }[marker]
             nodes.append(
                 Node(
@@ -194,7 +232,7 @@ def parse_notesforge(content: str) -> ParseResult:
             idx = next_idx
             continue
 
-        if marker == "PAGEBREAK":
+        if marker in {"PAGEBREAK", "PAGE_BREAK"}:
             nodes.append(Node(type="pagebreak"))
             idx += 1
             continue
