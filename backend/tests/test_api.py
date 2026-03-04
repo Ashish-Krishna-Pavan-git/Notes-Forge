@@ -103,6 +103,8 @@ class ApiIntegrationTests(unittest.TestCase):
             "page_border_color": "#B91C1C",
             "page_border_width": 2,
             "page_border_style": "double",
+            # Header/footer alignment is now forced to center in the DOCX exporter
+            # so theme-specified alignment should not affect the final layout.
             "header_alignment": "left",
             "footer_alignment": "right",
             "header_show_page_numbers": False,
@@ -138,8 +140,10 @@ class ApiIntegrationTests(unittest.TestCase):
 
         document_xml_u = document_xml.upper()
         self.assertIn("W:PGBORDERS", document_xml_u)
-        self.assertIn('w:jc w:val="left"', header_xml)
-        self.assertIn('w:jc w:val="right"', footer_xml)
+        # Header/footer paragraphs and page numbers are centered to keep
+        # DOCX and PDF exports visually consistent.
+        self.assertIn('w:jc w:val="center"', header_xml)
+        self.assertIn('w:jc w:val="center"', footer_xml)
         self.assertIn("NUMPAGES", footer_xml)
         self.assertIn("PAGE", footer_xml)
         self.assertIn('W:FILL="F6F6F6"', document_xml_u)

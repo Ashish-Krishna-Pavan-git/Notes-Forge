@@ -723,7 +723,7 @@ class DocumentExporter:
             styles,
             "paragraph_spacing_after",
             "paragraphSpacingAfter",
-            default=0.0,
+            default=6.0,
         )
         paragraph_before_pt = _style_num(
             styles,
