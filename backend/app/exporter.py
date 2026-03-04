@@ -374,6 +374,7 @@ def _convert_nodes_to_pdf_reportlab(
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
         from reportlab.pdfgen import canvas
+        from reportlab.lib.colors import HexColor, black
     except Exception as exc:
         return False, f"reportlab unavailable: {exc}"
 
@@ -404,6 +405,12 @@ def _convert_nodes_to_pdf_reportlab(
         if cur or not pages:
             pages.append(cur)
 
+        try:
+            header_footer_color = HexColor(theme.primaryColor or "#1F3A5F")
+        except Exception:
+            header_footer_color = HexColor("#1F3A5F")
+        body_color = black
+
         c = canvas.Canvas(str(pdf_path), pagesize=A4)
         c.setAuthor("NotesForge")
         c.setTitle("NotesForge Export")
@@ -416,10 +423,15 @@ def _convert_nodes_to_pdf_reportlab(
             y = page_h - margin_top
             if security.headerText:
                 c.setFont("Helvetica-Bold", 10)
-                c.drawString(margin_left, y, str(security.headerText))
+                c.setFillColor(header_footer_color)
+                header_text = str(security.headerText)
+                header_x = page_w / 2.0
+                c.drawCentredString(header_x, y, header_text)
+                c.setFillColor(body_color)
                 y -= line_height
 
             c.setFont("Helvetica", font_size)
+            c.setFillColor(body_color)
             for ln in page_lines:
                 text = (ln or "").replace("\t", "    ")
                 max_chars = max(20, int((page_w - margin_left - margin_right) / (font_size * 0.55)))
@@ -443,7 +455,12 @@ def _convert_nodes_to_pdf_reportlab(
             else:
                 footer_parts.append(f"Page {p_idx}")
             c.setFont("Helvetica", 9)
-            c.drawString(margin_left, margin_bottom * 0.55, " | ".join(footer_parts))
+            c.setFillColor(header_footer_color)
+            footer_text = " | ".join(footer_parts)
+            footer_x = page_w / 2.0
+            footer_y = margin_bottom * 0.5
+            c.drawCentredString(footer_x, footer_y, footer_text)
+            c.setFillColor(body_color)
             c.showPage()
 
         c.save()
@@ -604,10 +621,10 @@ class DocumentExporter:
         header_para.text = (security.headerText or "").strip()
         footer_para.text = (security.footerText or "").strip()
 
-        header_align = _style_str(styles, "header_alignment", "headerAlignment", default="center").lower()
-        footer_align = _style_str(styles, "footer_alignment", "footerAlignment", default="center").lower()
-        header_para.alignment = _docx_alignment(header_align)
-        footer_para.alignment = _docx_alignment(footer_align)
+        # Force centered alignment for header and footer to keep layout consistent
+        # across DOCX and PDF exports regardless of theme-specific overrides.
+        header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         header_size = _style_num(styles, "header_size", "headerSize", default=10.0)
         footer_size = _style_num(styles, "footer_size", "footerSize", default=9.0)
@@ -691,10 +708,6 @@ class DocumentExporter:
             "pageNumberAlignment",
             default="",
         ).lower()
-        if not page_number_alignment:
-            page_number_alignment = (
-                header_align if page_number_position == "header" else footer_align
-            )
 
         page_para = header_para if page_number_position == "header" else footer_para
         include_page_numbers = (
@@ -704,7 +717,7 @@ class DocumentExporter:
             if page_para.runs and page_para.runs[-1].text and not page_para.runs[-1].text.endswith(" "):
                 page_para.add_run(" ")
             _add_page_number(page_para, page_mode)
-            page_para.alignment = _docx_alignment(page_number_alignment)
+            page_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         paragraph_after_pt = _style_num(
             styles,
@@ -960,7 +973,7 @@ class DocumentExporter:
                     theme,
                     formatting,
                     security,
-                    include_running_blocks=False,
+                    include_running_blocks=True,
                 )
                 ok, method = _convert_html_to_pdf_weasyprint(html_preview, pdf_path)
                 attempts.append(method)

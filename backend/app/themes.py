@@ -232,11 +232,11 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
         ".nf-preview-root>*{position:relative;z-index:1;}"
         ".nf-page-break{margin:1rem 0;border-top:2px dashed #cbd5e1;height:1px;page-break-after:always;break-after:page;}"
         ".nf-ascii{background:#111827;color:#f1f5f9;}"
-        f".nf-running-header{{position:fixed;top:6mm;left:0;right:0;text-align:{header_align};font-size:{header_size}px;"
-        f"font-family:{header_font};color:{header_color};padding:0 8mm;"
+        f".nf-running-header{{position:fixed;top:6mm;left:{margins.left}mm;right:{margins.right}mm;text-align:center;font-size:{header_size}px;"
+        f"font-family:{header_font};color:{header_color};padding:0;"
         f"{'border-bottom:1px solid ' + header_separator_color + ';' if header_separator else ''}}}"
-        f".nf-running-footer{{position:fixed;bottom:6mm;left:0;right:0;text-align:{footer_align};font-size:{footer_size}px;"
-        f"font-family:{footer_font};color:{footer_color};padding:0 8mm;"
+        f".nf-running-footer{{position:fixed;bottom:6mm;left:{margins.left}mm;right:{margins.right}mm;text-align:center;font-size:{footer_size}px;"
+        f"font-family:{footer_font};color:{footer_color};padding:0;"
         f"{'border-top:1px solid ' + footer_separator_color + ';' if footer_separator else ''}}}"
         '.nf-page-num[data-mode="page_x"]::after{content:"Page " counter(page);}'
         '.nf-page-num[data-mode="page_x_of_y"]::after{content:"Page " counter(page) " of " counter(pages);}'
