@@ -1,0 +1,42 @@
+NotesForge - Cybersecurity Incident Summary
+
+Executive Summary
+
+A brief summary of the incident, its impact, and immediate actions taken.
+
+Details
+
+The incident occurred on 2026-02-24 at 22:15 IST. Affected systems included DB server and internal API.
+
+- Initial detection via IDS alert.
+
+- Systems isolated.
+
+- Forensic snapshot taken.
+
+Indicators of Compromise (IOCs)
+
+Type | Value | Notes
+IP | 203.0.113.45 | Suspicious outbound traffic
+Hash | e3b0c442... | Malware sample hash
+
+Recommendations
+
+1. Rotate compromised credentials.
+
+1. Patch vulnerable services.
+
+1. Run a full internal audit.
+
+curl -X GET "https://internal-api.local/health" -H "Authorization: Bearer <token>"
+
+
+[PAGE BREAK]
+
+Appendix
+
++-----------------------+
+
+| Incident Flow Diagram |
+
++-----------------------+

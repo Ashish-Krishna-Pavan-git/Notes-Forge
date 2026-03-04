@@ -8,6 +8,107 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 MAX_CONTENT_LENGTH = 500_000
 
 
+class HeaderSettings(BaseModel):
+  show: bool = True
+  text: str = ""
+  color: str = "#000000"
+  size_pt: int = 10
+  font: str = "Segoe UI"
+  alignment: Literal["left", "center", "right"] = "center"
+  show_page_numbers: bool = True
+  page_format: str = "Page {page} of {total}"
+  page_number_style: str = "1,2,3"
+  separator: bool = True
+  separator_color: str = "#CCCCCC"
+
+
+class FooterSettings(BaseModel):
+  show: bool = True
+  text: str = ""
+  color: str = "#000000"
+  size_pt: int = 8
+  font: str = "Segoe UI"
+  alignment: Literal["left", "center", "right"] = "center"
+  show_page_numbers: bool = True
+  page_format: str = "Page {page}"
+  page_number_style: str = "1,2,3"
+  separator: bool = True
+  separator_color: str = "#CCCCCC"
+
+
+class WatermarkSettings(BaseModel):
+  enabled: bool = False
+  text: str = ""
+  opacity: float = 0.1
+  position: Literal["center", "header"] = "center"
+
+  @field_validator("opacity")
+  @classmethod
+  def clamp_opacity(cls, value: float) -> float:
+      return max(0.0, min(1.0, float(value)))
+
+
+class MarginSettings(BaseModel):
+  top_in: float = 1.0
+  bottom_in: float = 1.0
+  left_in: float = 1.0
+  right_in: float = 1.0
+
+
+class PageBorderSettings(BaseModel):
+  enabled: bool = False
+  style: Literal["single", "double", "dashed", "dotted", "thick"] = "single"
+  color: str = "#000000"
+  width_pt: float = 1.0
+
+
+class PageSettings(BaseModel):
+  size: Literal["A4", "A3", "LETTER", "LEGAL"] = "A4"
+  orientation: Literal["portrait", "landscape"] = "portrait"
+
+
+class FontFamilySettings(BaseModel):
+  body: str | None = None
+  code: str | None = None
+  header: str | None = None
+  footer: str | None = None
+  h1: str | None = None
+  h2: str | None = None
+  h3: str | None = None
+  h4: str | None = None
+  h5: str | None = None
+  h6: str | None = None
+
+
+class SpacingSettings(BaseModel):
+  line_spacing: float | None = 1.4
+  paragraph_spacing_after_pt: float | None = 6.0
+  heading_spacing_before_pt: float | None = 12.0
+  heading_spacing_after_pt: float | None = 6.0
+
+
+class DocumentSettings(BaseModel):
+  """
+  Canonical document settings shared across HTML preview, DOCX, and PDF.
+
+  This model mirrors backend/config/document_schema.json and is intended to be
+  the single source of truth for visual layout decisions (headers, footers,
+  margins, borders, watermarks, and fonts).
+  """
+
+  theme: str = "professional"
+  header: HeaderSettings = Field(default_factory=HeaderSettings)
+  footer: FooterSettings = Field(default_factory=FooterSettings)
+  watermark: WatermarkSettings = Field(default_factory=WatermarkSettings)
+  margins: MarginSettings = Field(default_factory=MarginSettings)
+  page_border: PageBorderSettings = Field(default_factory=PageBorderSettings)
+  page: PageSettings = Field(default_factory=PageSettings)
+  fonts: FontFamilySettings | None = None
+  spacing: SpacingSettings | None = None
+
+  model_config = ConfigDict(extra="forbid")
+
+
 class HeadingTokenStyle(BaseModel):
     size: Optional[int] = None
     weight: Optional[str] = None
@@ -88,6 +189,10 @@ class PreviewRequest(BaseModel):
     theme: ThemePayload = Field(default_factory=ThemePayload)
     formattingOptions: FormattingOptions = Field(default_factory=FormattingOptions)
     security: PreviewSecurityPayload = Field(default_factory=PreviewSecurityPayload)
+    documentSettings: DocumentSettings | None = Field(
+        default=None,
+        description="Canonical document settings; when provided, this becomes the source of truth for header/footer/margins/borders/watermark.",
+    )
 
 
 class StructureSummary(BaseModel):
@@ -109,6 +214,10 @@ class GenerateRequest(BaseModel):
     filename: str = "notesforge_output"
     security: GenerateSecurityPayload = Field(default_factory=GenerateSecurityPayload)
     templateId: Optional[str] = None
+    documentSettings: DocumentSettings | None = Field(
+        default=None,
+        description="Canonical document settings; when provided, used for header/footer/margins/border/watermark across exporters.",
+    )
 
     @field_validator("filename")
     @classmethod

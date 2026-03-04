@@ -17,10 +17,16 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt, RGBColor
 
-from .models import FormattingOptions, GenerateSecurityPayload, ThemePayload
+from .models import (
+    DocumentSettings,
+    FormattingOptions,
+    GenerateSecurityPayload,
+    ThemePayload,
+)
 from .parser import Node, render_preview_html, to_markdown, to_plain_text
 from .security import disable_docx_editing, remove_docx_metadata, secure_pdf
 from .themes import css_from_theme, watermark_html
+from .utils.style_generator import DocxStyleSpec, style_generator
 
 
 def _hex_to_rgb(value: str) -> RGBColor:
@@ -232,20 +238,26 @@ def _style_paragraph_runs(
             run.font.italic = italic
 
 
-def _inject_preview_running_blocks(html: str, security: GenerateSecurityPayload) -> str:
-    header_text = (security.headerText or "").strip()
-    footer_text = (security.footerText or "").strip()
-    show_page_number = security.pageNumberMode in {"page_x", "page_x_of_y"}
-    mode = security.pageNumberMode if show_page_number else "page_x"
+def _inject_preview_running_blocks(
+    html: str,
+    *,
+    header_text: str = "",
+    footer_text: str = "",
+    show_page_numbers: bool = True,
+    page_mode: str = "page_x",
+) -> str:
+    header_text = (header_text or "").strip()
+    footer_text = (footer_text or "").strip()
+    mode = page_mode if page_mode in {"page_x", "page_x_of_y"} else "page_x"
 
-    injected = []
+    injected: list[str] = []
     if header_text:
         injected.append(f'<div class="nf-running-header">{escape(header_text)}</div>')
 
-    footer_parts = []
+    footer_parts: list[str] = []
     if footer_text:
         footer_parts.append(f'<span class="nf-footer-text">{escape(footer_text)}</span>')
-    if show_page_number:
+    if show_page_numbers:
         footer_parts.append(f'<span class="nf-page-num" data-mode="{mode}"></span>')
     if footer_parts:
         injected.append(f'<div class="nf-running-footer">{" ".join(footer_parts)}</div>')
@@ -513,12 +525,66 @@ class DocumentExporter:
         formatting: FormattingOptions,
         security: GenerateSecurityPayload,
         include_running_blocks: bool = True,
+        document_settings: DocumentSettings | None = None,
     ) -> str:
+        if document_settings is not None:
+            docx_spec, css = style_generator(document_settings)
+            # When DocumentSettings is present, watermark text is canonical.
+            wm_payload = security.watermark
+            if docx_spec.watermark.get("enabled") and docx_spec.watermark.get("text"):
+                from .models import WatermarkPayload
+
+                wm_payload = WatermarkPayload(
+                    type="text",
+                    value=str(docx_spec.watermark.get("text", "")),
+                    position="center",
+                )
+            watermark = watermark_html(wm_payload)
+            html = render_preview_html(nodes, css, watermark)
+            if not include_running_blocks:
+                return html
+
+            header = docx_spec.header
+            footer = docx_spec.footer
+            header_text = header.get("text", "") if header.get("enabled") else ""
+            footer_text = footer.get("text", "") if footer.get("enabled") else ""
+
+            # If either header/footer format references total pages, prefer "page_x_of_y".
+            page_format_values = [
+                str(header.get("page_format", "")),
+                str(footer.get("page_format", "")),
+            ]
+            if any("{total}" in pf or "{pages}" in pf for pf in page_format_values):
+                mode = "page_x_of_y"
+            else:
+                mode = "page_x"
+
+            show_page_numbers = bool(
+                (header.get("enabled") and header.get("show_page_numbers"))
+                or (footer.get("enabled") and footer.get("show_page_numbers"))
+            )
+
+            return _inject_preview_running_blocks(
+                html,
+                header_text=header_text,
+                footer_text=footer_text,
+                show_page_numbers=show_page_numbers,
+                page_mode=mode,
+            )
+
         css = css_from_theme(theme, formatting)
         watermark = watermark_html(security.watermark)
         html = render_preview_html(nodes, css, watermark)
         if include_running_blocks:
-            return _inject_preview_running_blocks(html, security)
+            page_mode = security.pageNumberMode or "page_x"
+            show_page_numbers = security.pageNumberMode in {"page_x", "page_x_of_y"}
+            return _inject_preview_running_blocks(
+                html,
+                header_text=security.headerText or "",
+                footer_text=security.footerText or "",
+                show_page_numbers=show_page_numbers,
+                page_mode=page_mode,
+            )
         return html
 
     def create_docx(
@@ -527,6 +593,7 @@ class DocumentExporter:
         theme: ThemePayload,
         formatting: FormattingOptions,
         security: GenerateSecurityPayload,
+        document_settings: DocumentSettings | None = None,
     ) -> Tuple[str, Path, List[str]]:
         self.store.cleanup()
         warnings: List[str] = []
@@ -535,6 +602,10 @@ class DocumentExporter:
         document = Document()
         section = document.sections[0]
         styles = theme.styles if isinstance(theme.styles, dict) else {}
+
+        docx_spec: DocxStyleSpec | None = None
+        if document_settings is not None:
+            docx_spec, _ = style_generator(document_settings)
 
         page_size = _style_str(styles, "page_size", "pageSize", default="A4").upper()
         page_orientation = _style_str(
@@ -560,10 +631,13 @@ class DocumentExporter:
                 section.page_width = Mm(w_mm)
                 section.page_height = Mm(h_mm)
 
-        section.top_margin = _mm_or_default(formatting.margins.top, 25)
-        section.bottom_margin = _mm_or_default(formatting.margins.bottom, 25)
-        section.left_margin = _mm_or_default(formatting.margins.left, 25)
-        section.right_margin = _mm_or_default(formatting.margins.right, 25)
+        if docx_spec is not None:
+            docx_spec.apply_margins(section)
+        else:
+            section.top_margin = _mm_or_default(formatting.margins.top, 25)
+            section.bottom_margin = _mm_or_default(formatting.margins.bottom, 25)
+            section.left_margin = _mm_or_default(formatting.margins.left, 25)
+            section.right_margin = _mm_or_default(formatting.margins.right, 25)
 
         font_name = _font_primary(theme.fontFamily)
         body_color = _style_str(styles, "body_color", "bodyColor", default="#17202a")
@@ -587,44 +661,67 @@ class DocumentExporter:
         normal_style.font.color.rgb = _hex_to_rgb(body_color)
         normal_style.paragraph_format.line_spacing = line_spacing
 
-        _apply_page_borders(
-            section,
-            enabled=_style_bool(styles, "page_border_enabled", "pageBorderEnabled", default=False),
-            width_pt=_style_num(
-                styles,
-                "page_border_width",
-                "pageBorderWidth",
-                default=1.0,
-            ),
-            color=_style_str(
-                styles,
-                "page_border_color",
-                "pageBorderColor",
-                default=theme.primaryColor,
-            ),
-            style=_style_str(
-                styles,
-                "page_border_style",
-                "pageBorderStyle",
-                default="single",
-            ),
-            offset_pt=_style_num(
-                styles,
-                "page_border_offset",
-                "pageBorderOffset",
-                default=24.0,
-            ),
-        )
+        if docx_spec is not None:
+            _apply_page_borders(
+                section,
+                enabled=docx_spec.page_border["enabled"],
+                width_pt=docx_spec.page_border["width_pt"],
+                color=docx_spec.page_border["color"],
+                style=docx_spec.page_border["style"],
+                offset_pt=24.0,
+            )
+        else:
+            _apply_page_borders(
+                section,
+                enabled=_style_bool(styles, "page_border_enabled", "pageBorderEnabled", default=False),
+                width_pt=_style_num(
+                    styles,
+                    "page_border_width",
+                    "pageBorderWidth",
+                    default=1.0,
+                ),
+                color=_style_str(
+                    styles,
+                    "page_border_color",
+                    "pageBorderColor",
+                    default=theme.primaryColor,
+                ),
+                style=_style_str(
+                    styles,
+                    "page_border_style",
+                    "pageBorderStyle",
+                    default="single",
+                ),
+                offset_pt=_style_num(
+                    styles,
+                    "page_border_offset",
+                    "pageBorderOffset",
+                    default=24.0,
+                ),
+            )
 
         header_para = section.header.paragraphs[0] if section.header.paragraphs else section.header.add_paragraph()
         footer_para = section.footer.paragraphs[0] if section.footer.paragraphs else section.footer.add_paragraph()
-        header_para.text = (security.headerText or "").strip()
-        footer_para.text = (security.footerText or "").strip()
 
-        # Force centered alignment for header and footer to keep layout consistent
-        # across DOCX and PDF exports regardless of theme-specific overrides.
-        header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        if docx_spec is not None:
+            header_text = docx_spec.header.get("text", "") if docx_spec.header.get("enabled") else ""
+            footer_text = docx_spec.footer.get("text", "") if docx_spec.footer.get("enabled") else ""
+            header_para.text = header_text
+            footer_para.text = footer_text
+        else:
+            header_para.text = (security.headerText or "").strip()
+            footer_para.text = (security.footerText or "").strip()
+
+        # When using canonical DocumentSettings, align according to header/footer settings;
+        # otherwise preserve the previous behavior of centered alignment for compatibility.
+        if docx_spec is not None:
+            header_align = docx_spec.header.get("alignment", "center")
+            footer_align = docx_spec.footer.get("alignment", "center")
+            header_para.alignment = _docx_alignment(str(header_align))
+            footer_para.alignment = _docx_alignment(str(footer_align))
+        else:
+            header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         header_size = _style_num(styles, "header_size", "headerSize", default=10.0)
         footer_size = _style_num(styles, "footer_size", "footerSize", default=9.0)
@@ -657,7 +754,15 @@ class DocumentExporter:
             italic=footer_italic,
         )
 
-        if _style_bool(styles, "header_separator", "headerSeparator", default=False):
+        if docx_spec is not None and docx_spec.header.get("separator"):
+            _apply_paragraph_separator(
+                header_para,
+                "bottom",
+                str(docx_spec.header.get("separator_color", "#CFCFCF")),
+                0.75,
+                "single",
+            )
+        elif docx_spec is None and _style_bool(styles, "header_separator", "headerSeparator", default=False):
             _apply_paragraph_separator(
                 header_para,
                 "bottom",
@@ -665,7 +770,15 @@ class DocumentExporter:
                 0.75,
                 "single",
             )
-        if _style_bool(styles, "footer_separator", "footerSeparator", default=False):
+        if docx_spec is not None and docx_spec.footer.get("separator"):
+            _apply_paragraph_separator(
+                footer_para,
+                "top",
+                str(docx_spec.footer.get("separator_color", "#CFCFCF")),
+                0.75,
+                "single",
+            )
+        elif docx_spec is None and _style_bool(styles, "footer_separator", "footerSeparator", default=False):
             _apply_paragraph_separator(
                 footer_para,
                 "top",
@@ -674,12 +787,20 @@ class DocumentExporter:
                 "single",
             )
 
-        page_mode = security.pageNumberMode or _style_str(
-            styles,
-            "page_number_mode",
-            "pageNumberMode",
-            default="page_x",
-        )
+        if docx_spec is not None:
+            header_fmt = str(docx_spec.header.get("page_format", "")).lower()
+            footer_fmt = str(docx_spec.footer.get("page_format", "")).lower()
+            if "{total}" in header_fmt or "{pages}" in header_fmt or "{total}" in footer_fmt or "{pages}" in footer_fmt:
+                page_mode = "page_x_of_y"
+            else:
+                page_mode = "page_x"
+        else:
+            page_mode = security.pageNumberMode or _style_str(
+                styles,
+                "page_number_mode",
+                "pageNumberMode",
+                default="page_x",
+            )
         if page_mode not in {"page_x", "page_x_of_y"}:
             page_mode = "page_x"
         page_number_position = _style_str(
@@ -717,7 +838,11 @@ class DocumentExporter:
             if page_para.runs and page_para.runs[-1].text and not page_para.runs[-1].text.endswith(" "):
                 page_para.add_run(" ")
             _add_page_number(page_para, page_mode)
-            page_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            if docx_spec is not None:
+                page_align = docx_spec.header.get("alignment") if page_number_position == "header" else docx_spec.footer.get("alignment")
+                page_para.alignment = _docx_alignment(str(page_align or "center"))
+            else:
+                page_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         paragraph_after_pt = _style_num(
             styles,
@@ -801,7 +926,14 @@ class DocumentExporter:
             default="#F8FAFC",
         )
 
-        if security.watermark and security.watermark.type == "text" and security.watermark.value:
+        if docx_spec is not None and docx_spec.watermark.get("enabled") and docx_spec.watermark.get("text"):
+            p = document.add_paragraph(str(docx_spec.watermark.get("text", "")))
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = p.runs[0]
+            run.font.color.rgb = _hex_to_rgb(theme.primaryColor)
+            run.font.size = Pt(28)
+            run.font.bold = True
+        elif security.watermark and security.watermark.type == "text" and security.watermark.value:
             p = document.add_paragraph(security.watermark.value)
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             run = p.runs[0]
@@ -954,8 +1086,15 @@ class DocumentExporter:
         theme: ThemePayload,
         formatting: FormattingOptions,
         security: GenerateSecurityPayload,
+        document_settings: DocumentSettings | None = None,
     ) -> Tuple[str, Path, List[str]]:
-        docx_id, docx_path, warnings = self.create_docx(nodes, theme, formatting, security)
+        docx_id, docx_path, warnings = self.create_docx(
+            nodes,
+            theme,
+            formatting,
+            security,
+            document_settings=document_settings,
+        )
 
         if target_format == "docx":
             return docx_id, docx_path, warnings
@@ -974,6 +1113,7 @@ class DocumentExporter:
                     formatting,
                     security,
                     include_running_blocks=True,
+                    document_settings=document_settings,
                 )
                 ok, method = _convert_html_to_pdf_weasyprint(html_preview, pdf_path)
                 attempts.append(method)

@@ -1,0 +1,278 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://notesforge.app/schemas/document-settings.json",
+  "title": "DocumentSettings",
+  "description": "Canonical document styling settings for NotesForge. This schema is the single source of truth for how headers, footers, margins, borders, watermarks, and fonts are applied across Preview (HTML), DOCX, and PDF exports.",
+  "type": "object",
+  "required": ["theme", "header", "footer", "watermark", "margins", "page_border"],
+  "properties": {
+    "theme": {
+      "type": "string",
+      "description": "Logical theme identifier (e.g. 'professional', 'corporate', 'FLM'). Used for presets and analytics; all visual decisions must still be derivable from the rest of this object."
+    },
+    "header": {
+      "type": "object",
+      "description": "Header content and styling applied consistently to HTML preview, DOCX, and PDF.",
+      "required": ["show", "text", "color", "size_pt", "font", "alignment", "show_page_numbers", "page_format", "separator", "separator_color"],
+      "properties": {
+        "show": {
+          "type": "boolean",
+          "description": "Whether a header is rendered at the top of each page."
+        },
+        "text": {
+          "type": "string",
+          "description": "Header text content. Plain text; any markup is escaped."
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#?[0-9a-fA-F]{6}$",
+          "description": "Header text color in hex (e.g. '#ff4000')."
+        },
+        "size_pt": {
+          "type": "number",
+          "minimum": 4,
+          "maximum": 72,
+          "description": "Header font size in points."
+        },
+        "font": {
+          "type": "string",
+          "description": "Preferred header font family (logical name, not guaranteed installed)."
+        },
+        "alignment": {
+          "type": "string",
+          "enum": ["left", "center", "right"],
+          "description": "Header horizontal alignment."
+        },
+        "show_page_numbers": {
+          "type": "boolean",
+          "description": "Whether page numbers should appear in the header."
+        },
+        "page_format": {
+          "type": "string",
+          "description": "Human readable page number format using '{page}' and '{total}' placeholders, e.g. 'Page {page} of {total}'."
+        },
+        "page_number_style": {
+          "type": "string",
+          "enum": ["1,2,3", "i,ii,iii", "I,II,III", "a,b,c", "A,B,C"],
+          "default": "1,2,3",
+          "description": "Page number style hint; mapped to python-docx and CSS counters where possible."
+        },
+        "separator": {
+          "type": "boolean",
+          "description": "Whether a separator line is drawn under the header."
+        },
+        "separator_color": {
+          "type": "string",
+          "pattern": "^#?[0-9a-fA-F]{6}$",
+          "description": "Color of the header separator line."
+        }
+      },
+      "additionalProperties": false
+    },
+    "footer": {
+      "type": "object",
+      "description": "Footer content and styling applied consistently to HTML preview, DOCX, and PDF.",
+      "required": ["show", "text", "color", "size_pt", "font", "alignment", "show_page_numbers", "page_format", "separator", "separator_color"],
+      "properties": {
+        "show": {
+          "type": "boolean",
+          "description": "Whether a footer is rendered at the bottom of each page."
+        },
+        "text": {
+          "type": "string",
+          "description": "Footer text content. Plain text; any markup is escaped."
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#?[0-9a-fA-F]{6}$",
+          "description": "Footer text color in hex (e.g. '#2C5282')."
+        },
+        "size_pt": {
+          "type": "number",
+          "minimum": 4,
+          "maximum": 72,
+          "description": "Footer font size in points."
+        },
+        "font": {
+          "type": "string",
+          "description": "Preferred footer font family (logical name, not guaranteed installed)."
+        },
+        "alignment": {
+          "type": "string",
+          "enum": ["left", "center", "right"],
+          "description": "Footer horizontal alignment."
+        },
+        "show_page_numbers": {
+          "type": "boolean",
+          "description": "Whether page numbers should appear in the footer."
+        },
+        "page_format": {
+          "type": "string",
+          "description": "Human readable page number format using '{page}' and '{total}' placeholders, e.g. '| Page {page}'."
+        },
+        "page_number_style": {
+          "type": "string",
+          "enum": ["1,2,3", "i,ii,iii", "I,II,III", "a,b,c", "A,B,C"],
+          "default": "1,2,3",
+          "description": "Page number style hint; mapped to python-docx and CSS counters where possible."
+        },
+        "separator": {
+          "type": "boolean",
+          "description": "Whether a separator line is drawn above the footer."
+        },
+        "separator_color": {
+          "type": "string",
+          "pattern": "^#?[0-9a-fA-F]{6}$",
+          "description": "Color of the footer separator line."
+        }
+      },
+      "additionalProperties": false
+    },
+    "watermark": {
+      "type": "object",
+      "description": "Watermark configuration shared by HTML, DOCX, and PDF.",
+      "required": ["enabled", "text", "opacity", "position"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether a watermark is rendered."
+        },
+        "text": {
+          "type": "string",
+          "description": "Text watermark content."
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Watermark opacity between 0 and 1."
+        },
+        "position": {
+          "type": "string",
+          "enum": ["center", "header"],
+          "description": "Logical position of watermark; mapped to CSS and DOCX header shapes."
+        }
+      },
+      "additionalProperties": false
+    },
+    "margins": {
+      "type": "object",
+      "description": "Page margins in inches; mapped directly to DOCX Inches and HTML @page margins.",
+      "required": ["top_in", "bottom_in", "left_in", "right_in"],
+      "properties": {
+        "top_in": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "bottom_in": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "left_in": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "right_in": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        }
+      },
+      "additionalProperties": false
+    },
+    "page_border": {
+      "type": "object",
+      "description": "Page border configuration for DOCX and HTML/CSS.",
+      "required": ["enabled", "style", "color", "width_pt"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether a page border is rendered."
+        },
+        "style": {
+          "type": "string",
+          "enum": ["single", "double", "dashed", "dotted", "thick"],
+          "description": "Logical border style; mapped to python-docx and CSS equivalents."
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#?[0-9a-fA-F]{6}$",
+          "description": "Border color in hex."
+        },
+        "width_pt": {
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 12,
+          "description": "Border line width in points."
+        }
+      },
+      "additionalProperties": false
+    },
+    "page": {
+      "type": "object",
+      "description": "Optional page size/orientation overrides.",
+      "properties": {
+        "size": {
+          "type": "string",
+          "enum": ["A4", "A3", "LETTER", "LEGAL"],
+          "default": "A4"
+        },
+        "orientation": {
+          "type": "string",
+          "enum": ["portrait", "landscape"],
+          "default": "portrait"
+        }
+      },
+      "additionalProperties": false
+    },
+    "fonts": {
+      "type": "object",
+      "description": "Optional font mapping for body, code, header, footer, and headings.",
+      "properties": {
+        "body": { "type": "string" },
+        "code": { "type": "string" },
+        "header": { "type": "string" },
+        "footer": { "type": "string" },
+        "h1": { "type": "string" },
+        "h2": { "type": "string" },
+        "h3": { "type": "string" },
+        "h4": { "type": "string" },
+        "h5": { "type": "string" },
+        "h6": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "spacing": {
+      "type": "object",
+      "description": "Optional spacing controls that affect paragraph and heading rhythm.",
+      "properties": {
+        "line_spacing": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 3.0
+        },
+        "paragraph_spacing_after_pt": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36
+        },
+        "heading_spacing_before_pt": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 72
+        },
+        "heading_spacing_after_pt": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 72
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+

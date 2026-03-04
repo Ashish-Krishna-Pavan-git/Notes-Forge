@@ -23,6 +23,7 @@ from .models import (
     FormattingOptions,
     GenerateRequest,
     GenerateResponse,
+    DocumentSettings,
     GenerateSecurityPayload,
     ParserHealthResponse,
     PreviewRequest,
@@ -478,11 +479,13 @@ def create_app() -> FastAPI:
             headerText=req.security.headerText,
             footerText=req.security.footerText,
         )
+        document_settings: DocumentSettings | None = req.documentSettings
         preview_html = state.exporter.create_preview_html(
             nodes=parsed.nodes,
             theme=req.theme,
             formatting=req.formattingOptions,
             security=sec,
+            document_settings=document_settings,
         )
         return PreviewResponse(
             previewHtml=preview_html,
@@ -502,12 +505,14 @@ def create_app() -> FastAPI:
             lineSpacing=req.theme.bodyStyle.lineHeight or 1.4,
         )
         try:
+            document_settings: DocumentSettings | None = req.documentSettings
             file_id, output_path, warnings = state.exporter.create_export_file(
                 target_format=req.format,
                 nodes=parsed.nodes,
                 theme=req.theme,
                 formatting=formatting,
                 security=req.security,
+                document_settings=document_settings,
             )
         except RuntimeError as exc:
             detail = str(exc)
