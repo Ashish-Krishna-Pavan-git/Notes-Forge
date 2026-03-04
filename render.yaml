@@ -1,10 +1,9 @@
 services:
   - type: web
     name: notesforge-backend
-    env: python
+    env: docker
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}
+    dockerfilePath: ./Dockerfile
     autoDeploy: true
     envVars:
       - key: FASTAPI_HOST
