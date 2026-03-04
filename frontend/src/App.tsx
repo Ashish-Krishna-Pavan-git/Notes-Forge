@@ -2020,6 +2020,14 @@ export default function App() {
             config.header
               ?.page_number_alignment ||
             "center",
+          page_number_style:
+            config.footer?.page_number_style ||
+            config.header?.page_number_style ||
+            "arabic",
+          page_number_format:
+            config.footer?.page_format ||
+            config.header?.page_format ||
+            "Page X",
           page_number_mode:
             (config.footer?.page_format || "")
               .toLowerCase()
@@ -2893,6 +2901,14 @@ export default function App() {
               config.footer?.page_number_alignment ||
               config.header?.page_number_alignment ||
               "center",
+            page_number_style:
+              config.footer?.page_number_style ||
+              config.header?.page_number_style ||
+              "arabic",
+            page_number_format:
+              config.footer?.page_format ||
+              config.header?.page_format ||
+              "Page X",
             page_number_mode:
               (config.footer?.page_format || config.header?.page_format || "")
                 .toLowerCase()
@@ -5639,6 +5655,42 @@ H2: "Next Page"`}
                                 />
                               </div>
 
+                              <div>
+                                <label className={lbl}>
+                                  Header Page Number Style
+                                </label>
+                                <select
+                                  value={
+                                    config.header
+                                      ?.page_number_style ||
+                                    "arabic"
+                                  }
+                                  onChange={(e) =>
+                                    cfgLocal(
+                                      "header.page_number_style",
+                                      e.target.value
+                                    )
+                                  }
+                                  className={inp}
+                                >
+                                  <option value="arabic">
+                                    1, 2, 3
+                                  </option>
+                                  <option value="roman">
+                                    I, II, III
+                                  </option>
+                                  <option value="roman_lower">
+                                    i, ii, iii
+                                  </option>
+                                  <option value="alpha">
+                                    A, B, C
+                                  </option>
+                                  <option value="alpha_lower">
+                                    a, b, c
+                                  </option>
+                                </select>
+                              </div>
+
                               <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                   type="checkbox"
@@ -5944,8 +5996,14 @@ H2: "Next Page"`}
                                   <option value="roman">
                                     I, II, III
                                   </option>
+                                  <option value="roman_lower">
+                                    i, ii, iii
+                                  </option>
                                   <option value="alpha">
                                     A, B, C
+                                  </option>
+                                  <option value="alpha_lower">
+                                    a, b, c
                                   </option>
                                 </select>
                               </div>

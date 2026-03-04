@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -103,16 +104,81 @@ def _style_str(styles: dict[str, object], *keys: str, default: str) -> str:
     return default
 
 
-def _add_page_number(paragraph, mode: str) -> None:
-    paragraph.add_run("Page ")
-    fld_page = OxmlElement("w:fldSimple")
-    fld_page.set(qn("w:instr"), "PAGE")
-    paragraph._p.append(fld_page)
-    if mode == "page_x_of_y":
-        paragraph.add_run(" of ")
-        fld_total = OxmlElement("w:fldSimple")
-        fld_total.set(qn("w:instr"), "NUMPAGES")
-        paragraph._p.append(fld_total)
+def _field_instruction(field_name: str, number_style: str) -> str:
+    style = (number_style or "arabic").strip().lower()
+    suffix_map = {
+        "arabic": "",
+        "roman": r" \* ROMAN",
+        "roman_lower": r" \* roman",
+        "alpha": r" \* ALPHABETIC",
+        "alpha_lower": r" \* alphabetic",
+    }
+    return f"{field_name}{suffix_map.get(style, '')}"
+
+
+def _append_field(paragraph, field_name: str, number_style: str) -> None:
+    run_begin = paragraph.add_run()
+    fld_begin = OxmlElement("w:fldChar")
+    fld_begin.set(qn("w:fldCharType"), "begin")
+    run_begin._r.append(fld_begin)
+
+    run_instr = paragraph.add_run()
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = _field_instruction(field_name, number_style)
+    run_instr._r.append(instr)
+
+    run_sep = paragraph.add_run()
+    fld_sep = OxmlElement("w:fldChar")
+    fld_sep.set(qn("w:fldCharType"), "separate")
+    run_sep._r.append(fld_sep)
+
+    paragraph.add_run("1")
+
+    run_end = paragraph.add_run()
+    fld_end = OxmlElement("w:fldChar")
+    fld_end.set(qn("w:fldCharType"), "end")
+    run_end._r.append(fld_end)
+
+
+def _normalize_page_template(mode: str, template: str) -> str:
+    raw = (template or "").strip()
+    if not raw:
+        return "Page X of Y" if mode == "page_x_of_y" else "Page X"
+    lowered = raw.lower()
+    if "{page}" in lowered:
+        raw = re.sub(r"\{page\}", "X", raw, flags=re.IGNORECASE)
+    if "{pages}" in lowered or "{total}" in lowered:
+        raw = re.sub(r"\{pages\}", "Y", raw, flags=re.IGNORECASE)
+        raw = re.sub(r"\{total\}", "Y", raw, flags=re.IGNORECASE)
+    if "x" not in raw.lower() and "y" not in raw.lower():
+        return f"{raw} X"
+    if mode == "page_x_of_y" and "y" not in raw.lower():
+        if "x" in raw.lower():
+            return f"{raw} of Y"
+        return "Page X of Y"
+    return raw
+
+
+def _add_page_number(
+    paragraph,
+    mode: str,
+    *,
+    number_style: str = "arabic",
+    format_template: str = "",
+) -> None:
+    template = _normalize_page_template(mode, format_template)
+    parts = re.split(r"(X|Y)", template, flags=re.IGNORECASE)
+    for part in parts:
+        if not part:
+            continue
+        token = part.upper()
+        if token == "X":
+            _append_field(paragraph, "PAGE", number_style)
+        elif token == "Y":
+            _append_field(paragraph, "NUMPAGES", number_style)
+        else:
+            paragraph.add_run(part)
 
 
 def _docx_border_style(raw: str) -> str:
@@ -720,6 +786,20 @@ class DocumentExporter:
             page_number_alignment = (
                 header_align if page_number_position == "header" else footer_align
             )
+        page_number_style = _style_str(
+            styles,
+            "page_number_style",
+            "pageNumberStyle",
+            default="arabic",
+        ).lower()
+        if page_number_style not in {"arabic", "roman", "roman_lower", "alpha", "alpha_lower"}:
+            page_number_style = "arabic"
+        page_number_format = _style_str(
+            styles,
+            "page_number_format",
+            "pageNumberFormat",
+            default="Page X of Y" if page_mode == "page_x_of_y" else "Page X",
+        )
 
         page_para = header_para if page_number_position == "header" else footer_para
         include_page_numbers = (
@@ -728,8 +808,22 @@ class DocumentExporter:
         if include_page_numbers:
             if page_para.runs and page_para.runs[-1].text and not page_para.runs[-1].text.endswith(" "):
                 page_para.add_run(" ")
-            _add_page_number(page_para, page_mode)
+            _add_page_number(
+                page_para,
+                page_mode,
+                number_style=page_number_style,
+                format_template=page_number_format,
+            )
             page_para.alignment = _docx_alignment(page_number_alignment)
+            is_header = page_number_position == "header"
+            _style_paragraph_runs(
+                page_para,
+                font_name=header_font if is_header else footer_font,
+                size_pt=header_size if is_header else footer_size,
+                color_hex=header_color if is_header else footer_color,
+                bold=header_bold if is_header else footer_bold,
+                italic=header_italic if is_header else footer_italic,
+            )
 
         paragraph_after_pt = _style_num(
             styles,
@@ -1007,9 +1101,28 @@ class DocumentExporter:
 
         if requested == "pdf":
             file_id, pdf_path = self.store.reserve_path("pdf")
+            attempts: list[str] = []
             ok, method = _convert_docx_to_pdf(docx_path, pdf_path)
+            attempts.append(method)
+            if not ok:
+                html_preview = self.create_preview_html(
+                    nodes,
+                    theme,
+                    formatting,
+                    security,
+                    include_running_blocks=False,
+                )
+                ok, method = _convert_html_to_pdf_weasyprint(html_preview, pdf_path)
+                attempts.append(method)
+            if not ok:
+                ok, method = _convert_nodes_to_pdf_reportlab(nodes, theme, formatting, security, pdf_path)
+                attempts.append(method)
             if ok:
                 warnings.extend(secure_pdf(pdf_path, security.passwordProtectPdf, security.removeMetadata))
+                if method in {"weasyprint", "reportlab"}:
+                    warnings.append(
+                        "PDF generated via fallback renderer; install LibreOffice for closer DOCX-to-PDF fidelity."
+                    )
                 return ExportResult(
                     file_id=file_id,
                     output_path=pdf_path,
@@ -1026,7 +1139,7 @@ class DocumentExporter:
 
             fallback_warning = (
                 "PDF conversion is unavailable on this host; returned DOCX instead. "
-                f"Converter detail: {method}"
+                f"Converter detail: {' | '.join(attempts)}"
             )
             warnings.append(fallback_warning)
             if security.passwordProtectPdf:

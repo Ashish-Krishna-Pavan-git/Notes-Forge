@@ -101,8 +101,8 @@
     "show_page_numbers": false,
     "page_number_position": "header",
     "page_number_alignment": "center",
-    "page_format": "X | Page",
-    "page_number_style": "arabic"
+    "page_number_style": "arabic",
+    "page_format": "X | Page"
   },
   "footer": {
     "enabled": true,
@@ -118,7 +118,7 @@
     "show_page_numbers": true,
     "page_number_position": "footer",
     "page_number_alignment": "center",
-    "page_format": "X | Page",
-    "page_number_style": "arabic"
+    "page_number_style": "arabic",
+    "page_format": "X | Page"
   }
 }

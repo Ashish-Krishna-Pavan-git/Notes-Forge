@@ -250,6 +250,7 @@ def _default_config() -> Dict[str, Any]:
             "show_page_numbers": False,
             "page_number_position": "header",
             "page_number_alignment": "center",
+            "page_number_style": "arabic",
             "page_format": "Page X",
         },
         "footer": {
@@ -266,6 +267,7 @@ def _default_config() -> Dict[str, Any]:
             "show_page_numbers": True,
             "page_number_position": "footer",
             "page_number_alignment": "center",
+            "page_number_style": "arabic",
             "page_format": "Page X",
         },
     }
@@ -531,6 +533,8 @@ def _theme_to_payload(theme_key: str, theme: Mapping[str, Any]) -> ThemePayload:
         "footer_show_page_numbers": footer.get("show_page_numbers", True),
         "page_number_position": footer.get("page_number_position", header.get("page_number_position", "footer")),
         "page_number_alignment": footer.get("page_number_alignment", header.get("page_number_alignment", "center")),
+        "page_number_style": footer.get("page_number_style", header.get("page_number_style", "arabic")),
+        "page_number_format": footer.get("page_format", header.get("page_format", "Page X")),
         "page_number_mode": _infer_page_mode(footer.get("page_format") or header.get("page_format")),
         "page_size": page.get("size", "A4"),
         "page_orientation": page.get("orientation", "portrait"),

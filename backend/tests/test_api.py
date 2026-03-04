@@ -122,6 +122,7 @@ class ApiIntegrationTests(unittest.TestCase):
             "footer_alignment": "right",
             "page_number_alignment": "right",
             "page_number_position": "footer",
+            "footer_color": "#0055AA",
             "header_show_page_numbers": False,
             "footer_show_page_numbers": True,
             "table_header_text": "#FFFFFF",
@@ -159,6 +160,7 @@ class ApiIntegrationTests(unittest.TestCase):
         self.assertIn('w:jc w:val="right"', footer_xml)
         self.assertIn("NUMPAGES", footer_xml)
         self.assertIn("PAGE", footer_xml)
+        self.assertIn('w:color w:val="0055AA"', footer_xml)
         self.assertIn('W:FILL="F6F6F6"', document_xml_u)
         self.assertIn('W:FILL="F3EDFF"', document_xml_u)
 
@@ -220,7 +222,9 @@ class ApiIntegrationTests(unittest.TestCase):
         self.assertEqual(cfg.get("colors", {}).get("h1"), "#C41E3A")
 
     @patch("app.exporter._convert_docx_to_pdf", return_value=(False, "converter unavailable"))
-    def test_generate_pdf_fallback_contract(self, _mock_docx) -> None:
+    @patch("app.exporter._convert_html_to_pdf_weasyprint", return_value=(False, "weasy unavailable"))
+    @patch("app.exporter._convert_nodes_to_pdf_reportlab", return_value=(False, "reportlab unavailable"))
+    def test_generate_pdf_fallback_contract(self, _mock_reportlab, _mock_weasy, _mock_docx) -> None:
         response = self.client.post(
             "/api/generate",
             json={
