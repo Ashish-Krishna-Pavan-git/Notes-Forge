@@ -10,8 +10,8 @@ import React, {
   useMemo,
 } from "react";
 import DOMPurify from "dompurify";
-import { API_BASE, API_HEALTH_TIMEOUT_MS, HAS_EXPLICIT_API_URL } from "./lib/config";
-import { api, apiGet, apiPost, getErrorMessage, withRetry } from "./lib/api";
+import { API, API_HEALTH_TIMEOUT_MS, HAS_EXPLICIT_API_URL } from "./lib/config";
+import { API_ENDPOINTS, api, apiGet, apiPost, getErrorMessage, withRetry } from "./lib/api";
 import {
   Sparkles,
   FileText,
@@ -65,8 +65,6 @@ import {
 // ═══════════════════════════════════════════════════════════════════
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════
-
-const API = API_BASE;
 
 const AUTOSAVE_MS = 30_000;
 const ANALYZE_DEBOUNCE_MS = 600;
@@ -1365,6 +1363,7 @@ export default function App() {
   const [online, setOnline] =
     useState<ConnectionStatus>("checking");
   const [backendVersion, setBackendVersion] = useState("...");
+  const [loadingHealth, setLoadingHealth] = useState(false);
 
   // ── Analysis ──────────────────────────────────────────────────
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(
@@ -1376,6 +1375,7 @@ export default function App() {
   const [themes, setThemes] = useState<Record<string, ThemeInfo>>(
     FALLBACK_THEME_CATALOG
   );
+  const [loadingThemes, setLoadingThemes] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("professional");
   const [config, setConfig] = useState<AppConfigState>({
     fonts: { family: "Calibri", family_code: "Fira Code" },
@@ -1385,6 +1385,7 @@ export default function App() {
     colors: {},
     spacing: {},
   });
+  const [loadingConfig, setLoadingConfig] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   // ── Theme Creation ────────────────────────────────────────────
@@ -1416,6 +1417,9 @@ export default function App() {
   const [promptCopied, setPromptCopied] = useState(false);
   const [promptEditing, setPromptEditing] = useState(false);
   const [promptSaving, setPromptSaving] = useState(false);
+  const [loadingPrompt, setLoadingPrompt] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [remotePreviewHTML, setRemotePreviewHTML] = useState("");
 
   // ── Drafts ────────────────────────────────────────────────────
   const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>([]);
@@ -1487,6 +1491,7 @@ export default function App() {
         : "",
     [text, showPreview, splitPreview, config.colors]
   );
+  const activePreviewHTML = remotePreviewHTML || previewHTML;
 
   const lineNumbers = useMemo(() => {
     const count = Math.max(1, text.split("\n").length);
@@ -1571,6 +1576,7 @@ export default function App() {
   const checkHealth = useCallback(async () => {
     if (healthCheckInFlight.current) return false;
     healthCheckInFlight.current = true;
+    setLoadingHealth(true);
     setOnline((prev) =>
       prev === "online" ? "online" : "waking"
     );
@@ -1579,7 +1585,7 @@ export default function App() {
       try {
         const health = await withRetry(
           () =>
-            apiGet<{ status: string }>("/api/health", {
+            apiGet<{ status: string }>(API_ENDPOINTS.health, {
               timeout: API_HEALTH_TIMEOUT_MS,
             }),
           { attempts: 5, baseDelayMs: 500, maxDelayMs: 2500 }
@@ -1590,12 +1596,12 @@ export default function App() {
             const ver = await apiGet<{
               name?: string;
               version?: string;
-            }>("/api/version", { timeout: API_HEALTH_TIMEOUT_MS });
+            }>(API_ENDPOINTS.version, { timeout: API_HEALTH_TIMEOUT_MS });
             if (ver?.version) setBackendVersion(ver.version);
           } catch {
             try {
               const parser = await apiGet<{ version?: string }>(
-                "/api/health/parser",
+                API_ENDPOINTS.parserHealth,
                 { timeout: API_HEALTH_TIMEOUT_MS }
               );
               if (parser?.version) setBackendVersion(parser.version);
@@ -1612,7 +1618,7 @@ export default function App() {
       // legacy compatibility fallback while backend wakes up
       while (Date.now() - startedAt < 10_000) {
         try {
-          await apiGet("/health", {
+          await apiGet(API_ENDPOINTS.healthLegacy, {
             timeout: API_HEALTH_TIMEOUT_MS,
           });
           setOnline("online");
@@ -1629,6 +1635,7 @@ export default function App() {
       return false;
     } finally {
       healthCheckInFlight.current = false;
+      setLoadingHealth(false);
     }
   }, []);
 
@@ -1638,7 +1645,7 @@ export default function App() {
       const payload = await withRetry(
         () =>
           apiGet<ApiTemplate[] | { templates?: ApiTemplate[] }>(
-            "/api/templates",
+            API_ENDPOINTS.templates,
             { timeout: 8000 }
           ),
         { attempts: 4, baseDelayMs: 600, maxDelayMs: 2500 }
@@ -1666,6 +1673,7 @@ export default function App() {
   }, []);
 
   const loadThemes = useCallback(async () => {
+    setLoadingThemes(true);
     const localThemes = readLocalThemeCatalog();
     const baseCatalog: Record<string, ThemeInfo> = {
       ...FALLBACK_THEME_CATALOG,
@@ -1676,7 +1684,7 @@ export default function App() {
         success?: boolean;
         themes?: Record<string, ThemeInfo & Record<string, unknown>>;
         current_theme?: string;
-      }>("/api/themes");
+      }>(API_ENDPOINTS.themes);
       if (
         r.success &&
         r.themes &&
@@ -1719,15 +1727,18 @@ export default function App() {
         );
         themeFallbackNotified.current = true;
       }
+    } finally {
+      setLoadingThemes(false);
     }
   }, []);
 
   const loadConfig = useCallback(async () => {
+    setLoadingConfig(true);
     try {
       const r = await apiGet<{
         success?: boolean;
         config?: AppConfigState;
-      }>("/api/config");
+      }>(API_ENDPOINTS.config);
       if (r.success && r.config) setConfig(r.config);
       else {
         const local = localStorage.getItem("nf_local_config");
@@ -1740,19 +1751,24 @@ export default function App() {
       } catch {
         /* ignore */
       }
+    } finally {
+      setLoadingConfig(false);
     }
   }, []);
 
   const loadPrompt = useCallback(async () => {
+    setLoadingPrompt(true);
     try {
       const r = await apiGet<{
         success?: boolean;
         prompt?: string;
-      }>("/api/prompt");
+      }>(API_ENDPOINTS.prompt);
       if (r.success && r.prompt && r.prompt.trim().length > 20)
         setPromptText(r.prompt);
     } catch {
       /* silent */
+    } finally {
+      setLoadingPrompt(false);
     }
   }, []);
 
@@ -1763,7 +1779,7 @@ export default function App() {
     }
     setAnalyzing(true);
     try {
-      const r = await apiPost<AnalysisResult>("/api/analyze", {
+      const r = await apiPost<AnalysisResult>(API_ENDPOINTS.analyze, {
         text: debouncedText,
       });
       if (r.success) setAnalysis(r);
@@ -2051,7 +2067,7 @@ export default function App() {
         warning?: string;
         warnings?: string[];
         error?: string;
-      }>("/api/generate", {
+      }>(API_ENDPOINTS.generate, {
         content: text,
         text,
         format,
@@ -2221,7 +2237,7 @@ export default function App() {
         const r = await apiPost<{
           success?: boolean;
           config?: AppConfigState;
-        }>("/api/themes/apply", {
+        }>(API_ENDPOINTS.themesApply, {
           theme_name: name,
         });
         if (r.success) {
@@ -2280,7 +2296,7 @@ export default function App() {
       for (const section of sections) {
         const val = config[section];
         if (val) {
-          await apiPost("/api/config/update", {
+          await apiPost(API_ENDPOINTS.configUpdate, {
             path: section,
             value: val,
           });
@@ -2325,13 +2341,13 @@ export default function App() {
       spacing: { ...(config.spacing || {}) },
     };
     try {
-      await apiPost("/api/themes/save", {
+      await apiPost(API_ENDPOINTS.themesSave, {
         key: savedKey,
         name: newThemeName,
         description: newThemeDesc,
         config,
       });
-      await apiPost("/api/themes/apply", {
+      await apiPost(API_ENDPOINTS.themesApply, {
         theme_name: savedKey,
       });
       saveLocalThemeCatalog({
@@ -2397,7 +2413,7 @@ export default function App() {
       if (!window.confirm(`Delete "${themes[key]?.name}"?`))
         return;
       try {
-        await apiPost("/api/themes/delete", { key });
+        await apiPost(API_ENDPOINTS.themesDelete, { key });
         const local = { ...readLocalThemeCatalog() };
         delete local[key];
         saveLocalThemeCatalog(local);
@@ -2432,7 +2448,7 @@ export default function App() {
   const savePrompt = useCallback(async () => {
     setPromptSaving(true);
     try {
-      await apiPost("/api/prompt", {
+      await apiPost(API_ENDPOINTS.prompt, {
         prompt: promptText,
       });
       setPromptEditing(false);
@@ -2476,7 +2492,7 @@ export default function App() {
       const r = await apiPost<{
         content?: string;
         prompt?: string;
-      }>("/api/templates/regenerate", {
+      }>(API_ENDPOINTS.templatesRegenerate, {
         templateId: selectedTemplateId,
         topic,
         aiProvider,
@@ -2519,7 +2535,9 @@ export default function App() {
 
   const downloadRecentExport = useCallback((item: RecentExport) => {
     const a = document.createElement("a");
-    a.href = `${API}${item.download_url}`;
+    a.href = /^https?:\/\//i.test(item.download_url)
+      ? item.download_url
+      : `${API}${item.download_url.startsWith("/") ? "" : "/"}${item.download_url}`;
     a.download = item.filename;
     a.click();
   }, []);
@@ -2812,6 +2830,130 @@ export default function App() {
     doAnalyze();
   }, [doAnalyze]);
 
+  // Online preview uses backend rendering for theme-accurate output, with local fallback.
+  useEffect(() => {
+    if (!(showPreview || splitPreview) || !text.trim()) {
+      setRemotePreviewHTML("");
+      return;
+    }
+    if (online !== "online") {
+      setRemotePreviewHTML("");
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setLoadingPreview(true);
+      try {
+        const margins = {
+          top: (config.page?.margins?.top || 1) * 25.4,
+          bottom: (config.page?.margins?.bottom || 1) * 25.4,
+          left: (config.page?.margins?.left || 1) * 25.4,
+          right: (config.page?.margins?.right || 1) * 25.4,
+        };
+        const previewTheme = {
+          name: themes[currentTheme]?.name || currentTheme,
+          primaryColor:
+            config.colors?.h1 || config.header?.color || "#1F3A5F",
+          fontFamily:
+            config.fonts?.family || "Calibri, Arial, sans-serif",
+          headingStyle: {},
+          bodyStyle: {
+            size: config.fonts?.sizes?.body || 11,
+            lineHeight: config.spacing?.line_spacing || 1.4,
+          },
+          tableStyle: {
+            borderWidth: 1,
+            borderColor: config.colors?.table_border || "#d1d5db",
+            headerFill: config.colors?.table_header_bg || "#f3f4f6",
+          },
+          margins,
+          styles: {
+            header_alignment: config.header?.alignment || "center",
+            footer_alignment: config.footer?.alignment || "center",
+            header_font_family:
+              config.header?.font_family || config.fonts?.family || "Calibri",
+            footer_font_family:
+              config.footer?.font_family || config.fonts?.family || "Calibri",
+            header_size:
+              config.header?.size || config.fonts?.sizes?.header || 10,
+            footer_size:
+              config.footer?.size || config.fonts?.sizes?.footer || 9,
+            header_color:
+              config.header?.color || config.colors?.h1 || "#1F3A5F",
+            footer_color:
+              config.footer?.color || config.colors?.h2 || "#1F3A5F",
+            header_show_page_numbers: config.header?.show_page_numbers ?? false,
+            footer_show_page_numbers: config.footer?.show_page_numbers ?? true,
+            page_number_position:
+              config.footer?.page_number_position ||
+              config.header?.page_number_position ||
+              "footer",
+            page_number_alignment:
+              config.footer?.page_number_alignment ||
+              config.header?.page_number_alignment ||
+              "center",
+            page_number_mode:
+              (config.footer?.page_format || config.header?.page_format || "")
+                .toLowerCase()
+                .includes("of")
+                ? "page_x_of_y"
+                : "page_x",
+          },
+        };
+
+        const previewResponse = await apiPost<{
+          previewHtml?: string;
+        }>(API_ENDPOINTS.preview, {
+          content: text,
+          theme: previewTheme,
+          formattingOptions: {
+            margins,
+            lineSpacing: config.spacing?.line_spacing || 1.4,
+          },
+          security: {
+            removeMetadata: false,
+            pageNumberMode:
+              config.footer?.show_page_numbers || config.header?.show_page_numbers
+                ? ((config.footer?.page_format || config.header?.page_format || "")
+                    .toLowerCase()
+                    .includes("of")
+                    ? "page_x_of_y"
+                    : "page_x")
+                : undefined,
+            headerText: config.header?.enabled ? config.header?.text || "" : "",
+            footerText: config.footer?.enabled ? config.footer?.text || "" : "",
+          },
+        });
+
+        if (!cancelled) {
+          setRemotePreviewHTML(previewResponse?.previewHtml || "");
+        }
+      } catch {
+        if (!cancelled) {
+          setRemotePreviewHTML("");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingPreview(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    showPreview,
+    splitPreview,
+    text,
+    online,
+    config,
+    themes,
+    currentTheme,
+  ]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -2981,15 +3123,17 @@ export default function App() {
                     online === "online"
                       ? "bg-green-400 animate-pulse"
                       : online === "error"
-                        ? "bg-red-400"
+                        ? "bg-orange-400"
                         : "bg-yellow-400"
                   }`}
                 />
                 {online === "online"
                   ? "Connected"
                   : online === "error"
-                    ? "Backend error"
-                    : "Waking backend"}
+                    ? "Connection issue"
+                    : loadingHealth
+                      ? "Checking backend"
+                      : "Waking backend"}
               </span>
               <span className="px-2.5 py-1 rounded-lg text-xs bg-white/10">
                 API v{backendVersion}
@@ -3104,19 +3248,59 @@ export default function App() {
 
         {online !== "online" && (
           <div
-            className={`${card} mb-4 p-3 flex items-center justify-between gap-3 border-red-200 dark:border-red-800`}
+            className={`${card} mb-4 p-3 flex items-center justify-between gap-3 ${
+              online === "error"
+                ? "border-orange-200 dark:border-orange-800"
+                : "border-yellow-200 dark:border-yellow-800"
+            }`}
           >
-            <div className="text-sm text-red-600 dark:text-red-300">
+            <div
+              className={`text-sm ${
+                online === "error"
+                  ? "text-orange-700 dark:text-orange-300"
+                  : "text-yellow-700 dark:text-yellow-300"
+              }`}
+            >
               {online === "error"
-                ? "Backend offline or unreachable. Please retry."
-                : "Backend offline or starting. Please wait 10–15 seconds."}
+                ? "Backend is unreachable right now. Retry after a few seconds."
+                : "Backend is waking up. Keep this tab open while retry checks run."}
             </div>
             <button
               onClick={checkHealth}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50"
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                online === "error"
+                  ? "bg-orange-100 hover:bg-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50"
+                  : "bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50"
+              }`}
             >
               Retry
             </button>
+          </div>
+        )}
+
+        {(loadingHealth ||
+          loadingThemes ||
+          loadingTemplates ||
+          loadingConfig ||
+          loadingPrompt) && (
+          <div
+            className={`${card} mb-4 p-3 flex items-center gap-3 text-sm border-blue-200 dark:border-blue-800`}
+          >
+            <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+            <span className="font-medium text-blue-700 dark:text-blue-300">
+              Syncing backend resources
+            </span>
+            <span className="text-xs text-blue-600/90 dark:text-blue-300/80">
+              {[
+                loadingHealth && "health",
+                loadingThemes && "themes",
+                loadingTemplates && "templates",
+                loadingConfig && "config",
+                loadingPrompt && "prompt",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
           </div>
         )}
 
@@ -3410,7 +3594,11 @@ export default function App() {
                       dark ? "bg-gray-900" : "bg-white"
                     }`}
                     dangerouslySetInnerHTML={{
-                      __html: previewHTML,
+                      __html:
+                        activePreviewHTML ||
+                        (loadingPreview
+                          ? '<p class="text-sm text-gray-400">Rendering preview...</p>'
+                          : '<p class="text-sm text-gray-400">Start typing to preview...</p>'),
                     }}
                   />
                 </div>
@@ -3613,8 +3801,10 @@ export default function App() {
                       }`}
                       dangerouslySetInnerHTML={{
                         __html:
-                          previewHTML ||
-                          '<p class="text-sm text-gray-400">Start typing to preview...</p>',
+                          activePreviewHTML ||
+                          (loadingPreview
+                            ? '<p class="text-sm text-gray-400">Rendering preview...</p>'
+                            : '<p class="text-sm text-gray-400">Start typing to preview...</p>'),
                       }}
                     />
                   )}

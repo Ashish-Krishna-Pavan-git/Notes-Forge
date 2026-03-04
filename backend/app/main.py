@@ -4,19 +4,16 @@ import json
 import logging
 import os
 import re
-import tempfile
-import time
 from pathlib import Path
-from typing import Any, Dict, List
-from uuid import uuid4
+from threading import RLock
+from typing import Any, Dict, List, Mapping, MutableMapping
 
 from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from .exporter import DocumentExporter, FileStore
+from .exporter import DocumentExporter, ExportResult, FileStore
 from .models import (
     CreateThemeRequest,
     CreateThemeResponse,
@@ -31,25 +28,24 @@ from .models import (
     RegenerateTemplateResponse,
     StructureSummary,
     TemplateDefinition,
+    ThemePayload,
+    WatermarkPayload,
 )
-from .parser import parse_notesforge
+from .parser import MARKER_RE, parse_notesforge
 from .templates_repo import TemplateRepo
 
-logger = logging.getLogger("notesforge.api")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+
+logger = logging.getLogger("notesforge.v6")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+
+APP_VERSION = "6.2"
+MAX_BODY_BYTES = 2_000_000
+MAX_PROMPT_BYTES = 200_000
+DEFAULT_PROMPT = (
+    "Using strict NotesForge marker syntax (H1-H6, PARAGRAPH, BULLET, NUMBERED, TABLE, CODE, ASCII, "
+    "PAGEBREAK), generate structured notes. Output only marker lines."
 )
 
-APP_VERSION = "5.0"
-MAX_BODY_BYTES = 2_000_000
-API_MARKER_RE = re.compile(r"^\s*([A-Z][A-Z0-9-]*)\s*:\s*(.*)$")
-DEFAULT_CORS_ORIGINS = [
-    "https://notes-forge-ruddy.vercel.app",
-    "https://notes-forge.onrender.com",
-    "http://localhost:5173",
-    "http://localhost:3000",
-]
 MEDIA_TYPES: Dict[str, str] = {
     "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "pdf": "application/pdf",
@@ -58,103 +54,23 @@ MEDIA_TYPES: Dict[str, str] = {
     "txt": "text/plain; charset=utf-8",
 }
 
-BUILTIN_THEME_CATALOG: Dict[str, Dict[str, Any]] = {
-    "professional": {
-        "name": "Professional",
-        "description": "Balanced default for business and academic documents.",
-        "builtin": True,
-        "colors": {
-            "h1": "#1F3A5F",
-            "h2": "#2C5282",
-            "h3": "#2B6CB0",
-            "table_header_bg": "#E2E8F0",
-        },
-        "fonts": {"family": "Calibri"},
-        "spacing": {"line_spacing": 1.4},
-    },
-    "modern": {
-        "name": "Modern",
-        "description": "Clean modern styling with blue accents.",
-        "builtin": True,
-        "colors": {
-            "h1": "#0F172A",
-            "h2": "#1D4ED8",
-            "h3": "#0284C7",
-            "table_header_bg": "#DBEAFE",
-        },
-        "fonts": {"family": "Segoe UI"},
-        "spacing": {"line_spacing": 1.35},
-    },
-    "academic": {
-        "name": "Academic",
-        "description": "Conservative typography optimized for reports.",
-        "builtin": True,
-        "colors": {
-            "h1": "#111827",
-            "h2": "#374151",
-            "h3": "#4B5563",
-            "table_header_bg": "#E5E7EB",
-        },
-        "fonts": {"family": "Times New Roman"},
-        "spacing": {"line_spacing": 1.6},
-    },
-    "corporate": {
-        "name": "Corporate Red",
-        "description": "Executive style with strong heading contrast.",
-        "builtin": True,
-        "colors": {
-            "h1": "#B91C1C",
-            "h2": "#DC2626",
-            "h3": "#EF4444",
-            "table_header_bg": "#FEE2E2",
-        },
-        "fonts": {"family": "Arial"},
-        "spacing": {"line_spacing": 1.35},
-    },
-    "creative": {
-        "name": "Creative Vibrant",
-        "description": "Colorful theme for creative project documents.",
-        "builtin": True,
-        "colors": {
-            "h1": "#F97316",
-            "h2": "#F59E0B",
-            "h3": "#EC4899",
-            "table_header_bg": "#FEF3C7",
-        },
-        "fonts": {"family": "Candara"},
-        "spacing": {"line_spacing": 1.35},
-    },
-    "startup": {
-        "name": "Startup Pitch",
-        "description": "Pitch-deck-like style for startup notes.",
-        "builtin": True,
-        "colors": {
-            "h1": "#0E7490",
-            "h2": "#0284C7",
-            "h3": "#0369A1",
-            "table_header_bg": "#CFFAFE",
-        },
-        "fonts": {"family": "Calibri"},
-        "spacing": {"line_spacing": 1.3},
-    },
-    "minimal": {
-        "name": "Minimal",
-        "description": "Neutral monochrome styling for clean exports.",
-        "builtin": True,
-        "colors": {
-            "h1": "#111827",
-            "h2": "#374151",
-            "h3": "#4B5563",
-            "table_header_bg": "#E5E7EB",
-        },
-        "fonts": {"family": "Calibri"},
-        "spacing": {"line_spacing": 1.35},
-    },
-}
+PRODUCTION_CORS_ORIGINS = [
+    "https://notes-forge-ruddy.vercel.app",
+    "https://notes-forge.onrender.com",
+]
+
+BACKEND_ROOT = Path(__file__).resolve().parent.parent
+CANONICAL_CONFIG_PATH = BACKEND_ROOT / "config.json"
+CANONICAL_THEMES_PATH = BACKEND_ROOT / "themes.json"
+PROMPT_PATH = BACKEND_ROOT / "prompt.txt"
+LEGACY_CONFIG_PATHS = [BACKEND_ROOT / "Config.json"]
+LEGACY_THEME_PATHS = [BACKEND_ROOT / "Themes.json", BACKEND_ROOT / "theme_store.json"]
+SUPPORTED_EXPORT_FORMATS = {"docx", "pdf", "html", "md", "txt"}
+DEFAULT_THEME_MODEL = ThemePayload()
 
 
 class ConfigUpdateRequest(BaseModel):
-    path: str = Field(..., min_length=1, max_length=200)
+    path: str = Field(..., min_length=1, max_length=240)
     value: Any
 
 
@@ -163,326 +79,820 @@ class ThemeApplyRequest(BaseModel):
 
 
 class ThemeSaveRequest(BaseModel):
-    key: str = Field(..., min_length=1, max_length=80)
+    key: str = Field(..., min_length=1, max_length=120)
     name: str = Field(..., min_length=1, max_length=120)
-    description: str = ""
-    config: Dict[str, Any] | None = None
+    description: str = Field(default="")
+    config: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ThemeDeleteRequest(BaseModel):
-    key: str = Field(..., min_length=1, max_length=80)
+    key: str = Field(..., min_length=1, max_length=120)
 
 
-class PromptRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=50_000)
+class PromptUpdateRequest(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=MAX_PROMPT_BYTES)
 
 
 class AnalyzeRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=500_000)
+    text: str = Field(default="", max_length=500_000)
+    content: str = Field(default="", max_length=500_000)
 
 
 def _allowed_origins() -> List[str]:
-    env = os.environ.get("NF_CORS_ORIGINS", "").strip()
-    allow_all = os.environ.get("NF_CORS_ALLOW_ALL", "0") == "1"
-    if allow_all:
-        return ["*"]
-    if env:
-        extra = [x.strip() for x in env.split(",") if x.strip()]
-        merged = list(dict.fromkeys([*DEFAULT_CORS_ORIGINS, *extra]))
-        return merged
-    return DEFAULT_CORS_ORIGINS
+    extras_raw = os.environ.get("NF_CORS_ORIGINS", "").strip()
+    extras = [item.strip() for item in extras_raw.split(",") if item.strip()] if extras_raw else []
+    ordered: List[str] = []
+    for origin in [*PRODUCTION_CORS_ORIGINS, *extras]:
+        if origin not in ordered:
+            ordered.append(origin)
+    return ordered
+
+
+def _read_json_dict(path: Path) -> Dict[str, Any] | None:
+    if not path.exists() or not path.is_file():
+        return None
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    return raw if isinstance(raw, dict) else None
+
+
+def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _slugify_key(value: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9_]+", "_", value.strip().lower())
+    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+    return cleaned or "theme"
+
+
+def _as_dict(value: Any) -> Dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _as_float(value: Any, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _margin_to_mm(value: Any, fallback: float) -> float:
+    n = _as_float(value, fallback)
+    return n * 25.4 if n <= 5.0 else n
+
+
+def _deep_merge(base: Mapping[str, Any], incoming: Mapping[str, Any]) -> Dict[str, Any]:
+    merged: Dict[str, Any] = dict(base)
+    for key, value in incoming.items():
+        if isinstance(value, Mapping) and isinstance(merged.get(key), Mapping):
+            merged[key] = _deep_merge(_as_dict(merged.get(key)), value)
+        else:
+            merged[key] = value
+    return merged
 
 
 def _default_config() -> Dict[str, Any]:
     return {
-        "app": {"name": "NotesForge", "version": APP_VERSION, "theme": "professional"},
+        "app": {"name": "NotesForge Professional", "version": APP_VERSION, "theme": "professional"},
         "fonts": {
             "family": "Calibri",
-            "family_code": "Fira Code",
-            "available_fonts": [
-                "Arial",
-                "Arial Black",
-                "Bahnschrift",
-                "Book Antiqua",
-                "Calibri",
-                "Cambria",
-                "Candara",
-                "Century Gothic",
-                "Comic Sans MS",
-                "Consolas",
-                "Constantia",
-                "Corbel",
-                "Courier New",
-                "Franklin Gothic Medium",
-                "Garamond",
-                "Georgia",
-                "Helvetica",
-                "Lucida Console",
-                "Lucida Sans Unicode",
-                "Monaco",
-                "Palatino Linotype",
-                "Segoe UI",
-                "Tahoma",
-                "Times New Roman",
-                "Trebuchet MS",
-                "Verdana",
-                "Fira Code",
-                "Source Code Pro",
-                "Roboto",
-                "Open Sans",
-            ],
-            "available_code_fonts": [
-                "Consolas",
-                "Courier New",
-                "Fira Code",
-                "JetBrains Mono",
-                "Source Code Pro",
-                "Cascadia Code",
-                "Menlo",
-                "Monaco",
-                "Lucida Console",
-                "Inconsolata",
-            ],
-            "sizes": {"h1": 24, "h2": 20, "h3": 16, "body": 11, "code": 10},
+            "family_code": "Consolas",
+            "h1_family": "Calibri",
+            "h2_family": "Calibri",
+            "h3_family": "Calibri",
+            "h4_family": "Calibri",
+            "h5_family": "Calibri",
+            "h6_family": "Calibri",
+            "bullet_family": "Calibri",
+            "sizes": {
+                "h1": 24,
+                "h2": 20,
+                "h3": 16,
+                "h4": 14,
+                "h5": 13,
+                "h6": 12,
+                "body": 11,
+                "code": 10,
+                "header": 10,
+                "footer": 9,
+            },
+        },
+        "colors": {
+            "h1": "#1F3A5F",
+            "h2": "#2B6CB0",
+            "h3": "#2B6CB0",
+            "h4": "#334155",
+            "h5": "#475569",
+            "h6": "#64748B",
+            "body": "#17202a",
+            "code_background": "#0f172a",
+            "code_text": "#e2e8f0",
+            "table_header_bg": "#f3f4f6",
+            "table_header_text": "#111827",
+            "table_odd_row": "#ffffff",
+            "table_even_row": "#f8fafc",
+            "table_border": "#d1d5db",
+            "link": "#2563eb",
+        },
+        "spacing": {
+            "line_spacing": 1.4,
+            "paragraph_spacing_before": 0,
+            "paragraph_spacing_after": 6,
+            "heading_spacing_before": 10,
+            "heading_spacing_after": 6,
+            "paragraph_first_line_indent": 0,
+            "bullet_base_indent": 0.25,
+            "bullet_indent_per_level": 0.45,
+            "code_indent": 0,
+            "paragraph_alignment": "left",
+        },
+        "page": {
+            "size": "A4",
+            "orientation": "portrait",
+            "margins": {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0},
+            "border": {"enabled": False, "width": 1, "color": "#000000", "style": "single", "offset": 24},
+        },
+        "watermark": {
+            "enabled": False,
+            "type": "text",
+            "text": "",
+            "image_path": "",
+            "font": "Calibri",
+            "size": 48,
+            "color": "#1F3A5F",
+            "opacity": 0.1,
+            "rotation": 315,
+            "position": "center",
+            "scale": 100,
         },
         "header": {
             "enabled": True,
             "text": "",
             "alignment": "center",
-            "page_format": "page_x",
+            "font_family": "Calibri",
+            "size": 10,
+            "color": "#1F3A5F",
+            "bold": False,
+            "italic": False,
+            "separator": False,
+            "separator_color": "#CCCCCC",
+            "show_page_numbers": False,
+            "page_number_position": "header",
+            "page_number_alignment": "center",
+            "page_format": "Page X",
         },
         "footer": {
             "enabled": True,
             "text": "",
             "alignment": "center",
+            "font_family": "Calibri",
+            "size": 9,
+            "color": "#1F3A5F",
+            "bold": False,
+            "italic": False,
+            "separator": False,
+            "separator_color": "#CCCCCC",
             "show_page_numbers": True,
-            "page_format": "page_x",
+            "page_number_position": "footer",
+            "page_number_alignment": "center",
+            "page_format": "Page X",
         },
-        "page": {"margins": {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0}},
-        "colors": {"h1": "#1F3A5F", "h2": "#1F3A5F"},
-        "spacing": {"line_spacing": 1.4},
-        "watermark": {"enabled": False},
     }
 
 
-def _apply_theme_to_config(config_data: Dict[str, Any], theme_payload: Dict[str, Any]) -> None:
-    colors = theme_payload.get("colors")
-    if isinstance(colors, dict):
-        target = config_data.setdefault("colors", {})
-        if isinstance(target, dict):
-            target.update({k: v for k, v in colors.items() if isinstance(v, (str, int, float))})
+def _default_theme_record(theme_key: str, name: str, config: Mapping[str, Any], *, builtin: bool) -> Dict[str, Any]:
+    cfg = _deep_merge(_default_config(), _as_dict(config))
+    fonts = _as_dict(cfg.get("fonts"))
+    colors = _as_dict(cfg.get("colors"))
+    spacing = _as_dict(cfg.get("spacing"))
+    page = _as_dict(cfg.get("page"))
+    header = _as_dict(cfg.get("header"))
+    footer = _as_dict(cfg.get("footer"))
+    watermark = _as_dict(cfg.get("watermark"))
+    sizes = _as_dict(fonts.get("sizes"))
+    border = _as_dict(page.get("border"))
+    table = {
+        "border_color": colors.get("table_border", "#d1d5db"),
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": colors.get("table_header_bg", "#f3f4f6"),
+        "header_text": colors.get("table_header_text", "#111827"),
+        "odd_row": colors.get("table_odd_row", "#ffffff"),
+        "even_row": colors.get("table_even_row", "#f8fafc"),
+        "text_alignment": "left",
+    }
+    code = {
+        "font_family": fonts.get("family_code", "Consolas"),
+        "font_size": sizes.get("code", 10),
+        "background": colors.get("code_background", "#0f172a"),
+        "text": colors.get("code_text", "#e2e8f0"),
+    }
+    heading = {
+        f"h{level}": {
+            "size": sizes.get(f"h{level}", max(12, 26 - (level * 2))),
+            "weight": "700" if level == 1 else "600",
+            "color": colors.get(f"h{level}", colors.get("h1", "#1F3A5F")),
+        }
+        for level in range(1, 7)
+    }
+    return {
+        "name": name,
+        "description": f"{name} theme",
+        "builtin": builtin,
+        "user_created": not builtin,
+        "fonts": fonts,
+        "colors": colors,
+        "spacing": spacing,
+        "page": page,
+        "header": header,
+        "footer": footer,
+        "watermark": watermark,
+        "heading": heading,
+        "table": table,
+        "code": code,
+        "borders": {
+            "enabled": border.get("enabled", False),
+            "width": border.get("width", 1),
+            "color": border.get("color", "#000000"),
+            "style": border.get("style", "single"),
+            "offset": border.get("offset", 24),
+        },
+        "styles": {},
+    }
 
-    fonts = theme_payload.get("fonts")
-    if isinstance(fonts, dict):
-        target = config_data.setdefault("fonts", {})
-        if isinstance(target, dict):
-            target.update({k: v for k, v in fonts.items() if isinstance(v, (str, int, float))})
 
-    spacing = theme_payload.get("spacing")
-    if isinstance(spacing, dict):
-        target = config_data.setdefault("spacing", {})
-        if isinstance(target, dict):
-            target.update({k: v for k, v in spacing.items() if isinstance(v, (str, int, float))})
+def _default_themes(config: Mapping[str, Any]) -> Dict[str, Any]:
+    professional = _default_theme_record("professional", "Professional", config, builtin=True)
+    corporate = _deep_merge(
+        professional,
+        {
+            "name": "Corporate",
+            "description": "Corporate red accent",
+            "colors": {
+                "h1": "#B91C1C",
+                "h2": "#DC2626",
+                "h3": "#EF4444",
+                "table_header_bg": "#B91C1C",
+                "table_border": "#DC2626",
+                "table_odd_row": "#FEE2E2",
+            },
+            "fonts": {"family": "Arial", "family_code": "Consolas", "sizes": {"h1": 26, "h2": 20, "body": 11}},
+            "header": {"text": "CORPORATE DOCUMENT", "color": "#B91C1C", "bold": True},
+            "footer": {"color": "#DC2626", "show_page_numbers": True},
+        },
+    )
+    corporate["builtin"] = True
+    corporate["user_created"] = False
+    return {"themes": {"professional": professional, "corporate": corporate}}
 
-    for section in ("header", "footer", "page", "watermark"):
-        section_data = theme_payload.get(section)
-        if isinstance(section_data, dict):
-            target = config_data.setdefault(section, {})
-            if isinstance(target, dict):
-                target.update(section_data)
 
-    if isinstance(config_data.get("header"), dict) and isinstance(config_data.get("colors"), dict):
-        config_data["header"]["color"] = config_data["colors"].get("h1", config_data["header"].get("color"))
-    if isinstance(config_data.get("footer"), dict) and isinstance(config_data.get("colors"), dict):
-        config_data["footer"]["color"] = config_data["colors"].get("h2", config_data["footer"].get("color"))
+def _normalize_config_payload(raw: Mapping[str, Any] | None) -> Dict[str, Any]:
+    payload = _as_dict(raw.get("config")) if isinstance(raw, Mapping) and isinstance(raw.get("config"), dict) else _as_dict(raw)
+    return _deep_merge(_default_config(), payload)
+
+
+def _payload_theme_to_record(theme_key: str, payload: Mapping[str, Any], config: Mapping[str, Any]) -> Dict[str, Any]:
+    record = _default_theme_record(theme_key, str(payload.get("name") or theme_key), config, builtin=False)
+    primary = str(payload.get("primaryColor") or "").strip()
+    family = str(payload.get("fontFamily") or "").strip()
+    if primary:
+        record["colors"]["h1"] = primary
+        record["colors"]["h2"] = primary
+        record["colors"]["h3"] = primary
+    if family:
+        record["fonts"]["family"] = family
+    styles = payload.get("styles")
+    if isinstance(styles, dict):
+        record["styles"] = dict(styles)
+    return record
+
+
+def _normalize_theme_record(theme_key: str, raw: Mapping[str, Any], config: Mapping[str, Any], *, builtin_default: bool) -> Dict[str, Any]:
+    if "colors" not in raw and "fonts" not in raw and ("primaryColor" in raw or "fontFamily" in raw):
+        candidate = _payload_theme_to_record(theme_key, raw, config)
+        raw_data = candidate
+    else:
+        raw_data = dict(raw)
+
+    base = _default_theme_record(theme_key, str(raw_data.get("name") or theme_key.replace("_", " ").title()), config, builtin=builtin_default)
+    merged = _deep_merge(base, raw_data)
+    merged["name"] = str(merged.get("name") or base["name"])
+    merged["description"] = str(merged.get("description") or base["description"])
+    merged["builtin"] = bool(merged.get("builtin", builtin_default))
+    merged["user_created"] = bool(merged.get("user_created", not merged["builtin"]))
+    for section in ("fonts", "colors", "spacing", "page", "header", "footer", "watermark", "heading", "table", "code", "borders", "styles"):
+        if not isinstance(merged.get(section), dict):
+            merged[section] = dict(base[section])
+    return merged
+
+
+def _normalize_themes_payload(raw: Mapping[str, Any] | None, config: Mapping[str, Any], *, builtin_default: bool) -> Dict[str, Any]:
+    if isinstance(raw, Mapping) and isinstance(raw.get("themes"), dict):
+        source = _as_dict(raw.get("themes"))
+    else:
+        source = _as_dict(raw)
+
+    themes: Dict[str, Dict[str, Any]] = {}
+    for raw_key, raw_theme in source.items():
+        if not isinstance(raw_key, str) or not isinstance(raw_theme, dict):
+            continue
+        theme_key = _slugify_key(raw_key)
+        themes[theme_key] = _normalize_theme_record(theme_key, raw_theme, config, builtin_default=builtin_default)
+
+    if not themes:
+        return _default_themes(config)
+    return {"themes": themes}
+
+
+def _theme_record_from_config(theme_key: str, name: str, description: str, config: Mapping[str, Any]) -> Dict[str, Any]:
+    base = _default_theme_record(theme_key, name, config, builtin=False)
+    source = _as_dict(config)
+    record = _deep_merge(base, {section: _as_dict(source.get(section)) for section in ("fonts", "colors", "spacing", "page", "header", "footer", "watermark")})
+    record["name"] = name
+    record["description"] = description or f"{name} custom theme"
+    record["builtin"] = False
+    record["user_created"] = True
+    return record
+
+
+def _apply_theme_to_config(config: Mapping[str, Any], theme_key: str, theme: Mapping[str, Any]) -> Dict[str, Any]:
+    merged = _deep_merge(_default_config(), config)
+    app_section = _as_dict(merged.get("app"))
+    app_section["theme"] = theme_key
+    merged["app"] = app_section
+    for section in ("fonts", "colors", "spacing", "page", "header", "footer", "watermark"):
+        incoming = theme.get(section)
+        if isinstance(incoming, dict):
+            merged[section] = _deep_merge(_as_dict(merged.get(section)), incoming)
+    return merged
+
+
+def _set_by_path(root: MutableMapping[str, Any], path: str, value: Any) -> None:
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", path or ""):
+        raise ValueError("Invalid config path")
+    if ".." in path or path.startswith("."):
+        raise ValueError("Invalid config path")
+
+    keys = [k for k in path.split(".") if k]
+    if not keys:
+        raise ValueError("Invalid config path")
+    cursor: MutableMapping[str, Any] = root
+    for key in keys[:-1]:
+        current = cursor.get(key)
+        if not isinstance(current, dict):
+            cursor[key] = {}
+        cursor = cursor[key]
+    cursor[keys[-1]] = value
+
+
+def _infer_page_mode(page_format: Any) -> str:
+    val = str(page_format or "").lower()
+    return "page_x_of_y" if "of" in val else "page_x"
+
+
+def _theme_to_payload(theme_key: str, theme: Mapping[str, Any]) -> ThemePayload:
+    cfg = _default_config()
+    merged = _apply_theme_to_config(cfg, theme_key, theme)
+    fonts = _as_dict(merged.get("fonts"))
+    colors = _as_dict(merged.get("colors"))
+    spacing = _as_dict(merged.get("spacing"))
+    page = _as_dict(merged.get("page"))
+    header = _as_dict(merged.get("header"))
+    footer = _as_dict(merged.get("footer"))
+    table = _as_dict(theme.get("table"))
+    code = _as_dict(theme.get("code"))
+    sizes = _as_dict(fonts.get("sizes"))
+    margins = _as_dict(page.get("margins"))
+    border = _as_dict(page.get("border"))
+
+    heading_data: Dict[str, Dict[str, Any]] = {}
+    theme_headings = _as_dict(theme.get("heading"))
+    for level in range(1, 7):
+        token = _as_dict(theme_headings.get(f"h{level}"))
+        heading_data[f"h{level}"] = {
+            "size": _as_int(token.get("size"), _as_int(sizes.get(f"h{level}"), max(12, 26 - (level * 2)))),
+            "weight": str(token.get("weight") or ("700" if level == 1 else "600")),
+            "color": str(token.get("color") or colors.get(f"h{level}") or colors.get("h1", "#1F3A5F")),
+        }
+
+    style_map = {
+        "paragraph_spacing_before": spacing.get("paragraph_spacing_before", 0),
+        "paragraph_spacing_after": spacing.get("paragraph_spacing_after", 6),
+        "heading_spacing_before": spacing.get("heading_spacing_before", 10),
+        "heading_spacing_after": spacing.get("heading_spacing_after", 6),
+        "paragraph_first_line_indent": spacing.get("paragraph_first_line_indent", 0),
+        "paragraph_alignment": spacing.get("paragraph_alignment", "left"),
+        "bullet_base_indent": spacing.get("bullet_base_indent", 0.25),
+        "code_indent": spacing.get("code_indent", 0),
+        "body_color": colors.get("body", "#17202a"),
+        "code_background": code.get("background", colors.get("code_background", "#0f172a")),
+        "code_text": code.get("text", colors.get("code_text", "#e2e8f0")),
+        "table_header_text": colors.get("table_header_text", "#111827"),
+        "table_odd_row": colors.get("table_odd_row", "#ffffff"),
+        "table_even_row": colors.get("table_even_row", "#f8fafc"),
+        "link_color": colors.get("link", "#2563eb"),
+        "code_font_family": code.get("font_family", fonts.get("family_code", "Consolas")),
+        "code_font_size": code.get("font_size", sizes.get("code", 10)),
+        "h1_family": fonts.get("h1_family", fonts.get("family", "Calibri")),
+        "h2_family": fonts.get("h2_family", fonts.get("family", "Calibri")),
+        "h3_family": fonts.get("h3_family", fonts.get("family", "Calibri")),
+        "h4_family": fonts.get("h4_family", fonts.get("family", "Calibri")),
+        "h5_family": fonts.get("h5_family", fonts.get("family", "Calibri")),
+        "h6_family": fonts.get("h6_family", fonts.get("family", "Calibri")),
+        "bullet_font_family": fonts.get("bullet_family", fonts.get("family", "Calibri")),
+        "header_alignment": header.get("alignment", "center"),
+        "header_font_family": header.get("font_family", fonts.get("family", "Calibri")),
+        "header_size": header.get("size", sizes.get("header", 10)),
+        "header_color": header.get("color", colors.get("h1", "#1F3A5F")),
+        "header_bold": header.get("bold", False),
+        "header_italic": header.get("italic", False),
+        "header_separator": header.get("separator", False),
+        "header_separator_color": header.get("separator_color", "#CCCCCC"),
+        "header_show_page_numbers": header.get("show_page_numbers", False),
+        "footer_alignment": footer.get("alignment", "center"),
+        "footer_font_family": footer.get("font_family", fonts.get("family", "Calibri")),
+        "footer_size": footer.get("size", sizes.get("footer", 9)),
+        "footer_color": footer.get("color", colors.get("h2", "#1F3A5F")),
+        "footer_bold": footer.get("bold", False),
+        "footer_italic": footer.get("italic", False),
+        "footer_separator": footer.get("separator", False),
+        "footer_separator_color": footer.get("separator_color", "#CCCCCC"),
+        "footer_show_page_numbers": footer.get("show_page_numbers", True),
+        "page_number_position": footer.get("page_number_position", header.get("page_number_position", "footer")),
+        "page_number_alignment": footer.get("page_number_alignment", header.get("page_number_alignment", "center")),
+        "page_number_mode": _infer_page_mode(footer.get("page_format") or header.get("page_format")),
+        "page_size": page.get("size", "A4"),
+        "page_orientation": page.get("orientation", "portrait"),
+        "page_border_enabled": border.get("enabled", False),
+        "page_border_width": border.get("width", 1),
+        "page_border_color": border.get("color", "#000000"),
+        "page_border_style": border.get("style", "single"),
+        "page_border_offset": border.get("offset", 24),
+        "table_text_alignment": table.get("text_alignment", "left"),
+        "table_border_style": table.get("border_style", "single"),
+        "ascii_background": table.get("ascii_background", colors.get("code_background", "#0f172a")),
+        "ascii_text": table.get("ascii_text", colors.get("code_text", "#e2e8f0")),
+        "ascii_font_family": code.get("font_family", fonts.get("family_code", "Consolas")),
+    }
+    custom_styles = _as_dict(theme.get("styles"))
+    style_map.update(custom_styles)
+
+    payload = {
+        "name": str(theme.get("name") or theme_key),
+        "primaryColor": str(colors.get("h1", "#1F3A5F")),
+        "fontFamily": str(fonts.get("family", "Calibri")),
+        "headingStyle": heading_data,
+        "bodyStyle": {"size": _as_int(sizes.get("body"), 11), "lineHeight": _as_float(spacing.get("line_spacing"), 1.4)},
+        "tableStyle": {
+            "borderWidth": _as_int(table.get("border_width"), 1),
+            "borderColor": str(table.get("border_color", colors.get("table_border", "#d1d5db"))),
+            "headerFill": str(table.get("header_fill", colors.get("table_header_bg", "#f3f4f6"))),
+        },
+        "margins": {
+            "top": _margin_to_mm(margins.get("top"), 25.0),
+            "bottom": _margin_to_mm(margins.get("bottom"), 25.0),
+            "left": _margin_to_mm(margins.get("left"), 25.0),
+            "right": _margin_to_mm(margins.get("right"), 25.0),
+        },
+        "styles": style_map,
+    }
+    return ThemePayload.model_validate(payload)
+
+
+def _merge_theme_payload(base_theme: ThemePayload, request_theme: ThemePayload) -> ThemePayload:
+    if not request_theme.model_fields_set:
+        return base_theme
+    request_dump = request_theme.model_dump(exclude_unset=True)
+    if not request_dump:
+        return base_theme
+    if request_theme.model_dump() == DEFAULT_THEME_MODEL.model_dump():
+        return base_theme
+    merged = _deep_merge(base_theme.model_dump(), request_dump)
+    return ThemePayload.model_validate(merged)
+
+
+def _compose_security_payload(
+    incoming: GenerateSecurityPayload,
+    config: Mapping[str, Any],
+    theme: Mapping[str, Any],
+) -> GenerateSecurityPayload:
+    cfg_header = _as_dict(config.get("header"))
+    cfg_footer = _as_dict(config.get("footer"))
+    cfg_watermark = _as_dict(config.get("watermark"))
+    th_header = _as_dict(theme.get("header"))
+    th_footer = _as_dict(theme.get("footer"))
+    th_watermark = _as_dict(theme.get("watermark"))
+
+    effective_header = _deep_merge(cfg_header, th_header)
+    effective_footer = _deep_merge(cfg_footer, th_footer)
+    effective_watermark = _deep_merge(cfg_watermark, th_watermark)
+
+    header_text = incoming.headerText
+    if header_text is None:
+        header_text = str(effective_header.get("text") or "") if effective_header.get("enabled", True) else ""
+
+    footer_text = incoming.footerText
+    if footer_text is None:
+        footer_text = str(effective_footer.get("text") or "") if effective_footer.get("enabled", True) else ""
+
+    page_mode = incoming.pageNumberMode or _infer_page_mode(
+        effective_footer.get("page_format") or effective_header.get("page_format")
+    )
+    if page_mode not in {"page_x", "page_x_of_y"}:
+        page_mode = "page_x"
+
+    watermark = incoming.watermark
+    if watermark is None and effective_watermark.get("enabled"):
+        wm_type = "image" if str(effective_watermark.get("type", "text")).lower() == "image" else "text"
+        wm_value = str(
+            effective_watermark.get("image_path")
+            if wm_type == "image"
+            else effective_watermark.get("text", "")
+        ).strip()
+        if wm_value:
+            wm_position = str(effective_watermark.get("position", "center")).lower()
+            watermark = WatermarkPayload(
+                type=wm_type,
+                value=wm_value,
+                position="header" if wm_position in {"header", "top"} else "center",
+            )
+
+    return GenerateSecurityPayload(
+        passwordProtectPdf=incoming.passwordProtectPdf,
+        disableEditingDocx=incoming.disableEditingDocx,
+        removeMetadata=incoming.removeMetadata,
+        watermark=watermark,
+        pageNumberMode=page_mode,
+        headerText=header_text,
+        footerText=footer_text,
+    )
 
 
 class AppState:
     def __init__(self) -> None:
-        backend_root = Path(__file__).resolve().parent.parent
-        temp_dir = os.environ.get("DOCX_TEMP_DIR", str(backend_root / ".notesforge_tmp"))
+        self.lock = RLock()
+        self.config_path = CANONICAL_CONFIG_PATH
+        self.themes_path = CANONICAL_THEMES_PATH
+        self.prompt_path = PROMPT_PATH
+        self.config = self._bootstrap_config()
+        self.theme_catalog = self._bootstrap_themes()
+        self._ensure_prompt_file()
+        self.generated_filenames: Dict[str, str] = {}
+
+        storage_backend = os.environ.get("STORAGE_BACKEND", "local")
+        if storage_backend != "local":
+            logger.warning("Only local storage backend is implemented. Falling back to local.")
+
+        temp_dir = os.environ.get("DOCX_TEMP_DIR", str(Path.cwd() / ".notesforge_tmp"))
         self.store = FileStore(temp_dir)
         self.exporter = DocumentExporter(self.store)
         self.templates = TemplateRepo.build_default()
 
-        self.config_path = backend_root / "Config.json"
-        self.prompt_path = backend_root / "prompt.txt"
-        self.theme_store_path = backend_root / "theme_store.json"
+    def _bootstrap_config(self) -> Dict[str, Any]:
+        if self.config_path.exists():
+            raw = _read_json_dict(self.config_path)
+            config = _normalize_config_payload(raw)
+            _write_json(self.config_path, config)
+            return config
 
-        self.theme_store: Dict[str, dict] = self._load_json(self.theme_store_path, {})
-        self.config_data: Dict[str, Any] = self._load_json(self.config_path, _default_config())
-        if not isinstance(self.config_data, dict):
-            self.config_data = _default_config()
-        self.current_theme = (
-            self.config_data.get("app", {}).get("theme", "professional") or "professional"
-        )
-        self.prompt = self._load_prompt()
+        for legacy in LEGACY_CONFIG_PATHS:
+            raw = _read_json_dict(legacy)
+            if raw is None:
+                continue
+            config = _normalize_config_payload(raw)
+            _write_json(self.config_path, config)
+            logger.info("Migrated config data from %s -> %s", legacy.name, self.config_path.name)
+            return config
 
-    @staticmethod
-    def _load_json(path: Path, default: Any) -> Any:
-        if not path.exists():
-            return default
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            logger.warning("Failed to parse %s; using defaults", path)
-            return default
+        config = _default_config()
+        _write_json(self.config_path, config)
+        return config
 
-    def _save_json(self, path: Path, payload: Any) -> None:
-        path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    def _bootstrap_themes(self) -> Dict[str, Dict[str, Any]]:
+        if self.themes_path.exists():
+            raw = _read_json_dict(self.themes_path)
+            normalized = _normalize_themes_payload(raw, self.config, builtin_default=False)
+            theme_map = normalized["themes"]
+            defaults = _default_themes(self.config)["themes"]
+            for key, value in defaults.items():
+                theme_map.setdefault(key, value)
+        else:
+            merged: Dict[str, Dict[str, Any]] = {}
+            for legacy in LEGACY_THEME_PATHS:
+                raw = _read_json_dict(legacy)
+                if raw is None:
+                    continue
+                normalized = _normalize_themes_payload(raw, self.config, builtin_default=False)
+                merged.update(normalized["themes"])
+                logger.info("Imported theme data from %s", legacy.name)
+            if not merged:
+                merged = _default_themes(self.config)["themes"]
+            else:
+                defaults = _default_themes(self.config)["themes"]
+                for key, value in defaults.items():
+                    merged.setdefault(key, value)
+            theme_map = merged
+
+        if not theme_map:
+            theme_map = _default_themes(self.config)["themes"]
+
+        app_cfg = _as_dict(self.config.get("app"))
+        current = str(app_cfg.get("theme") or "")
+        if current not in theme_map:
+            current = next(iter(theme_map.keys()))
+            app_cfg["theme"] = current
+            self.config["app"] = app_cfg
+            _write_json(self.config_path, self.config)
+
+        _write_json(self.themes_path, {"themes": theme_map})
+        return theme_map
+
+    def _ensure_prompt_file(self) -> None:
+        if self.prompt_path.exists():
+            return
+        self.prompt_path.write_text(DEFAULT_PROMPT, encoding="utf-8")
 
     def save_config(self) -> None:
-        self._save_json(self.config_path, self.config_data)
+        _write_json(self.config_path, self.config)
 
-    def save_theme_store(self) -> None:
-        self._save_json(self.theme_store_path, self.theme_store)
+    def save_themes(self) -> None:
+        _write_json(self.themes_path, {"themes": self.theme_catalog})
 
-    def _load_prompt(self) -> str:
-        if not self.prompt_path.exists():
-            return ""
-        try:
-            return self.prompt_path.read_text(encoding="utf-8")
-        except Exception:
-            return ""
+    def current_theme_key(self) -> str:
+        app_cfg = _as_dict(self.config.get("app"))
+        key = str(app_cfg.get("theme") or "")
+        if key not in self.theme_catalog:
+            key = next(iter(self.theme_catalog.keys()))
+            app_cfg["theme"] = key
+            self.config["app"] = app_cfg
+            self.save_config()
+        return key
 
-    def save_prompt(self) -> None:
-        self.prompt_path.write_text(self.prompt, encoding="utf-8")
+    def remember_file_name(self, file_id: str, filename: str) -> None:
+        self.generated_filenames[file_id] = filename
 
-    def update_config_path(self, path: str, value: Any) -> None:
-        keys = [k for k in path.split(".") if k]
-        if not keys:
-            return
-        cur: Dict[str, Any] = self.config_data
-        for key in keys[:-1]:
-            if not isinstance(cur.get(key), dict):
-                cur[key] = {}
-            cur = cur[key]
-        cur[keys[-1]] = value
-        if keys[0] == "app" and isinstance(self.config_data.get("app"), dict):
-            self.current_theme = self.config_data["app"].get("theme", self.current_theme)
-        self.save_config()
+    def filename_for(self, file_id: str) -> str | None:
+        return self.generated_filenames.get(file_id)
+
+
+def _build_theme_and_security(
+    state: AppState,
+    incoming_theme: ThemePayload,
+    incoming_security: GenerateSecurityPayload,
+) -> tuple[ThemePayload, GenerateSecurityPayload, str]:
+    with state.lock:
+        theme_key = state.current_theme_key()
+        theme_record = state.theme_catalog.get(theme_key, {})
+        base_theme = _theme_to_payload(theme_key, theme_record)
+        merged_theme = _merge_theme_payload(base_theme, incoming_theme)
+        merged_security = _compose_security_payload(incoming_security, state.config, theme_record)
+        return merged_theme, merged_security, theme_key
 
 
 def _classify_line(line: str) -> Dict[str, Any]:
     stripped = line.rstrip("\n")
-    trimmed = stripped.strip()
-    if not trimmed:
-        return {"type": "empty", "content": "", "indent_level": 0}
-    match = API_MARKER_RE.match(stripped)
-    if not match:
-        return {"type": "text", "content": trimmed, "indent_level": 0}
-    marker = match.group(1).upper()
-    content = match.group(2).strip()
-    mapped = {
-        "HEADING": "h1",
-        "H1": "h1",
-        "SUBHEADING": "h2",
-        "H2": "h2",
-        "SUB-SUBHEADING": "h3",
-        "H3": "h3",
-        "H4": "h4",
-        "H5": "h5",
-        "H6": "h6",
-        "PARAGRAPH": "paragraph",
-        "PARA": "paragraph",
-        "BULLET": "bullet",
-        "NUMBERED": "numbered",
-        "CODE": "code",
-        "TABLE": "table",
-        "ASCII": "ascii",
-        "CENTER": "paragraph",
-        "RIGHT": "paragraph",
-        "JUSTIFY": "paragraph",
-        "PAGEBREAK": "pagebreak",
+    if not stripped.strip():
+        return {"type": "empty", "content": "", "marker": None, "indent_level": 0}
+
+    marker_match = MARKER_RE.match(line)
+    if marker_match:
+        marker = marker_match.group(1).upper()
+        payload = marker_match.group(2).strip()
+        marker_type_map = {
+            "HEADING": "heading",
+            "SUBHEADING": "heading",
+            "SUB-SUBHEADING": "heading",
+            "PARAGRAPH": "paragraph",
+            "PARA": "paragraph",
+            "CENTER": "paragraph",
+            "RIGHT": "paragraph",
+            "JUSTIFY": "paragraph",
+            "BULLET": "bullet",
+            "NUMBERED": "numbered",
+            "TABLE": "table",
+            "CODE": "code",
+            "ASCII": "ascii",
+            "PAGEBREAK": "pagebreak",
+            "PAGE_BREAK": "pagebreak",
+        }
+        return {
+            "type": marker_type_map.get(marker, marker.lower()),
+            "content": payload,
+            "marker": marker,
+            "indent_level": len(line) - len(line.lstrip(" ")),
+        }
+
+    return {
+        "type": "paragraph",
+        "content": stripped.strip(),
+        "marker": None,
+        "indent_level": len(line) - len(line.lstrip(" ")),
     }
-    node_type = mapped.get(marker, marker.lower())
-    indent = 0
-    if marker == "BULLET" and content:
-        indent = max(0, (len(content) - len(content.lstrip())) // 2)
-    return {"type": node_type, "content": content, "indent_level": indent}
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="NotesForge API", version=APP_VERSION)
     state = AppState()
 
-    origins = _allowed_origins()
-    allow_all = "*" in origins
-    cors_origins = [o for o in origins if o != "*"] or DEFAULT_CORS_ORIGINS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins,
-        allow_origin_regex=r".*" if allow_all else r"https://.*\.vercel\.app",
+        allow_origins=_allowed_origins(),
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
+        max_age=3600,
     )
 
     @app.middleware("http")
-    async def request_pipeline(request: Request, call_next):
-        request_id = request.headers.get("x-request-id") or uuid4().hex[:12]
-        started = time.perf_counter()
+    async def content_length_guard(request: Request, call_next):
         content_len = request.headers.get("content-length")
-        if content_len and int(content_len) > MAX_BODY_BYTES:
-            return JSONResponse(status_code=413, content={"detail": "Request too large"})
-        try:
-            response = await call_next(request)
-        except Exception:
-            logger.exception("Unhandled request failure [%s] %s", request_id, request.url.path)
-            raise
-        elapsed_ms = (time.perf_counter() - started) * 1000
-        response.headers["x-request-id"] = request_id
-        logger.info("%s %s -> %s (%.1fms)", request.method, request.url.path, response.status_code, elapsed_ms)
-        return response
-
-    @app.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException):
-        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-
-    @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError):
-        return JSONResponse(status_code=422, content={"detail": exc.errors()})
-
-    @app.exception_handler(Exception)
-    async def unhandled_exception_handler(request: Request, exc: Exception):
-        logger.exception("Unhandled server error on %s", request.url.path)
-        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
-
-    @app.options("/{full_path:path}")
-    async def preflight(full_path: str):
-        return Response(status_code=204)
+        if content_len:
+            try:
+                parsed_size = int(content_len)
+            except ValueError:
+                return JSONResponse(status_code=400, content={"detail": "Invalid content-length header"})
+            if parsed_size > MAX_BODY_BYTES:
+                return JSONResponse(status_code=413, content={"detail": "Request too large"})
+        return await call_next(request)
 
     @app.get("/api/health")
-    async def api_health() -> Dict[str, str]:
+    async def health() -> Dict[str, str]:
         return {"status": "ok"}
 
     @app.get("/health")
     async def health_legacy() -> Dict[str, str]:
         return {"status": "ok"}
 
-    @app.get("/api/version")
-    async def api_version() -> Dict[str, str]:
-        return {"name": "NotesForge API", "version": APP_VERSION}
-
     @app.get("/api/health/parser", response_model=ParserHealthResponse)
     async def parser_health() -> ParserHealthResponse:
         return ParserHealthResponse(parser="ok", version=APP_VERSION)
 
+    @app.get("/health/parser", response_model=ParserHealthResponse)
+    async def parser_health_legacy() -> ParserHealthResponse:
+        return ParserHealthResponse(parser="ok", version=APP_VERSION)
+
+    @app.get("/api/version")
+    async def version() -> Dict[str, str]:
+        return {"name": "NotesForge API", "version": APP_VERSION}
+
+    @app.post("/api/analyze")
+    async def analyze(req: AnalyzeRequest):
+        content = (req.text or req.content or "").strip()
+        if not content:
+            raise HTTPException(status_code=422, detail="text is required")
+
+        lines = content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+        classifications: List[Dict[str, Any]] = []
+        stats: Dict[str, int] = {}
+        for idx, line in enumerate(lines, start=1):
+            classified = _classify_line(line)
+            classified["line_number"] = idx
+            classified["original"] = line
+            stats[classified["type"]] = stats.get(classified["type"], 0) + 1
+            classifications.append(classified)
+
+        return {
+            "success": True,
+            "total_lines": len(lines),
+            "statistics": stats,
+            "classifications": classifications,
+            "preview": classifications[:20],
+        }
+
     @app.post("/api/preview", response_model=PreviewResponse)
     async def preview(req: PreviewRequest) -> PreviewResponse:
         parsed = parse_notesforge(req.content)
-        sec = GenerateSecurityPayload(
-            removeMetadata=req.security.removeMetadata,
-            watermark=req.security.watermark,
-            pageNumberMode=req.security.pageNumberMode,
-            headerText=req.security.headerText,
-            footerText=req.security.footerText,
+        merged_theme, merged_security, _ = _build_theme_and_security(
+            state,
+            req.theme,
+            GenerateSecurityPayload(
+                removeMetadata=req.security.removeMetadata,
+                watermark=req.security.watermark,
+                pageNumberMode=req.security.pageNumberMode,
+                headerText=req.security.headerText,
+                footerText=req.security.footerText,
+            ),
+        )
+        formatting = FormattingOptions(
+            margins=req.formattingOptions.margins,
+            lineSpacing=req.formattingOptions.lineSpacing or merged_theme.bodyStyle.lineHeight or 1.4,
         )
         preview_html = state.exporter.create_preview_html(
             nodes=parsed.nodes,
-            theme=req.theme,
-            formatting=req.formattingOptions,
-            security=sec,
+            theme=merged_theme,
+            formatting=formatting,
+            security=merged_security,
         )
         return PreviewResponse(
             previewHtml=preview_html,
@@ -496,71 +906,65 @@ def create_app() -> FastAPI:
 
     @app.post("/api/generate", response_model=GenerateResponse)
     async def generate(req: GenerateRequest) -> GenerateResponse:
+        target_format = req.format.lower()
+        if target_format not in SUPPORTED_EXPORT_FORMATS:
+            raise HTTPException(status_code=400, detail=f"Unsupported format: {target_format}")
+
         parsed = parse_notesforge(req.content)
+        merged_theme, merged_security, _ = _build_theme_and_security(state, req.theme, req.security)
         formatting = FormattingOptions(
-            margins=req.theme.margins,
-            lineSpacing=req.theme.bodyStyle.lineHeight or 1.4,
+            margins=merged_theme.margins,
+            lineSpacing=merged_theme.bodyStyle.lineHeight or 1.4,
         )
+
         try:
-            file_id, output_path, warnings = state.exporter.create_export_file(
-                target_format=req.format,
+            export_result: ExportResult = state.exporter.create_export_file(
+                target_format=target_format,
                 nodes=parsed.nodes,
-                theme=req.theme,
+                theme=merged_theme,
                 formatting=formatting,
-                security=req.security,
+                security=merged_security,
             )
         except RuntimeError as exc:
-            detail = str(exc)
-            if req.format == "pdf":
-                detail = (
-                    f"{detail}. Install backend dependencies: "
-                    "pip install -r backend/requirements.txt. "
-                    "For Render set Root Directory=backend and Build Command='pip install -r requirements.txt'."
-                )
-            raise HTTPException(
-                status_code=503,
-                detail=detail,
-            )
-        all_warnings = [*parsed.warnings, *warnings]
+            raise HTTPException(status_code=503, detail=str(exc))
 
-        actual_format = output_path.suffix.lower().lstrip(".") or req.format
-
-        if all_warnings:
-            logger.warning(
-                "generate warnings (%s): %s",
-                file_id,
-                " | ".join(all_warnings),
-            )
-        if not output_path.exists():
+        if not export_result.output_path.exists():
             raise HTTPException(status_code=500, detail="Failed to generate output file")
-        safe_base = req.filename.strip() if req.filename else "notesforge_output"
-        safe_base = safe_base[:120] or "notesforge_output"
-        filename = f"{safe_base}.{actual_format}"
-        warning = " | ".join(all_warnings) if all_warnings else None
+
+        ext = export_result.actual_format
+        filename_base = req.filename or "notesforge_output"
+        filename = f"{filename_base}.{ext}"
+        all_warnings = list(export_result.warnings)
+        if export_result.warning and export_result.warning not in all_warnings:
+            all_warnings.append(export_result.warning)
+
+        with state.lock:
+            state.remember_file_name(export_result.file_id, filename)
+
         return GenerateResponse(
             success=True,
-            downloadUrl=f"/api/download/{file_id}",
-            fileId=file_id,
+            downloadUrl=f"/api/download/{export_result.file_id}",
+            fileId=export_result.file_id,
             filename=filename,
-            requestedFormat=req.format,
-            actualFormat=actual_format,
-            warning=warning,
+            requestedFormat=export_result.requested_format,
+            actualFormat=export_result.actual_format,
+            warning=export_result.warning,
             warnings=all_warnings,
         )
 
-    @app.get("/api/download/{token}")
-    async def download(token: str):
-        if re.fullmatch(r"[0-9a-fA-F]{32}", token):
-            path = state.store.resolve_path(token.lower())
-            if not path:
-                raise HTTPException(status_code=404, detail="File not found")
-            ext = path.suffix.lower().lstrip(".")
-            return FileResponse(path, media_type=MEDIA_TYPES.get(ext, "application/octet-stream"), filename=f"notesforge_output.{ext}")
-        candidate = Path(os.path.realpath(os.path.join(tempfile.gettempdir(), token)))
-        if candidate.exists():
-            ext = candidate.suffix.lower().lstrip(".")
-            return FileResponse(candidate, media_type=MEDIA_TYPES.get(ext, "application/octet-stream"), filename=candidate.name)
-        raise HTTPException(status_code=404, detail="File not found")
+    @app.get("/api/download/{file_id}")
+    async def download(file_id: str):
+        if not re.fullmatch(r"[0-9a-fA-F]{32}", file_id or ""):
+            raise HTTPException(status_code=404, detail="File not found")
+
+        path = state.store.resolve_path(file_id.lower())
+        if not path:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        ext = path.suffix.lower().lstrip(".")
+        media_type = MEDIA_TYPES.get(ext, "application/octet-stream")
+        filename = state.filename_for(file_id.lower()) or f"notesforge_output.{ext}"
+        return FileResponse(path, media_type=media_type, filename=filename)
 
     @app.get("/api/templates", response_model=List[TemplateDefinition])
     async def list_templates() -> List[TemplateDefinition]:
@@ -574,123 +978,93 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="Template not found")
         return RegenerateTemplateResponse(content=regenerated["content"], prompt=regenerated["prompt"])
 
-    # v5 themes endpoint
-    @app.post("/api/themes", response_model=CreateThemeResponse, status_code=status.HTTP_201_CREATED)
-    async def create_theme(req: CreateThemeRequest) -> CreateThemeResponse:
-        theme_id = req.name.strip().lower().replace(" ", "_")
-        state.theme_store[theme_id] = req.model_dump()
-        state.save_theme_store()
-        return CreateThemeResponse(themeId=theme_id)
-
-    # compatibility themes endpoints used by existing frontend
-    @app.get("/api/themes")
-    async def list_themes_compat() -> Dict[str, Any]:
-        builtin = BUILTIN_THEME_CATALOG
-
-        custom: Dict[str, Dict[str, Any]] = {}
-        for key, value in state.theme_store.items():
-            colors: Dict[str, str] = {}
-            if isinstance(value.get("colors"), dict):
-                colors = {
-                    k: str(v)
-                    for k, v in value["colors"].items()
-                    if isinstance(v, (str, int, float))
-                }
-            primary = value.get("primaryColor") or value.get("primary_color")
-            if primary and not colors.get("h1"):
-                colors["h1"] = str(primary)
-                colors["h2"] = str(primary)
-            fonts = value.get("fonts") if isinstance(value.get("fonts"), dict) else {}
-            if not fonts and value.get("fontFamily"):
-                fonts = {"family": str(value.get("fontFamily"))}
-            spacing = value.get("spacing") if isinstance(value.get("spacing"), dict) else {}
-            custom[key] = {
-                "name": value.get("name", key),
-                "description": value.get("description", "Custom theme"),
-                "user_created": True,
-                "colors": colors,
-                "fonts": fonts,
-                "spacing": spacing,
-            }
-        return {"success": True, "themes": {**builtin, **custom}, "current_theme": state.current_theme}
-
-    @app.post("/api/themes/apply")
-    async def apply_theme_compat(req: ThemeApplyRequest) -> Dict[str, Any]:
-        state.current_theme = req.theme_name.strip().lower()
-        app_cfg = state.config_data.setdefault("app", {})
-        app_cfg["theme"] = state.current_theme
-        selected = state.theme_store.get(state.current_theme) or BUILTIN_THEME_CATALOG.get(
-            state.current_theme
-        )
-        if isinstance(selected, dict):
-            _apply_theme_to_config(state.config_data, selected)
-        state.save_config()
-        return {"success": True, "current_theme": state.current_theme, "config": state.config_data}
-
-    @app.post("/api/themes/save")
-    async def save_theme_compat(req: ThemeSaveRequest) -> Dict[str, Any]:
-        key = re.sub(r"[^a-z0-9_]", "", req.key.strip().lower().replace(" ", "_"))
-        if not key:
-            raise HTTPException(status_code=400, detail="Invalid theme key")
-        payload = req.config if isinstance(req.config, dict) else state.config_data
-        state.theme_store[key] = {"name": req.name, "description": req.description or "Custom theme", **payload}
-        state.save_theme_store()
-        return {"success": True, "key": key}
-
-    @app.post("/api/themes/delete")
-    async def delete_theme_compat(req: ThemeDeleteRequest) -> Dict[str, Any]:
-        key = req.key.strip().lower()
-        if key in state.theme_store:
-            del state.theme_store[key]
-            state.save_theme_store()
-            if state.current_theme == key:
-                state.current_theme = "professional"
-            return {"success": True}
-        raise HTTPException(status_code=404, detail="Theme not found")
-
     @app.get("/api/config")
-    async def get_config_compat() -> Dict[str, Any]:
-        return {"success": True, "config": state.config_data}
+    async def get_config():
+        with state.lock:
+            return {"success": True, "config": state.config}
 
     @app.post("/api/config/update")
-    async def update_config_compat(req: ConfigUpdateRequest) -> Dict[str, Any]:
-        state.update_config_path(req.path, req.value)
-        return {"success": True}
+    async def update_config(req: ConfigUpdateRequest):
+        with state.lock:
+            updated = _deep_merge({}, state.config)
+            _set_by_path(updated, req.path, req.value)
+            state.config = updated
+            state.save_config()
+            return {"success": True}
+
+    @app.get("/api/themes")
+    async def get_themes():
+        with state.lock:
+            return {
+                "success": True,
+                "themes": state.theme_catalog,
+                "current_theme": state.current_theme_key(),
+            }
+
+    @app.post("/api/themes/apply")
+    async def apply_theme(req: ThemeApplyRequest):
+        key = _slugify_key(req.theme_name)
+        with state.lock:
+            theme = state.theme_catalog.get(key)
+            if not theme:
+                raise HTTPException(status_code=404, detail="Theme not found")
+            state.config = _apply_theme_to_config(state.config, key, theme)
+            state.save_config()
+            return {"success": True, "config": state.config, "current_theme": key}
+
+    @app.post("/api/themes/save")
+    async def save_theme(req: ThemeSaveRequest):
+        key = _slugify_key(req.key)
+        with state.lock:
+            source_cfg = req.config if req.config else state.config
+            record = _theme_record_from_config(key, req.name, req.description, source_cfg)
+            state.theme_catalog[key] = record
+            state.save_themes()
+            return {"success": True, "key": key}
+
+    @app.post("/api/themes/delete")
+    async def delete_theme(req: ThemeDeleteRequest):
+        key = _slugify_key(req.key)
+        with state.lock:
+            if key not in state.theme_catalog:
+                raise HTTPException(status_code=404, detail="Theme not found")
+            if len(state.theme_catalog) <= 1:
+                raise HTTPException(status_code=400, detail="At least one theme must remain")
+            del state.theme_catalog[key]
+            current = state.current_theme_key()
+            if current == key:
+                fallback = next(iter(state.theme_catalog.keys()))
+                state.config = _apply_theme_to_config(state.config, fallback, state.theme_catalog[fallback])
+            state.save_themes()
+            state.save_config()
+            return {"success": True, "themes": state.theme_catalog, "current_theme": state.current_theme_key()}
+
+    @app.post("/api/themes", response_model=CreateThemeResponse, status_code=status.HTTP_201_CREATED)
+    async def create_theme(req: CreateThemeRequest) -> CreateThemeResponse:
+        key = _slugify_key(req.name)
+        with state.lock:
+            payload = {
+                "name": req.name,
+                "primaryColor": req.primaryColor,
+                "fontFamily": req.fontFamily,
+                "styles": req.styles,
+            }
+            state.theme_catalog[key] = _normalize_theme_record(key, payload, state.config, builtin_default=False)
+            state.save_themes()
+        return CreateThemeResponse(themeId=key)
 
     @app.get("/api/prompt")
-    async def get_prompt_compat() -> Dict[str, Any]:
-        return {"success": True, "prompt": state.prompt}
+    async def get_prompt():
+        try:
+            prompt = state.prompt_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            prompt = DEFAULT_PROMPT
+        return {"success": True, "prompt": prompt or DEFAULT_PROMPT}
 
     @app.post("/api/prompt")
-    async def save_prompt_compat(req: PromptRequest) -> Dict[str, Any]:
-        state.prompt = req.prompt
-        state.save_prompt()
+    async def save_prompt(req: PromptUpdateRequest):
+        state.prompt_path.write_text(req.prompt.strip(), encoding="utf-8")
         return {"success": True}
-
-    @app.post("/api/analyze")
-    async def analyze_compat(req: AnalyzeRequest) -> Dict[str, Any]:
-        lines = req.text.split("\n")
-        statistics: Dict[str, int] = {}
-        classifications: List[Dict[str, Any]] = []
-        for idx, line in enumerate(lines, start=1):
-            row = _classify_line(line)
-            statistics[row["type"]] = statistics.get(row["type"], 0) + 1
-            classifications.append(
-                {
-                    "line_number": idx,
-                    "original": line,
-                    "type": row["type"],
-                    "content": row["content"],
-                    "indent_level": row.get("indent_level", 0),
-                }
-            )
-        return {
-            "success": True,
-            "total_lines": len(lines),
-            "statistics": statistics,
-            "classifications": classifications,
-            "preview": classifications[:20],
-        }
 
     return app
 

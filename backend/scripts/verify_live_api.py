@@ -88,12 +88,6 @@ def _check_generate_pdf(base: str) -> CheckResult:
         "warning",
         "warnings",
     }
-    if status == 503:
-        return CheckResult(
-            True,
-            "POST /api/generate (pdf contract)",
-            f"status=503 strict-pdf active detail={result.get('detail')}",
-        )
     if status != 200:
         return CheckResult(False, "POST /api/generate", f"status={status} payload={result}")
     if not required.issubset(result.keys()):
@@ -107,7 +101,12 @@ def _check_generate_pdf(base: str) -> CheckResult:
         _ = download.read(32)
 
     actual = (result.get("actualFormat") or "").lower()
-    ok = actual == "pdf" and "application/pdf" in content_type
+    if actual == "pdf":
+        ok = "application/pdf" in content_type
+    elif actual == "docx":
+        ok = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" in content_type
+    else:
+        ok = False
 
     detail = (
         f"status={status} actualFormat={result.get('actualFormat')} "

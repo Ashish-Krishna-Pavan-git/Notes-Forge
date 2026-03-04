@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import os
 from pathlib import Path
 import shutil
@@ -21,6 +22,16 @@ from .models import FormattingOptions, GenerateSecurityPayload, ThemePayload
 from .parser import Node, render_preview_html, to_markdown, to_plain_text
 from .security import disable_docx_editing, remove_docx_metadata, secure_pdf
 from .themes import css_from_theme, watermark_html
+
+
+@dataclass
+class ExportResult:
+    file_id: str
+    output_path: Path
+    warnings: List[str]
+    requested_format: str
+    actual_format: str
+    warning: str | None = None
 
 
 def _hex_to_rgb(value: str) -> RGBColor:
@@ -207,6 +218,20 @@ def _set_cell_shading(cell, fill_hex: str) -> None:
     if shd is None:
         shd = OxmlElement("w:shd")
         tc_pr.append(shd)
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), cleaned)
+
+
+def _set_paragraph_shading(paragraph, fill_hex: str) -> None:
+    cleaned = (fill_hex or "").strip().lstrip("#")
+    if len(cleaned) != 6:
+        return
+    p_pr = paragraph._p.get_or_add_pPr()
+    shd = p_pr.find(qn("w:shd"))
+    if shd is None:
+        shd = OxmlElement("w:shd")
+        p_pr.append(shd)
     shd.set(qn("w:val"), "clear")
     shd.set(qn("w:color"), "auto")
     shd.set(qn("w:fill"), cleaned)
@@ -872,6 +897,10 @@ class DocumentExporter:
                 p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
                 p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
                 p.paragraph_format.line_spacing = line_spacing
+                _set_paragraph_shading(
+                    p,
+                    _style_str(styles, "code_background", "codeBackground", default="#0f172a"),
+                )
                 _style_paragraph_runs(
                     p,
                     font_name=code_font_name,
@@ -880,13 +909,35 @@ class DocumentExporter:
                 )
             elif node.type == "ascii":
                 p = document.add_paragraph(node.text)
-                p.paragraph_format.left_indent = Inches(max(0.0, code_indent_in))
+                p.paragraph_format.left_indent = Inches(0)
                 p.paragraph_format.line_spacing = line_spacing
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                _set_paragraph_shading(
+                    p,
+                    _style_str(
+                        styles,
+                        "ascii_background",
+                        "asciiBackground",
+                        default=_style_str(styles, "code_background", "codeBackground", default="#0f172a"),
+                    ),
+                )
                 _style_paragraph_runs(
                     p,
-                    font_name=code_font_name,
+                    font_name=_font_primary(
+                        _style_str(
+                            styles,
+                            "ascii_font_family",
+                            "asciiFontFamily",
+                            default=code_font_name,
+                        )
+                    ),
                     size_pt=max(8.0, code_font_size - 1.0),
-                    color_hex=_style_str(styles, "code_text", "codeText", default="#1f2937"),
+                    color_hex=_style_str(
+                        styles,
+                        "ascii_text",
+                        "asciiText",
+                        default=_style_str(styles, "code_text", "codeText", default="#1f2937"),
+                    ),
                 )
             elif node.type == "table":
                 rows = node.rows or []
@@ -941,54 +992,83 @@ class DocumentExporter:
         theme: ThemePayload,
         formatting: FormattingOptions,
         security: GenerateSecurityPayload,
-    ) -> Tuple[str, Path, List[str]]:
+    ) -> ExportResult:
         docx_id, docx_path, warnings = self.create_docx(nodes, theme, formatting, security)
+        requested = target_format.lower()
 
-        if target_format == "docx":
-            return docx_id, docx_path, warnings
+        if requested == "docx":
+            return ExportResult(
+                file_id=docx_id,
+                output_path=docx_path,
+                warnings=warnings,
+                requested_format="docx",
+                actual_format="docx",
+            )
 
-        if target_format == "pdf":
+        if requested == "pdf":
             file_id, pdf_path = self.store.reserve_path("pdf")
-            attempts: list[str] = []
-            # High-fidelity path first: generated DOCX -> PDF (closest to "Word Save As PDF")
             ok, method = _convert_docx_to_pdf(docx_path, pdf_path)
-            attempts.append(method)
-            if not ok:
-                # Last-resort fallback renderer; layout may differ from Word.
-                html_preview = self.create_preview_html(
-                    nodes,
-                    theme,
-                    formatting,
-                    security,
-                    include_running_blocks=False,
+            if ok:
+                warnings.extend(secure_pdf(pdf_path, security.passwordProtectPdf, security.removeMetadata))
+                return ExportResult(
+                    file_id=file_id,
+                    output_path=pdf_path,
+                    warnings=warnings,
+                    requested_format="pdf",
+                    actual_format="pdf",
                 )
-                ok, method = _convert_html_to_pdf_weasyprint(html_preview, pdf_path)
-                attempts.append(method)
-            if not ok:
-                ok, method = _convert_nodes_to_pdf_reportlab(
-                    nodes, theme, formatting, security, pdf_path
-                )
-                attempts.append(method)
-            if not ok:
-                raise RuntimeError(f"PDF conversion failed: {' | '.join(attempts)}")
-            warnings.extend(secure_pdf(pdf_path, security.passwordProtectPdf, security.removeMetadata))
-            if method in {"weasyprint", "reportlab"}:
-                warnings.append(
-                    "Used fallback PDF renderer; install LibreOffice/docx2pdf for Word-like PDF fidelity."
-                )
-            return file_id, pdf_path, warnings
 
-        if target_format == "html":
+            if pdf_path.exists():
+                try:
+                    pdf_path.unlink()
+                except OSError:
+                    pass
+
+            fallback_warning = (
+                "PDF conversion is unavailable on this host; returned DOCX instead. "
+                f"Converter detail: {method}"
+            )
+            warnings.append(fallback_warning)
+            if security.passwordProtectPdf:
+                warnings.append("PDF password was skipped because no PDF was produced.")
+            return ExportResult(
+                file_id=docx_id,
+                output_path=docx_path,
+                warnings=warnings,
+                requested_format="pdf",
+                actual_format="docx",
+                warning=fallback_warning,
+            )
+
+        if requested == "html":
             file_id, html_path = self.store.reserve_path("html")
             html = self.create_preview_html(nodes, theme, formatting, security)
             html_path.write_text(html, encoding="utf-8")
-            return file_id, html_path, warnings
+            return ExportResult(
+                file_id=file_id,
+                output_path=html_path,
+                warnings=warnings,
+                requested_format="html",
+                actual_format="html",
+            )
 
-        if target_format == "md":
+        if requested == "md":
             file_id, md_path = self.store.reserve_path("md")
             md_path.write_text(to_markdown(nodes), encoding="utf-8")
-            return file_id, md_path, warnings
+            return ExportResult(
+                file_id=file_id,
+                output_path=md_path,
+                warnings=warnings,
+                requested_format="md",
+                actual_format="md",
+            )
 
         file_id, txt_path = self.store.reserve_path("txt")
         txt_path.write_text(to_plain_text(nodes), encoding="utf-8")
-        return file_id, txt_path, warnings
+        return ExportResult(
+            file_id=file_id,
+            output_path=txt_path,
+            warnings=warnings,
+            requested_format=requested,
+            actual_format="txt",
+        )

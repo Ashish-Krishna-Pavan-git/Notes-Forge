@@ -1,8 +1,27 @@
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
-import { API_BASE, API_TIMEOUT_MS } from "./config";
+import { API, API_TIMEOUT_MS } from "./config";
+
+export const API_ENDPOINTS = {
+  healthLegacy: `${API}/health`,
+  health: `${API}/api/health`,
+  parserHealth: `${API}/api/health/parser`,
+  version: `${API}/api/version`,
+  analyze: `${API}/api/analyze`,
+  preview: `${API}/api/preview`,
+  generate: `${API}/api/generate`,
+  download: (token: string) => `${API}/api/download/${token}`,
+  config: `${API}/api/config`,
+  configUpdate: `${API}/api/config/update`,
+  themes: `${API}/api/themes`,
+  themesApply: `${API}/api/themes/apply`,
+  themesSave: `${API}/api/themes/save`,
+  themesDelete: `${API}/api/themes/delete`,
+  templates: `${API}/api/templates`,
+  templatesRegenerate: `${API}/api/templates/regenerate`,
+  prompt: `${API}/api/prompt`,
+};
 
 export const api = axios.create({
-  baseURL: API_BASE,
   timeout: API_TIMEOUT_MS,
   withCredentials: true,
 });

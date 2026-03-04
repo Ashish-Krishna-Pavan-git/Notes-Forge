@@ -200,8 +200,18 @@ def parse_notesforge(content: str) -> ParseResult:
             continue
 
         if marker == "ASCII":
-            nodes.append(Node(type="ascii", text=payload))
-            idx += 1
+            ascii_lines = [payload] if payload else []
+            next_idx = idx + 1
+            while next_idx < len(lines):
+                candidate = lines[next_idx]
+                if _is_marker_line(candidate):
+                    break
+                if not candidate.strip() and ascii_lines:
+                    break
+                ascii_lines.append(candidate.rstrip())
+                next_idx += 1
+            nodes.append(Node(type="ascii", text="\n".join(ascii_lines).rstrip("\n")))
+            idx = next_idx
             continue
 
         if marker == "TABLE":
@@ -240,6 +250,9 @@ def parse_notesforge(content: str) -> ParseResult:
                 next_idx += 1
             if not rows:
                 warnings.append(f"Line {idx + 1}: TABLE has no rows.")
+            else:
+                max_cols = max(len(row) for row in rows)
+                rows = [row + [""] * (max_cols - len(row)) for row in rows]
             nodes.append(Node(type="table", rows=rows))
             idx = next_idx
             continue

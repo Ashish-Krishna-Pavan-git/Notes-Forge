@@ -4,7 +4,7 @@ services:
     env: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}
     autoDeploy: true
     envVars:
       - key: FASTAPI_HOST
@@ -16,4 +16,4 @@ services:
       - key: STORAGE_BACKEND
         value: local
       - key: NF_CORS_ORIGINS
-        value: https://notes-forge-ruddy.vercel.app,https://notes-forge.onrender.com,http://localhost:5173,http://localhost:3000
+        value: https://notes-forge-ruddy.vercel.app,https://notes-forge.onrender.com

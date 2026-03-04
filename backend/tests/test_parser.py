@@ -35,6 +35,27 @@ class ParserTests(unittest.TestCase):
             any(n.type == "paragraph" and n.align == "center" for n in result.nodes)
         )
 
+    def test_parser_supports_multiline_ascii_and_table_padding(self) -> None:
+        content = (
+            "H1: Demo\n"
+            "ASCII: +-----+\n"
+            "| box |\n"
+            "+-----+\n"
+            "TABLE: A | B | C\n"
+            "TABLE: 1 | 2\n"
+        )
+        result = parse_notesforge(content)
+        ascii_nodes = [n for n in result.nodes if n.type == "ascii"]
+        self.assertEqual(len(ascii_nodes), 1)
+        self.assertIn("| box |", ascii_nodes[0].text)
+
+        tables = [n for n in result.nodes if n.type == "table"]
+        self.assertEqual(len(tables), 1)
+        rows = tables[0].rows or []
+        self.assertEqual(len(rows[0]), 3)
+        self.assertEqual(len(rows[1]), 3)
+        self.assertEqual(rows[1][2], "")
+
     def test_parser_supports_legacy_heading_markers(self) -> None:
         content = (
             "HEADING: Legacy Title\n"

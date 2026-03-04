@@ -18,12 +18,11 @@ Stack:
 ```text
 notesforge/
   backend/
-    backend_server.py
-    Core.py
-    Config.py
-    Themes.py
-    Config.json
-    Themes.json
+    backend_server.py          # compatibility shim
+    config.json               # canonical runtime config
+    themes.json               # canonical theme catalog (builtins + custom)
+    Config.json               # legacy backup (read-only migration source)
+    Themes.json               # legacy backup (read-only migration source)
     prompt.txt
     requirements.txt
     app/
@@ -106,7 +105,7 @@ pip install -r requirements.txt
 ```
 - Start command:
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 10000
+uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}
 ```
 - Required env:
   - `FASTAPI_HOST=0.0.0.0`
@@ -128,26 +127,28 @@ Recommended: use repo-managed [render.yaml](./render.yaml) so Render settings st
 ## API Contract (Current)
 
 Primary endpoints:
+- `GET /health`
 - `GET /api/health`
 - `GET /api/health/parser`
 - `POST /api/preview`
 - `POST /api/generate`
-- `GET /api/download/{fileId_or_filename}`
+- `GET /api/download/{token}`
 - `GET /api/templates`
 - `POST /api/templates/regenerate`
-- `POST /api/themes`
-
-Legacy endpoints retained for compatibility:
-- `GET /health`
-- `POST /api/analyze`
-- `GET /api/config`
-- `POST /api/config/update`
 - `GET /api/themes`
+- `POST /api/themes`
 - `POST /api/themes/apply`
 - `POST /api/themes/save`
 - `POST /api/themes/delete`
+- `GET /api/config`
+- `POST /api/config/update`
+- `POST /api/analyze`
 - `GET /api/prompt`
 - `POST /api/prompt`
+- `GET /api/version`
+
+Legacy endpoints retained for compatibility:
+- `GET /health/parser`
 
 `POST /api/generate` response includes:
 - `success`
@@ -158,6 +159,14 @@ Legacy endpoints retained for compatibility:
 - `actualFormat`
 - `warning`
 - `warnings`
+
+PDF contract:
+- DOCX is always generated first.
+- PDF is produced only through high-fidelity DOCX->PDF converters (`docx2pdf`, then LibreOffice).
+- If no converter is available and `format=pdf`, response is still `200` with:
+  - `requestedFormat: "pdf"`
+  - `actualFormat: "docx"`
+  - `warning` explaining fallback.
 
 ## Strict Marker Mode
 
@@ -188,9 +197,8 @@ When enabled:
 
 ### 4) PDF strategy for Vercel + Render
 - Generate PDF on backend (Render), not on frontend serverless runtime.
-- Prefer HTML->PDF (WeasyPrint) when available for pagination control.
-- Fallback to DOCX->PDF path (docx2pdf/LibreOffice).
-- If unavailable, return DOCX with user-visible warning.
+- Use DOCX->PDF path for fidelity (docx2pdf first, LibreOffice second).
+- If unavailable, return DOCX with user-visible warning and explicit `actualFormat=docx`.
 
 ### 5) UI/UX strategy
 - Keep existing app shell, improve hierarchy and editor ergonomics.

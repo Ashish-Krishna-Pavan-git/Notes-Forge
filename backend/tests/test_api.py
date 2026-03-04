@@ -32,17 +32,32 @@ class ApiIntegrationTests(unittest.TestCase):
         self.assertTrue({"assignment", "resume", "report", "meeting", "cybersec"}.issubset(ids))
 
     def test_preflight_cors(self) -> None:
+        for origin in (
+            "https://notes-forge-ruddy.vercel.app",
+            "https://notes-forge.onrender.com",
+        ):
+            response = self.client.options(
+                "/api/templates",
+                headers={
+                    "Origin": origin,
+                    "Access-Control-Request-Method": "GET",
+                },
+            )
+            self.assertIn(response.status_code, (200, 204))
+            self.assertEqual(response.headers.get("access-control-allow-origin"), origin)
+
+    def test_preflight_cors_rejects_unknown_origin(self) -> None:
         response = self.client.options(
             "/api/templates",
             headers={
-                "Origin": "https://notes-forge-ruddy.vercel.app",
+                "Origin": "https://malicious.example",
                 "Access-Control-Request-Method": "GET",
             },
         )
-        self.assertIn(response.status_code, (200, 204))
-        self.assertEqual(
+        self.assertIn(response.status_code, (200, 204, 400))
+        self.assertNotEqual(
             response.headers.get("access-control-allow-origin"),
-            "https://notes-forge-ruddy.vercel.app",
+            "https://malicious.example",
         )
 
     def test_preview_contract(self) -> None:
@@ -105,6 +120,8 @@ class ApiIntegrationTests(unittest.TestCase):
             "page_border_style": "double",
             "header_alignment": "left",
             "footer_alignment": "right",
+            "page_number_alignment": "right",
+            "page_number_position": "footer",
             "header_show_page_numbers": False,
             "footer_show_page_numbers": True,
             "table_header_text": "#FFFFFF",
@@ -200,12 +217,10 @@ class ApiIntegrationTests(unittest.TestCase):
         cfg = payload.get("config", {})
         self.assertEqual(cfg.get("app", {}).get("theme"), "corporate")
         self.assertEqual(cfg.get("fonts", {}).get("family"), "Arial")
-        self.assertEqual(cfg.get("colors", {}).get("h1"), "#B91C1C")
+        self.assertEqual(cfg.get("colors", {}).get("h1"), "#C41E3A")
 
     @patch("app.exporter._convert_docx_to_pdf", return_value=(False, "converter unavailable"))
-    @patch("app.exporter._convert_html_to_pdf_weasyprint", return_value=(False, "weasyprint unavailable"))
-    @patch("app.exporter._convert_nodes_to_pdf_reportlab", return_value=(False, "reportlab unavailable"))
-    def test_generate_pdf_fallback_contract(self, _mock_reportlab, _mock_weasy, _mock_docx) -> None:
+    def test_generate_pdf_fallback_contract(self, _mock_docx) -> None:
         response = self.client.post(
             "/api/generate",
             json={
@@ -217,9 +232,24 @@ class ApiIntegrationTests(unittest.TestCase):
                 "templateId": "assignment",
             },
         )
-        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertIn("PDF conversion failed", payload.get("detail", ""))
+        self.assertEqual(payload.get("requestedFormat"), "pdf")
+        self.assertEqual(payload.get("actualFormat"), "docx")
+        self.assertTrue(payload.get("warning"))
+        self.assertIn("DOCX", payload.get("warning", ""))
+        self.assertTrue(payload.get("downloadUrl", "").startswith("/api/download/"))
+        dl = self.client.get(payload["downloadUrl"])
+        self.assertEqual(dl.status_code, 200)
+        self.assertTrue(
+            dl.headers["content-type"].startswith(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        )
+
+    def test_download_rejects_non_token_path(self) -> None:
+        response = self.client.get("/api/download/../../etc/passwd")
+        self.assertIn(response.status_code, (404, 422))
 
 
 if __name__ == "__main__":

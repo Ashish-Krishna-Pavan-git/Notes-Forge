@@ -147,6 +147,14 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
     body_color = _style_str(styles, "body_color", "bodyColor", default="#17202a")
     code_bg = _style_str(styles, "code_background", "codeBackground", default="#0f172a")
     code_text = _style_str(styles, "code_text", "codeText", default="#e2e8f0")
+    ascii_bg = _style_str(styles, "ascii_background", "asciiBackground", default=code_bg)
+    ascii_text = _style_str(styles, "ascii_text", "asciiText", default=code_text)
+    ascii_font = _style_str(
+        styles,
+        "ascii_font_family",
+        "asciiFontFamily",
+        default=_style_str(styles, "code_font_family", "codeFontFamily", default="Consolas, Courier New, monospace"),
+    )
     table_header_text = _style_str(styles, "table_header_text", "tableHeaderText", default="#111827")
     table_odd_row = _style_str(styles, "table_odd_row", "tableOddRow", default="#ffffff")
     table_even_row = _style_str(styles, "table_even_row", "tableEvenRow", default="#f8fafc")
@@ -231,7 +239,7 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
         + "}"
         ".nf-preview-root>*{position:relative;z-index:1;}"
         ".nf-page-break{margin:1rem 0;border-top:2px dashed #cbd5e1;height:1px;page-break-after:always;break-after:page;}"
-        ".nf-ascii{background:#111827;color:#f1f5f9;}"
+        f".nf-ascii{{background:{ascii_bg};color:{ascii_text};font-family:{ascii_font};text-align:center;white-space:pre;}}"
         f".nf-running-header{{position:fixed;top:6mm;left:0;right:0;text-align:{header_align};font-size:{header_size}px;"
         f"font-family:{header_font};color:{header_color};padding:0 8mm;"
         f"{'border-bottom:1px solid ' + header_separator_color + ';' if header_separator else ''}}}"
