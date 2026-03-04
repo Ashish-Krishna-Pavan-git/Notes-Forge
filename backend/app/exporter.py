@@ -35,6 +35,13 @@ class ExportResult:
     warning: str | None = None
 
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _hex_to_rgb(value: str) -> RGBColor:
     cleaned = value.strip().lstrip("#")
     if len(cleaned) != 6:
@@ -1119,7 +1126,10 @@ class DocumentExporter:
                 attempts.append(method)
             if ok:
                 warnings.extend(secure_pdf(pdf_path, security.passwordProtectPdf, security.removeMetadata))
-                if method in {"weasyprint", "reportlab"}:
+                if method in {"weasyprint", "reportlab"} and _env_flag(
+                    "NF_WARN_ON_FALLBACK_PDF",
+                    default=False,
+                ):
                     warnings.append(
                         "PDF generated via fallback renderer; install LibreOffice for closer DOCX-to-PDF fidelity."
                     )

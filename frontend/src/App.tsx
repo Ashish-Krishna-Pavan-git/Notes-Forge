@@ -2152,11 +2152,23 @@ export default function App() {
         `${normalizedBase || "notesforge_output"}.${
           actualFormat === "txt" ? "txt" : actualFormat
         }`;
-      const warningMessage =
-        r.warning ||
-        (Array.isArray(r.warnings) && r.warnings.length > 0
-          ? r.warnings.join(" | ")
-          : "");
+      const warningParts = [
+        ...(r.warning ? [String(r.warning)] : []),
+        ...(Array.isArray(r.warnings)
+          ? r.warnings.map((item) => String(item))
+          : []),
+      ]
+        .flatMap((msg) => msg.split("|"))
+        .map((msg) => msg.trim())
+        .filter(Boolean)
+        .filter(
+          (msg) =>
+            !(
+              actualFormat === "pdf" &&
+              msg.toLowerCase().includes("pdf generated via fallback renderer")
+            )
+        );
+      const warningMessage = [...new Set(warningParts)].join(" | ");
       if (r.success || downloadUrl) {
         const resolvedUrl = downloadUrl
           ? /^https?:\/\//i.test(downloadUrl)
