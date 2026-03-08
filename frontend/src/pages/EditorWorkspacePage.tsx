@@ -355,6 +355,7 @@ const BUILTIN_THEME_KEYS = new Set([
   "executive",
   "oceanic",
   "monochrome",
+  "frontlines_edutech_theme",
 ]);
 
 const FALLBACK_THEME_CATALOG: Record<string, ThemeInfo> = {
@@ -478,6 +479,60 @@ const FALLBACK_THEME_CATALOG: Record<string, ThemeInfo> = {
     fonts: { family: "Arial" },
     spacing: { line_spacing: 1.4 },
   },
+  frontlines_edutech_theme: {
+    name: "Frontlines Edu Tech",
+    description:
+      "Times New Roman theme with purple-orange styling, headers, footer, border and watermark.",
+    builtin: true,
+    colors: {
+      h1: "#6A00F4",
+      h2: "#7B2CBF",
+      h3: "#9D4EDD",
+      h4: "#B5179E",
+      h5: "#7209B7",
+      h6: "#560BAD",
+      table_header_bg: "#F77F00",
+      table_header_text: "#FFFFFF",
+      table_odd_row: "#FFF4E6",
+      table_even_row: "#FFE5B4",
+      code_background: "#1E1B2E",
+      code_text: "#FFFFFF",
+      link: "#6A00F4",
+    },
+    fonts: {
+      family: "Times New Roman",
+      family_code: "JetBrains Mono",
+      h1_family: "Times New Roman",
+      h2_family: "Times New Roman",
+      h3_family: "Times New Roman",
+      h4_family: "Times New Roman",
+      h5_family: "Times New Roman",
+      h6_family: "Times New Roman",
+      bullet_family: "Times New Roman",
+      sizes: {
+        h1: 20,
+        h2: 18,
+        h3: 16,
+        h4: 14,
+        h5: 12,
+        h6: 12,
+        body: 12,
+        code: 11,
+        header: 10,
+        footer: 10,
+      },
+    },
+    spacing: {
+      line_spacing: 1.5,
+      paragraph_spacing_after: 14,
+      heading_spacing_before: 14,
+      heading_spacing_after: 8,
+      bullet_base_indent: 0.5,
+      bullet_indent_per_level: 0.75,
+      code_indent: 0.35,
+      quote_indent: 0.5,
+    },
+  },
 };
 
 function mergeThemeIntoConfig(
@@ -595,43 +650,161 @@ function slugifyIdentifier(value: string, fallback: string): string {
   return cleaned || fallback;
 }
 
+function asObject(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, any>)
+    : {};
+}
+
+function pickString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (value === undefined || value === null) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return undefined;
+}
+
+function pickNumber(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    if (value === undefined || value === null || value === "") continue;
+    const parsed =
+      typeof value === "number" ? value : Number(String(value).trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function pickBoolean(...values: unknown[]): boolean | undefined {
+  for (const value of values) {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (["1", "true", "yes", "on", "enabled"].includes(normalized))
+        return true;
+      if (["0", "false", "no", "off", "disabled"].includes(normalized))
+        return false;
+    }
+  }
+  return undefined;
+}
+
+function compactRecord<T extends Record<string, any>>(value: T): Partial<T> {
+  const result: Record<string, any> = {};
+  Object.entries(value).forEach(([key, item]) => {
+    if (item === undefined || item === null) return;
+    if (
+      typeof item === "object" &&
+      !Array.isArray(item) &&
+      Object.keys(item).length === 0
+    ) {
+      return;
+    }
+    result[key] = item;
+  });
+  return result as Partial<T>;
+}
+
+function normalizeAlignment(value: unknown): string | undefined {
+  const raw = pickString(value)?.toLowerCase();
+  if (!raw) return undefined;
+  if (["left", "center", "centre", "right"].includes(raw)) {
+    return raw === "centre" ? "center" : raw;
+  }
+  return undefined;
+}
+
+function normalizePageNumberStyle(value: unknown): string | undefined {
+  const raw = pickString(value)?.toLowerCase();
+  if (!raw) return undefined;
+  if (raw.includes("roman_lower"))
+    return "roman_lower";
+  if (raw.includes("roman") || raw.includes("i, ii, iii"))
+    return "roman";
+  if (raw.includes("alpha_lower"))
+    return "alpha_lower";
+  if (raw.includes("alpha") || raw.includes("a, b, c"))
+    return "alpha";
+  if (raw.includes("arabic") || raw.includes("1, 2, 3") || raw === "1")
+    return "arabic";
+  return undefined;
+}
+
+function normalizeBorderStyle(value: unknown): string | undefined {
+  const raw = pickString(value)?.toLowerCase();
+  if (!raw) return undefined;
+  if (raw.includes("double")) return "double";
+  if (raw.includes("dashed")) return "dashed";
+  if (raw.includes("dotted")) return "dotted";
+  if (raw.includes("single")) return "single";
+  return raw;
+}
+
+function normalizeWatermarkType(value: unknown): string | undefined {
+  const raw = pickString(value)?.toLowerCase();
+  if (!raw) return undefined;
+  if (raw.includes("image")) return "image";
+  if (raw.includes("text")) return "text";
+  return undefined;
+}
+
 const SAMPLE_THEME_IMPORT = {
-  key: "oceanic_pro_import",
-  name: "Oceanic Pro Import",
+  key: "frontlines_edutech_theme",
+  name: "Frontlines Edu Tech",
   description:
-    "Sample full theme import including fonts, colors, spacing, page, header, footer and watermark.",
+    "Full theme import with body font, per-heading fonts, bullet font, colors, spacing, header, footer, watermark and page setup.",
   config: {
-    app: { theme: "oceanic_pro_import" },
+    app: { theme: "frontlines_edutech_theme" },
     fonts: {
-      family: "Segoe UI",
-      family_code: "Consolas",
+      family: "Times New Roman",
+      family_code: "JetBrains Mono",
+      h1_family: "Times New Roman",
+      h2_family: "Times New Roman",
+      h3_family: "Times New Roman",
+      h4_family: "Times New Roman",
+      h5_family: "Times New Roman",
+      h6_family: "Times New Roman",
+      bullet_family: "Times New Roman",
       sizes: {
-        h1: 24,
-        h2: 20,
+        h1: 20,
+        h2: 18,
         h3: 16,
-        body: 11,
-        code: 10,
+        h4: 14,
+        h5: 12,
+        h6: 12,
+        body: 12,
+        code: 11,
+        header: 10,
+        footer: 10,
       },
     },
     colors: {
-      h1: "#0F766E",
-      h2: "#0D9488",
-      h3: "#14B8A6",
-      body: "#0F172A",
-      table_header_bg: "#CCFBF1",
-      table_header_text: "#134E4A",
-      table_odd_row: "#FFFFFF",
-      table_even_row: "#F0FDFA",
-      code_background: "#0B1220",
-      code_text: "#E2E8F0",
-      link: "#0E7490",
+      h1: "#6A00F4",
+      h2: "#7B2CBF",
+      h3: "#9D4EDD",
+      h4: "#B5179E",
+      h5: "#7209B7",
+      h6: "#560BAD",
+      body: "#000000",
+      table_header_bg: "#F77F00",
+      table_header_text: "#FFFFFF",
+      table_odd_row: "#FFF4E6",
+      table_even_row: "#FFE5B4",
+      code_background: "#1E1B2E",
+      code_text: "#FFFFFF",
+      link: "#6A00F4",
     },
     spacing: {
-      line_spacing: 1.4,
-      paragraph_spacing_before: 0,
-      paragraph_spacing_after: 6,
-      heading_spacing_before: 10,
-      heading_spacing_after: 6,
+      line_spacing: 1.5,
+      paragraph_spacing_before: 8,
+      paragraph_spacing_after: 14,
+      heading_spacing_before: 14,
+      heading_spacing_after: 8,
+      bullet_base_indent: 0.5,
+      bullet_indent_per_level: 0.75,
+      code_indent: 0.35,
+      quote_indent: 0.5,
     },
     page: {
       size: "A4",
@@ -641,29 +814,47 @@ const SAMPLE_THEME_IMPORT = {
         enabled: true,
         width: 1,
         style: "single",
-        color: "#0F766E",
-        offset: 18,
+        color: "#000000",
+        offset: 24,
       },
     },
     header: {
       enabled: true,
-      text: "CONFIDENTIAL",
+      text: "Frontlines Edu Tech",
       alignment: "center",
-      color: "#0F766E",
-      show_page_numbers: false,
+      color: "#F77F00",
+      size: 10,
+      font_family: "Segoe UI",
+      show_page_numbers: true,
+      page_format: "X | Page",
+      page_number_style: "arabic",
+      separator: true,
+      separator_color: "#CCCCCC",
     },
     footer: {
       enabled: true,
-      text: "NotesForge Export",
-      alignment: "center",
-      color: "#134E4A",
+      text: "Cryptography |",
+      alignment: "right",
+      color: "#7B2CBF",
+      size: 10,
+      font_family: "Segoe UI",
       show_page_numbers: true,
-      page_format: "Page X of Y",
+      page_format: "X | Page",
+      page_number_style: "arabic",
+      separator: true,
+      separator_color: "#CCCCCC",
     },
     watermark: {
-      enabled: false,
+      enabled: true,
       type: "text",
-      text: "",
+      text: "CONFIDENTIAL",
+      font: "Calibri",
+      size: 48,
+      color: "#6200EA",
+      opacity: 0.1,
+      rotation: 315,
+      position: "center",
+      scale: 38,
     },
   },
 };
@@ -2257,6 +2448,8 @@ export default function App() {
               ?.bullet_indent_per_level ?? 0.25,
           code_indent:
             config.spacing?.code_indent ?? 0,
+          quote_indent:
+            config.spacing?.quote_indent ?? 0.5,
           paragraph_first_line_indent:
             config.spacing
               ?.paragraph_first_line_indent ?? 0,
@@ -2483,9 +2676,22 @@ export default function App() {
                       ? config.watermark?.image_path || ""
                       : config.watermark?.text || "",
                   position:
-                    config.watermark?.position === "top"
+                    config.watermark?.position === "top" ||
+                    config.watermark?.position === "header"
                       ? "header"
                       : "center",
+                  fontFamily:
+                    config.watermark?.font ||
+                    config.fonts?.family ||
+                    "Calibri",
+                  size: config.watermark?.size || 48,
+                  color:
+                    config.watermark?.color || "#CCCCCC",
+                  opacity:
+                    config.watermark?.opacity ?? 0.15,
+                  rotation:
+                    config.watermark?.rotation ?? 315,
+                  scale: config.watermark?.scale || 38,
                 }
               : undefined,
         },
@@ -2911,6 +3117,452 @@ export default function App() {
     );
   }, [downloadFile]);
 
+  const buildCurrentThemeExport = useCallback(() => {
+    const key = slugifyIdentifier(
+      currentTheme || themes[currentTheme]?.name || "notesforge_theme",
+      "notesforge_theme"
+    );
+    return {
+      key,
+      name: themes[currentTheme]?.name || "Custom Theme",
+      description:
+        themes[currentTheme]?.description ||
+        "Exported NotesForge theme",
+      config: {
+        app: { ...(config.app || {}), theme: key },
+        fonts: {
+          ...(config.fonts || {}),
+          sizes: { ...(config.fonts?.sizes || {}) },
+        },
+        colors: { ...(config.colors || {}) },
+        spacing: { ...(config.spacing || {}) },
+        page: {
+          ...(config.page || {}),
+          margins: { ...(config.page?.margins || {}) },
+          border: { ...(config.page?.border || {}) },
+        },
+        header: { ...(config.header || {}) },
+        footer: { ...(config.footer || {}) },
+        watermark: { ...(config.watermark || {}) },
+      },
+    };
+  }, [config, currentTheme, themes]);
+
+  const exportCurrentThemeJson = useCallback(() => {
+    const payload = buildCurrentThemeExport();
+    downloadFile(
+      `${payload.key || "notesforge_theme"}.json`,
+      JSON.stringify(payload, null, 2),
+      "application/json"
+    );
+    setSuccess("✅ Current theme exported as JSON.");
+  }, [buildCurrentThemeExport, downloadFile]);
+
+  const normalizeImportedTheme = useCallback(
+    (
+      rawTheme: unknown,
+      keyHint: string,
+      idx: number
+    ): {
+      key: string;
+      info: ThemeInfo;
+      configPatch: Partial<AppConfigState>;
+    } => {
+      const themeObj = toRecord(rawTheme);
+      const themeConfig = toRecord(themeObj.config);
+      const themeApp = toRecord(themeConfig.app || themeObj.app);
+
+      const fontsSource = {
+        ...toRecord(themeObj.fonts),
+        ...toRecord(themeConfig.fonts),
+      };
+      const fontSizesSource = {
+        ...toRecord(toRecord(themeObj.fonts).sizes),
+        ...toRecord(toRecord(themeConfig.fonts).sizes),
+        ...toRecord(themeObj.font_sizes),
+        ...toRecord(themeConfig.font_sizes),
+      };
+      const heading1 = toRecord(fontsSource.h1);
+      const heading2 = toRecord(fontsSource.h2);
+      const heading3 = toRecord(fontsSource.h3);
+      const heading4 = toRecord(fontsSource.h4);
+      const heading5 = toRecord(fontsSource.h5);
+      const heading6 = toRecord(fontsSource.h6);
+
+      const colorsSource = {
+        ...toRecord(themeObj.colors),
+        ...toRecord(themeConfig.colors),
+      };
+      const spacingSource = {
+        ...toRecord(themeObj.spacing),
+        ...toRecord(themeConfig.spacing),
+      };
+      const pageSource = {
+        ...toRecord(themeObj.page),
+        ...toRecord(themeConfig.page),
+      };
+      const pageMarginsSource = {
+        ...toRecord(toRecord(themeObj.page).margins),
+        ...toRecord(toRecord(themeConfig.page).margins),
+      };
+      const pageBorderSource = {
+        ...toRecord(toRecord(themeObj.page).border),
+        ...toRecord(toRecord(themeConfig.page).border),
+      };
+      const headerSource = {
+        ...toRecord(themeObj.header),
+        ...toRecord(themeConfig.header),
+      };
+      const footerSource = {
+        ...toRecord(themeObj.footer),
+        ...toRecord(themeConfig.footer),
+      };
+      const watermarkSource = {
+        ...toRecord(themeObj.watermark),
+        ...toRecord(themeConfig.watermark),
+      };
+
+      const fallbackKey = `imported_theme_${idx + 1}`;
+      const key = slugifyIdentifier(
+        pickString(
+          themeObj.key,
+          themeApp.theme,
+          keyHint,
+          themeObj.name
+        ) || fallbackKey,
+        fallbackKey
+      );
+      const name = pickString(themeObj.name, themeApp.theme, key) || key;
+      const description =
+        pickString(themeObj.description, themeConfig.description) ||
+        "Imported theme";
+
+      const normalizedColors = compactRecord({
+        h1:
+          pickString(colorsSource.h1, themeObj.primaryColor) ||
+          undefined,
+        h2:
+          pickString(colorsSource.h2, themeObj.primaryColor) ||
+          undefined,
+        h3:
+          pickString(colorsSource.h3, themeObj.primaryColor) ||
+          undefined,
+        h4: pickString(colorsSource.h4),
+        h5: pickString(colorsSource.h5),
+        h6: pickString(colorsSource.h6),
+        body: pickString(colorsSource.body, colorsSource.text),
+        code_background: pickString(
+          colorsSource.code_background,
+          colorsSource.code_bg
+        ),
+        code_text: pickString(colorsSource.code_text),
+        table_header_bg: pickString(
+          colorsSource.table_header_bg,
+          colorsSource.table_header_background
+        ),
+        table_header_text: pickString(
+          colorsSource.table_header_text
+        ),
+        table_odd_row: pickString(
+          colorsSource.table_odd_row,
+          colorsSource.table_row_odd
+        ),
+        table_even_row: pickString(
+          colorsSource.table_even_row,
+          colorsSource.table_row_even
+        ),
+        table_border: pickString(colorsSource.table_border),
+        link: pickString(colorsSource.link),
+      });
+
+      const normalizedFontSizes = compactRecord({
+        h1: pickNumber(fontSizesSource.h1, fontsSource.h1_size, heading1.size),
+        h2: pickNumber(fontSizesSource.h2, fontsSource.h2_size, heading2.size),
+        h3: pickNumber(fontSizesSource.h3, fontsSource.h3_size, heading3.size),
+        h4: pickNumber(fontSizesSource.h4, fontsSource.h4_size, heading4.size),
+        h5: pickNumber(fontSizesSource.h5, fontsSource.h5_size, heading5.size),
+        h6: pickNumber(fontSizesSource.h6, fontsSource.h6_size, heading6.size),
+        body: pickNumber(fontSizesSource.body, fontsSource.body_size),
+        code: pickNumber(fontSizesSource.code, fontsSource.code_size),
+        header: pickNumber(fontSizesSource.header, headerSource.size),
+        footer: pickNumber(fontSizesSource.footer, footerSource.size),
+      });
+
+      const normalizedFonts = compactRecord({
+        family: pickString(
+          fontsSource.family,
+          fontsSource.family_body,
+          fontsSource.body_family,
+          themeObj.fontFamily
+        ),
+        family_code: pickString(
+          fontsSource.family_code,
+          fontsSource.code_family,
+          fontsSource.code_font,
+          fontsSource.monospace,
+          fontsSource.code,
+          themeObj.codeFontFamily
+        ),
+        h1_family: pickString(fontsSource.h1_family, heading1.family),
+        h2_family: pickString(fontsSource.h2_family, heading2.family),
+        h3_family: pickString(fontsSource.h3_family, heading3.family),
+        h4_family: pickString(fontsSource.h4_family, heading4.family),
+        h5_family: pickString(fontsSource.h5_family, heading5.family),
+        h6_family: pickString(fontsSource.h6_family, heading6.family),
+        bullet_family: pickString(
+          fontsSource.bullet_family,
+          fontsSource.bullet_font,
+          fontsSource.list_family
+        ),
+        available_fonts: Array.isArray(fontsSource.available_fonts)
+          ? fontsSource.available_fonts
+          : undefined,
+        available_code_fonts: Array.isArray(
+          fontsSource.available_code_fonts
+        )
+          ? fontsSource.available_code_fonts
+          : undefined,
+        sizes:
+          Object.keys(normalizedFontSizes).length > 0
+            ? normalizedFontSizes
+            : undefined,
+      });
+
+      const normalizedSpacing = compactRecord({
+        line_spacing: pickNumber(
+          spacingSource.line_spacing,
+          spacingSource.lineHeight
+        ),
+        paragraph_spacing_before: pickNumber(
+          spacingSource.paragraph_spacing_before,
+          spacingSource.paragraph_before
+        ),
+        paragraph_spacing_after: pickNumber(
+          spacingSource.paragraph_spacing_after,
+          spacingSource.paragraph_after
+        ),
+        heading_spacing_before: pickNumber(
+          spacingSource.heading_spacing_before
+        ),
+        heading_spacing_after: pickNumber(
+          spacingSource.heading_spacing_after
+        ),
+        bullet_base_indent: pickNumber(
+          spacingSource.bullet_base_indent,
+          spacingSource.bullet_indent
+        ),
+        bullet_indent_per_level: pickNumber(
+          spacingSource.bullet_indent_per_level,
+          spacingSource.bullet_level_increment,
+          spacingSource.bullet_level_indent
+        ),
+        code_indent: pickNumber(
+          spacingSource.code_indent,
+          spacingSource.code_block_indent
+        ),
+        quote_indent: pickNumber(
+          spacingSource.quote_indent,
+          spacingSource.blockquote_indent
+        ),
+        paragraph_alignment: pickString(
+          spacingSource.paragraph_alignment,
+          spacingSource.alignment
+        ),
+      });
+
+      const normalizedPageMargins = compactRecord({
+        top: pickNumber(pageMarginsSource.top, pageSource.margin_top),
+        right: pickNumber(pageMarginsSource.right, pageSource.margin_right),
+        bottom: pickNumber(
+          pageMarginsSource.bottom,
+          pageSource.margin_bottom
+        ),
+        left: pickNumber(pageMarginsSource.left, pageSource.margin_left),
+      });
+
+      const normalizedPageBorder = compactRecord({
+        enabled: pickBoolean(
+          pageBorderSource.enabled,
+          pageSource.border_enabled
+        ),
+        width: pickNumber(
+          pageBorderSource.width,
+          pageSource.border_width
+        ),
+        style: normalizeBorderStyle(
+          pickString(pageBorderSource.style, pageSource.border_style)
+        ),
+        color: pickString(
+          pageBorderSource.color,
+          pageSource.border_color
+        ),
+        offset: pickNumber(
+          pageBorderSource.offset,
+          pageSource.border_offset
+        ),
+      });
+
+      const normalizedPage = compactRecord({
+        size: pickString(pageSource.size),
+        orientation: pickString(pageSource.orientation)?.toLowerCase(),
+        margins:
+          Object.keys(normalizedPageMargins).length > 0
+            ? normalizedPageMargins
+            : undefined,
+        border:
+          Object.keys(normalizedPageBorder).length > 0
+            ? normalizedPageBorder
+            : undefined,
+      });
+
+      const normalizedHeader = compactRecord({
+        enabled: pickBoolean(
+          headerSource.enabled,
+          headerSource.visible,
+          headerSource.show
+        ),
+        text: pickString(headerSource.text, headerSource.content),
+        size: pickNumber(headerSource.size, headerSource.font_size),
+        color: pickString(headerSource.color, headerSource.text_color),
+        bold: pickBoolean(headerSource.bold),
+        italic: pickBoolean(headerSource.italic),
+        alignment: normalizeAlignment(headerSource.alignment),
+        font_family: pickString(
+          headerSource.font_family,
+          headerSource.font,
+          headerSource.family
+        ),
+        show_page_numbers: pickBoolean(
+          headerSource.show_page_numbers,
+          headerSource.page_numbers
+        ),
+        page_number_style: normalizePageNumberStyle(
+          headerSource.page_number_style
+        ),
+        separator: pickBoolean(
+          headerSource.separator,
+          headerSource.show_separator
+        ),
+        separator_color: pickString(
+          headerSource.separator_color,
+          headerSource.line_color
+        ),
+        page_number_position: pickString(
+          headerSource.page_number_position
+        ),
+        page_number_alignment: normalizeAlignment(
+          headerSource.page_number_alignment
+        ),
+        page_format: pickString(
+          headerSource.page_format,
+          headerSource.pageNumberFormat
+        ),
+      });
+
+      const normalizedFooter = compactRecord({
+        enabled: pickBoolean(
+          footerSource.enabled,
+          footerSource.visible,
+          footerSource.show
+        ),
+        text: pickString(footerSource.text, footerSource.content),
+        size: pickNumber(footerSource.size, footerSource.font_size),
+        color: pickString(footerSource.color, footerSource.text_color),
+        bold: pickBoolean(footerSource.bold),
+        italic: pickBoolean(footerSource.italic),
+        alignment: normalizeAlignment(footerSource.alignment),
+        font_family: pickString(
+          footerSource.font_family,
+          footerSource.font,
+          footerSource.family
+        ),
+        show_page_numbers: pickBoolean(
+          footerSource.show_page_numbers,
+          footerSource.page_numbers
+        ),
+        page_number_style: normalizePageNumberStyle(
+          footerSource.page_number_style
+        ),
+        separator: pickBoolean(
+          footerSource.separator,
+          footerSource.show_separator
+        ),
+        separator_color: pickString(
+          footerSource.separator_color,
+          footerSource.line_color
+        ),
+        page_number_position: pickString(
+          footerSource.page_number_position
+        ),
+        page_number_alignment: normalizeAlignment(
+          footerSource.page_number_alignment
+        ),
+        page_format: pickString(
+          footerSource.page_format,
+          footerSource.pageNumberFormat
+        ),
+      });
+
+      const normalizedWatermark = compactRecord({
+        enabled: pickBoolean(watermarkSource.enabled),
+        type: normalizeWatermarkType(watermarkSource.type),
+        text: pickString(watermarkSource.text, watermarkSource.value),
+        image_path: pickString(
+          watermarkSource.image_path,
+          watermarkSource.image,
+          watermarkSource.url
+        ),
+        size: pickNumber(
+          watermarkSource.size,
+          watermarkSource.font_size
+        ),
+        color: pickString(watermarkSource.color),
+        opacity: pickNumber(
+          watermarkSource.opacity,
+          watermarkSource.alpha
+        ),
+        rotation: pickNumber(
+          watermarkSource.rotation,
+          watermarkSource.angle
+        ),
+        position: pickString(
+          watermarkSource.position,
+          watermarkSource.placement
+        ),
+        scale: pickNumber(watermarkSource.scale),
+        font: pickString(
+          watermarkSource.font,
+          watermarkSource.font_family,
+          watermarkSource.family
+        ),
+      });
+
+      return {
+        key,
+        info: {
+          name,
+          description,
+          user_created: true,
+          builtin: false,
+          colors: normalizedColors,
+          fonts: normalizedFonts,
+          spacing: normalizedSpacing,
+        },
+        configPatch: compactRecord({
+          app: { theme: key },
+          fonts: normalizedFonts,
+          colors: normalizedColors,
+          spacing: normalizedSpacing,
+          page: normalizedPage,
+          header: normalizedHeader,
+          footer: normalizedFooter,
+          watermark: normalizedWatermark,
+        }),
+      };
+    },
+    [toRecord]
+  );
+
   const importThemesFromFile = useCallback(
     async (file: File) => {
       try {
@@ -2929,68 +3581,9 @@ export default function App() {
         }> = [];
 
         themeSource.forEach(([keyHint, rawTheme], idx) => {
-          const themeObj = toRecord(rawTheme);
-          const themeConfig = toRecord(themeObj.config);
-          const colors = toRecord(themeConfig.colors || themeObj.colors);
-          const fonts = toRecord(themeConfig.fonts || themeObj.fonts);
-          const spacing = toRecord(
-            themeConfig.spacing || themeObj.spacing
+          importedThemes.push(
+            normalizeImportedTheme(rawTheme, keyHint, idx)
           );
-          const page = toRecord(themeConfig.page || themeObj.page);
-          const header = toRecord(
-            themeConfig.header || themeObj.header
-          );
-          const footer = toRecord(
-            themeConfig.footer || themeObj.footer
-          );
-          const watermark = toRecord(
-            themeConfig.watermark || themeObj.watermark
-          );
-
-          const primary = String(themeObj.primaryColor || "").trim();
-          const fontFamily = String(themeObj.fontFamily || "").trim();
-          if (primary && !colors.h1) {
-            colors.h1 = primary;
-            colors.h2 = primary;
-          }
-          if (fontFamily && !fonts.family) {
-            fonts.family = fontFamily;
-          }
-
-          const fallbackKey = `imported_theme_${idx + 1}`;
-          const key = slugifyIdentifier(
-            String(
-              themeObj.key || keyHint || themeObj.name || fallbackKey
-            ),
-            fallbackKey
-          );
-          const name = String(themeObj.name || key);
-          const description = String(
-            themeObj.description || "Imported theme"
-          );
-
-          importedThemes.push({
-            key,
-            info: {
-              name,
-              description,
-              user_created: true,
-              builtin: false,
-              colors,
-              fonts,
-              spacing,
-            },
-            configPatch: {
-              app: { theme: key },
-              fonts,
-              colors,
-              spacing,
-              page,
-              header,
-              footer,
-              watermark,
-            },
-          });
         });
 
         if (importedThemes.length === 0) {
@@ -3057,7 +3650,13 @@ export default function App() {
         setError("Invalid theme JSON file.");
       }
     },
-    [config, loadThemes, mergeImportedConfig, toRecord]
+    [
+      config,
+      loadThemes,
+      mergeImportedConfig,
+      normalizeImportedTheme,
+      toRecord,
+    ]
   );
 
   const importTemplatesFromFile = useCallback(
@@ -3719,7 +4318,56 @@ export default function App() {
             config.colors?.h1 || config.header?.color || "#1F3A5F",
           fontFamily:
             config.fonts?.family || "Calibri, Arial, sans-serif",
-          headingStyle: {},
+          headingStyle: {
+            h1: {
+              size: config.fonts?.sizes?.h1 || 24,
+              weight: "700",
+              color:
+                config.colors?.h1 ||
+                config.header?.color ||
+                "#1F3A5F",
+            },
+            h2: {
+              size: config.fonts?.sizes?.h2 || 20,
+              weight: "600",
+              color:
+                config.colors?.h2 ||
+                config.header?.color ||
+                "#1F3A5F",
+            },
+            h3: {
+              size: config.fonts?.sizes?.h3 || 16,
+              weight: "600",
+              color:
+                config.colors?.h3 ||
+                config.colors?.h2 ||
+                "#2B6CB0",
+            },
+            h4: {
+              size: config.fonts?.sizes?.h4 || 14,
+              weight: "600",
+              color:
+                config.colors?.h4 ||
+                config.colors?.h3 ||
+                "#2B6CB0",
+            },
+            h5: {
+              size: config.fonts?.sizes?.h5 || 13,
+              weight: "600",
+              color:
+                config.colors?.h5 ||
+                config.colors?.h4 ||
+                "#334155",
+            },
+            h6: {
+              size: config.fonts?.sizes?.h6 || 12,
+              weight: "600",
+              color:
+                config.colors?.h6 ||
+                config.colors?.h5 ||
+                "#475569",
+            },
+          },
           bodyStyle: {
             size: config.fonts?.sizes?.body || 11,
             lineHeight: config.spacing?.line_spacing || 1.4,
@@ -3731,6 +4379,72 @@ export default function App() {
           },
           margins,
           styles: {
+            paragraph_spacing_before:
+              config.spacing?.paragraph_spacing_before ?? 0,
+            paragraph_spacing_after:
+              config.spacing?.paragraph_spacing_after ?? 0,
+            heading_spacing_before:
+              config.spacing?.heading_spacing_before ?? 0,
+            heading_spacing_after:
+              config.spacing?.heading_spacing_after ?? 0,
+            bullet_base_indent:
+              config.spacing?.bullet_base_indent ?? 0.25,
+            bullet_indent_per_level:
+              config.spacing?.bullet_indent_per_level ?? 0.25,
+            code_indent:
+              config.spacing?.code_indent ?? 0,
+            quote_indent:
+              config.spacing?.quote_indent ?? 0.5,
+            paragraph_first_line_indent:
+              config.spacing?.paragraph_first_line_indent ?? 0,
+            paragraph_alignment:
+              config.spacing?.paragraph_alignment || "left",
+            body_color:
+              config.colors?.body || "#17202a",
+            code_background:
+              config.colors?.code_background || "#0f172a",
+            code_text:
+              config.colors?.code_text || "#e2e8f0",
+            table_header_text:
+              config.colors?.table_header_text || "#111827",
+            table_odd_row:
+              config.colors?.table_odd_row || "#ffffff",
+            table_even_row:
+              config.colors?.table_even_row || "#f8fafc",
+            link_color:
+              config.colors?.link || "#2563eb",
+            h1_family:
+              config.fonts?.h1_family ||
+              config.fonts?.family ||
+              "Calibri",
+            h2_family:
+              config.fonts?.h2_family ||
+              config.fonts?.family ||
+              "Calibri",
+            h3_family:
+              config.fonts?.h3_family ||
+              config.fonts?.family ||
+              "Calibri",
+            h4_family:
+              config.fonts?.h4_family ||
+              config.fonts?.family ||
+              "Calibri",
+            h5_family:
+              config.fonts?.h5_family ||
+              config.fonts?.family ||
+              "Calibri",
+            h6_family:
+              config.fonts?.h6_family ||
+              config.fonts?.family ||
+              "Calibri",
+            bullet_font_family:
+              config.fonts?.bullet_family ||
+              config.fonts?.family ||
+              "Calibri",
+            code_font_family:
+              config.fonts?.family_code || "Consolas",
+            code_font_size:
+              config.fonts?.sizes?.code || 10,
             header_alignment: config.header?.alignment || "center",
             footer_alignment: config.footer?.alignment || "center",
             header_font_family:
@@ -3783,6 +4497,38 @@ export default function App() {
           },
           security: {
             removeMetadata: false,
+            watermark:
+              config.watermark?.enabled &&
+              (config.watermark?.text ||
+                config.watermark?.image_path)
+                ? {
+                    type:
+                      config.watermark?.type === "image"
+                        ? "image"
+                        : "text",
+                    value:
+                      config.watermark?.type === "image"
+                        ? config.watermark?.image_path || ""
+                        : config.watermark?.text || "",
+                    position:
+                      config.watermark?.position === "top" ||
+                      config.watermark?.position === "header"
+                        ? "header"
+                        : "center",
+                    fontFamily:
+                      config.watermark?.font ||
+                      config.fonts?.family ||
+                      "Calibri",
+                    size: config.watermark?.size || 48,
+                    color:
+                      config.watermark?.color || "#CCCCCC",
+                    opacity:
+                      config.watermark?.opacity ?? 0.15,
+                    rotation:
+                      config.watermark?.rotation ?? 315,
+                    scale: config.watermark?.scale || 38,
+                  }
+                : undefined,
             pageNumberMode:
               config.footer?.show_page_numbers || config.header?.show_page_numbers
                 ? ((config.footer?.page_format || config.header?.page_format || "")
@@ -5461,6 +6207,116 @@ backend: Render (Root: backend)`}
                   </p>
                 </div>
               </div>
+
+              <div className="px-6 pb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div
+                  className={`rounded-xl border p-4 ${
+                    dark
+                      ? "border-gray-700 bg-gray-800"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <h3 className="font-semibold text-sm mb-3">
+                    Main Interface Map
+                  </h3>
+                  <div className="space-y-2 text-xs text-gray-500">
+                    <p>
+                      <strong>Editor:</strong> write or paste marker-based content, then generate files.
+                    </p>
+                    <p>
+                      <strong>Templates:</strong> load ready-made document structures or import your own template JSON.
+                    </p>
+                    <p>
+                      <strong>Settings:</strong> change theme, fonts, colours, spacing, header, footer, watermark and page setup.
+                    </p>
+                    <p>
+                      <strong>AI Prompt:</strong> prepare a reusable prompt, import prompt files, and regenerate template content.
+                    </p>
+                    <p>
+                      <strong>Live Preview:</strong> check how headings, spacing and layout will look before export.
+                    </p>
+                    <p>
+                      <strong>Generate Document:</strong> create DOCX, PDF, HTML, Markdown or TXT.
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-xl border p-4 ${
+                    dark
+                      ? "border-gray-700 bg-gray-800"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <h3 className="font-semibold text-sm mb-3">
+                    Import and Export Flow
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="font-semibold text-xs mb-1">
+                        1. Theme JSON
+                      </div>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Import full styling: fonts, sizes, colours, spacing, page, header, footer and watermark.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => setTab("settings")}
+                          className="px-3 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Open Theme Settings
+                        </button>
+                        <button
+                          onClick={downloadSampleThemeJson}
+                          className={`px-3 py-2 rounded-lg text-xs font-medium border ${
+                            dark
+                              ? "border-gray-600 hover:bg-gray-700"
+                              : "border-gray-300 hover:bg-white"
+                          }`}
+                        >
+                          Download Theme Sample
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-semibold text-xs mb-1">
+                        2. Template JSON
+                      </div>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Import reusable content skeletons with markers like `H1:`, `TABLE:`, `ASCII:` and `CODE:`.
+                      </p>
+                      <button
+                        onClick={downloadSampleTemplateJson}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium border ${
+                          dark
+                            ? "border-gray-600 hover:bg-gray-700"
+                            : "border-gray-300 hover:bg-white"
+                        }`}
+                      >
+                        Download Template Sample
+                      </button>
+                    </div>
+                    <div>
+                      <div className="font-semibold text-xs mb-1">
+                        3. Prompt Import
+                      </div>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Import prompt text or JSON so the AI workflow stays reusable across topics.
+                      </p>
+                      <button
+                        onClick={downloadSamplePromptJson}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium border ${
+                          dark
+                            ? "border-gray-600 hover:bg-gray-700"
+                            : "border-gray-300 hover:bg-white"
+                        }`}
+                      >
+                        Download Prompt Sample
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -5593,6 +6449,13 @@ backend: Render (Root: backend)`}
                           >
                             <Download className="w-4 h-4" />
                             Sample Theme JSON
+                          </button>
+                          <button
+                            onClick={exportCurrentThemeJson}
+                            className="px-3 py-2 rounded-lg text-sm font-medium border border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-900/20 flex items-center gap-2"
+                          >
+                            <Save className="w-4 h-4" />
+                            Export Current Theme
                           </button>
                         </div>
 
@@ -8139,6 +9002,23 @@ backend: Render (Root: backend)`}
           </div>
         )}
       </main>
+
+      <div className="fixed bottom-5 right-5 z-40 flex flex-col gap-2">
+        <button
+          onClick={() => setTab("guide")}
+          className="px-4 py-2.5 rounded-full shadow-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 flex items-center gap-2"
+        >
+          <BookOpen className="w-4 h-4" />
+          Open Guide
+        </button>
+        <button
+          onClick={() => openGuidedTour(0)}
+          className="px-4 py-2.5 rounded-full shadow-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 flex items-center gap-2"
+        >
+          <Sparkles className="w-4 h-4" />
+          Start Tour
+        </button>
+      </div>
 
       {/* ════════════════════════════════════════════════════════
           DRAFTS MODAL

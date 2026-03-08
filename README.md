@@ -190,11 +190,12 @@ Then you export that content as `DOCX`, `PDF`, `HTML`, `Markdown`, or `TXT`.
 
 1. Open the app.
 2. The guided tour starts automatically on first launch.
-3. Go to `Templates` if you want a ready-made example.
-4. Go to `Editor` and type or paste your content.
-5. Use `Settings` to change fonts, colors, spacing, borders, header, and footer.
-6. Choose `DOCX` or `PDF` in the export area.
-7. Click `Generate Document`.
+3. If you ever want help again, use the floating `Open Guide` or `Start Tour` buttons.
+4. Go to `Templates` if you want a ready-made example.
+5. Go to `Editor` and type or paste your content.
+6. Use `Settings` to change fonts, colors, spacing, borders, header, footer, and watermark.
+7. Choose `DOCX` or `PDF` in the export area.
+8. Click `Generate Document`.
 
 ### Main parts of the interface
 
@@ -204,6 +205,8 @@ Then you export that content as `DOCX`, `PDF`, `HTML`, `Markdown`, or `TXT`.
 - `Settings`: Change how the document looks.
 - `AI Prompt`: Manage your reusable AI prompt and import prompt files.
 - `Shortcuts`: Quick reference for markers and keyboard shortcuts.
+- `Open Guide`: Floating help button that opens the beginner guide any time.
+- `Start Tour`: Floating help button that restarts the guided onboarding any time.
 
 ### Main buttons and when to use them
 
@@ -211,6 +214,7 @@ Then you export that content as `DOCX`, `PDF`, `HTML`, `Markdown`, or `TXT`.
 - `Try Example`: Loads a sample document so you can see how the app works.
 - `Strict ON/OFF`: Use this when you want the app to warn you about invalid lines.
 - `Import Theme JSON`: Use when you want to load a full document style.
+- `Export Current Theme`: Use when you want to save the current style as reusable JSON.
 - `Import Templates`: Use when you want to add reusable document structures.
 - `Import Prompt`: Use when you want to reuse a saved AI prompt.
 - `Save Settings`: Use after changing fonts, colors, spacing, borders, header, footer, or watermark.
@@ -320,7 +324,8 @@ Website now supports three import flows:
 2. `Template JSON import` (Templates tab)
 3. `Prompt import` (`.txt` or `.json`) (AI Prompt tab)
 
-All three tabs also include a **Sample** download button.
+Theme settings also support `Export Current Theme`, so you can round-trip your style as JSON.
+All three import areas include a sample download button.
 
 Persistence behavior:
 - Theme import: saved locally and also synced to backend theme API when available.
@@ -331,19 +336,106 @@ Persistence behavior:
 
 ```json
 {
-  "key": "oceanic_pro_import",
-  "name": "Oceanic Pro Import",
-  "description": "Full theme import with fonts, spacing, colors, page, header/footer",
+  "key": "frontlines_edutech_theme",
+  "name": "Frontlines Edu Tech",
+  "description": "Full theme import with fonts, sizes, colors, spacing, page, header, footer and watermark",
   "config": {
-    "fonts": { "family": "Segoe UI", "family_code": "Consolas" },
-    "colors": { "h1": "#0F766E", "h2": "#0D9488", "table_header_bg": "#CCFBF1" },
-    "spacing": { "line_spacing": 1.4 },
-    "page": { "size": "A4", "orientation": "portrait" },
-    "header": { "enabled": true, "text": "CONFIDENTIAL" },
-    "footer": { "enabled": true, "show_page_numbers": true, "page_format": "Page X of Y" }
+    "fonts": {
+      "family": "Times New Roman",
+      "family_code": "JetBrains Mono",
+      "h1_family": "Times New Roman",
+      "h2_family": "Times New Roman",
+      "h3_family": "Times New Roman",
+      "h4_family": "Times New Roman",
+      "h5_family": "Times New Roman",
+      "h6_family": "Times New Roman",
+      "bullet_family": "Times New Roman",
+      "sizes": {
+        "h1": 20,
+        "h2": 18,
+        "h3": 16,
+        "h4": 14,
+        "h5": 12,
+        "h6": 12,
+        "body": 12,
+        "code": 11,
+        "header": 10,
+        "footer": 10
+      }
+    },
+    "colors": {
+      "h1": "#6A00F4",
+      "h2": "#7B2CBF",
+      "h3": "#9D4EDD",
+      "h4": "#B5179E",
+      "h5": "#7209B7",
+      "h6": "#560BAD",
+      "table_header_bg": "#F77F00",
+      "table_header_text": "#FFFFFF",
+      "table_odd_row": "#FFF4E6",
+      "table_even_row": "#FFE5B4",
+      "code_background": "#1E1B2E",
+      "code_text": "#FFFFFF",
+      "link": "#6A00F4"
+    },
+    "spacing": {
+      "line_spacing": 1.5,
+      "paragraph_spacing_after": 14,
+      "heading_spacing_before": 14,
+      "heading_spacing_after": 8,
+      "bullet_base_indent": 0.5,
+      "bullet_indent_per_level": 0.75,
+      "code_indent": 0.35,
+      "quote_indent": 0.5
+    },
+    "page": {
+      "size": "A4",
+      "orientation": "portrait",
+      "margins": { "top": 1, "right": 1, "bottom": 1, "left": 1 },
+      "border": { "enabled": true, "width": 1, "style": "single", "color": "#000000" }
+    },
+    "header": {
+      "enabled": true,
+      "text": "Frontlines Edu Tech",
+      "alignment": "center",
+      "font_family": "Segoe UI",
+      "size": 10,
+      "color": "#F77F00",
+      "show_page_numbers": true,
+      "page_format": "X | Page",
+      "page_number_style": "arabic",
+      "separator": true,
+      "separator_color": "#CCCCCC"
+    },
+    "footer": {
+      "enabled": true,
+      "text": "Cryptography |",
+      "alignment": "right",
+      "font_family": "Segoe UI",
+      "size": 10,
+      "color": "#7B2CBF",
+      "show_page_numbers": true,
+      "page_format": "X | Page",
+      "page_number_style": "arabic",
+      "separator": true,
+      "separator_color": "#CCCCCC"
+    },
+    "watermark": {
+      "enabled": true,
+      "type": "text",
+      "text": "CONFIDENTIAL",
+      "font": "Calibri",
+      "size": 48,
+      "color": "#6200EA",
+      "opacity": 0.1,
+      "rotation": 315
+    }
   }
 }
 ```
+
+Import compatibility:
+- The frontend accepts direct NotesForge theme JSON and FLM-style aliases such as `bullet_indent`, `bullet_level_increment`, `font`, `font_family`, and nested `page.border` / `page.margins`.
 
 ### Template JSON sample (`ASCII:` + `CODE:`)
 

@@ -63,6 +63,12 @@ class WatermarkPayload(BaseModel):
     type: Literal["text", "image"] = "text"
     value: str = ""
     position: Literal["center", "header"] = "center"
+    fontFamily: Optional[str] = None
+    size: Optional[float] = None
+    color: Optional[str] = None
+    opacity: Optional[float] = None
+    rotation: Optional[float] = None
+    scale: Optional[float] = None
 
 
 class PreviewSecurityPayload(BaseModel):

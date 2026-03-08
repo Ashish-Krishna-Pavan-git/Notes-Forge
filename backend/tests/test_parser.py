@@ -114,6 +114,30 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(len(tables), 1)
         self.assertEqual(len(tables[0].rows or []), 3)
 
+    def test_parser_tracks_quote_role_and_list_indent_levels(self) -> None:
+        content = (
+            "QUOTE: Important quoted text\n"
+            "BULLET: Parent item\n"
+            "BULLET:   Child item\n"
+            "NUMBERED: 1. Parent step\n"
+            "NUMBERED:   2. Child step\n"
+        )
+        result = parse_notesforge(content)
+
+        quote_nodes = [n for n in result.nodes if n.type == "paragraph" and n.role == "quote"]
+        self.assertEqual(len(quote_nodes), 1)
+        self.assertIn("Important quoted text", quote_nodes[0].text)
+
+        bullet_nodes = [n for n in result.nodes if n.type == "bullet"]
+        self.assertEqual(len(bullet_nodes), 1)
+        self.assertEqual(bullet_nodes[0].items, ["Parent item", "Child item"])
+        self.assertEqual(bullet_nodes[0].levels, [0, 1])
+
+        numbered_nodes = [n for n in result.nodes if n.type == "numbered"]
+        self.assertEqual(len(numbered_nodes), 1)
+        self.assertEqual(numbered_nodes[0].items, ["Parent step", "Child step"])
+        self.assertEqual(numbered_nodes[0].levels, [0, 1])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -222,6 +222,7 @@ def _default_config() -> Dict[str, Any]:
             "bullet_base_indent": 0.25,
             "bullet_indent_per_level": 0.45,
             "code_indent": 0,
+            "quote_indent": 0.5,
             "paragraph_alignment": "left",
         },
         "page": {
@@ -475,6 +476,96 @@ def _default_themes(config: Mapping[str, Any]) -> Dict[str, Any]:
     startup["builtin"] = True
     startup["user_created"] = False
 
+    frontlines = _deep_merge(
+        professional,
+        {
+            "name": "Frontlines Edu Tech",
+            "description": "Times New Roman theme with purple-orange academic styling.",
+            "colors": {
+                "h1": "#6A00F4",
+                "h2": "#7B2CBF",
+                "h3": "#9D4EDD",
+                "h4": "#B5179E",
+                "h5": "#7209B7",
+                "h6": "#560BAD",
+                "table_header_bg": "#F77F00",
+                "table_header_text": "#FFFFFF",
+                "table_odd_row": "#FFF4E6",
+                "table_even_row": "#FFE5B4",
+                "code_background": "#1E1B2E",
+                "code_text": "#FFFFFF",
+                "link": "#6A00F4",
+            },
+            "fonts": {
+                "family": "Times New Roman",
+                "family_code": "JetBrains Mono",
+                "h1_family": "Times New Roman",
+                "h2_family": "Times New Roman",
+                "h3_family": "Times New Roman",
+                "h4_family": "Times New Roman",
+                "h5_family": "Times New Roman",
+                "h6_family": "Times New Roman",
+                "bullet_family": "Times New Roman",
+                "sizes": {"h1": 20, "h2": 18, "h3": 16, "h4": 14, "h5": 12, "h6": 12, "body": 12, "code": 11},
+            },
+            "spacing": {
+                "line_spacing": 1.5,
+                "paragraph_spacing_after": 14,
+                "heading_spacing_before": 14,
+                "heading_spacing_after": 8,
+                "bullet_base_indent": 0.5,
+                "bullet_indent_per_level": 0.75,
+                "code_indent": 0.35,
+                "quote_indent": 0.5,
+            },
+            "header": {
+                "enabled": True,
+                "text": "Frontlines Edu Tech",
+                "alignment": "center",
+                "color": "#F77F00",
+                "font_family": "Segoe UI",
+                "size": 10,
+                "show_page_numbers": True,
+                "page_format": "X | Page",
+                "page_number_style": "arabic",
+                "separator": True,
+                "separator_color": "#CCCCCC",
+            },
+            "footer": {
+                "enabled": True,
+                "text": "Cryptography |",
+                "alignment": "right",
+                "color": "#7B2CBF",
+                "font_family": "Segoe UI",
+                "size": 10,
+                "show_page_numbers": True,
+                "page_format": "X | Page",
+                "page_number_style": "arabic",
+                "separator": True,
+                "separator_color": "#CCCCCC",
+            },
+            "page": {
+                "size": "A4",
+                "orientation": "portrait",
+                "margins": {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0},
+                "border": {"enabled": True, "width": 1, "color": "#000000", "style": "single", "offset": 24},
+            },
+            "watermark": {
+                "enabled": True,
+                "type": "text",
+                "text": "CONFIDENTIAL",
+                "font": "Calibri",
+                "size": 48,
+                "color": "#6200EA",
+                "opacity": 0.1,
+                "rotation": 315,
+                "position": "center",
+            },
+        },
+    )
+    frontlines["builtin"] = True
+    frontlines["user_created"] = False
+
     return {
         "themes": {
             "professional": professional,
@@ -485,6 +576,7 @@ def _default_themes(config: Mapping[str, Any]) -> Dict[str, Any]:
             "oceanic": oceanic,
             "monochrome": monochrome,
             "startup": startup,
+            "frontlines_edutech_theme": frontlines,
         }
     }
 
@@ -626,7 +718,9 @@ def _theme_to_payload(theme_key: str, theme: Mapping[str, Any]) -> ThemePayload:
         "paragraph_first_line_indent": spacing.get("paragraph_first_line_indent", 0),
         "paragraph_alignment": spacing.get("paragraph_alignment", "left"),
         "bullet_base_indent": spacing.get("bullet_base_indent", 0.25),
+        "bullet_indent_per_level": spacing.get("bullet_indent_per_level", 0.45),
         "code_indent": spacing.get("code_indent", 0),
+        "quote_indent": spacing.get("quote_indent", 0.5),
         "body_color": colors.get("body", "#17202a"),
         "code_background": code.get("background", colors.get("code_background", "#0f172a")),
         "code_text": code.get("text", colors.get("code_text", "#e2e8f0")),
@@ -760,6 +854,12 @@ def _compose_security_payload(
                 type=wm_type,
                 value=wm_value,
                 position="header" if wm_position in {"header", "top"} else "center",
+                fontFamily=str(effective_watermark.get("font") or effective_watermark.get("font_family") or ""),
+                size=_as_float(effective_watermark.get("size"), 48.0),
+                color=str(effective_watermark.get("color") or ""),
+                opacity=_as_float(effective_watermark.get("opacity"), 0.1),
+                rotation=_as_float(effective_watermark.get("rotation"), 315.0),
+                scale=_as_float(effective_watermark.get("scale"), 38.0),
             )
 
     return GenerateSecurityPayload(

@@ -894,11 +894,23 @@ class DocumentExporter:
             "bulletBaseIndent",
             default=0.25,
         )
+        bullet_indent_per_level_in = _style_num(
+            styles,
+            "bullet_indent_per_level",
+            "bulletIndentPerLevel",
+            default=0.45,
+        )
         code_indent_in = _style_num(
             styles,
             "code_indent",
             "codeIndent",
             default=0.0,
+        )
+        quote_indent_in = _style_num(
+            styles,
+            "quote_indent",
+            "quoteIndent",
+            default=0.5,
         )
         paragraph_alignment = _style_str(
             styles,
@@ -944,8 +956,9 @@ class DocumentExporter:
             p = document.add_paragraph(security.watermark.value)
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             run = p.runs[0]
-            run.font.color.rgb = _hex_to_rgb(theme.primaryColor)
-            run.font.size = Pt(28)
+            run.font.name = _font_primary(security.watermark.fontFamily or theme.fontFamily)
+            run.font.color.rgb = _hex_to_rgb(security.watermark.color or theme.primaryColor)
+            run.font.size = Pt(max(18.0, float(security.watermark.size or 28)))
             run.font.bold = True
         elif security.watermark and security.watermark.type == "image" and security.watermark.value:
             image_path = Path(security.watermark.value)
@@ -985,6 +998,8 @@ class DocumentExporter:
                 p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
                 p.paragraph_format.line_spacing = line_spacing
                 p.paragraph_format.first_line_indent = Inches(max(0.0, paragraph_first_indent_em) * 0.15)
+                if getattr(node, "role", "paragraph") == "quote":
+                    p.paragraph_format.left_indent = Inches(max(0.0, quote_indent_in))
                 _style_paragraph_runs(
                     p,
                     font_name=font_name,
@@ -992,10 +1007,14 @@ class DocumentExporter:
                     color_hex=body_color,
                 )
             elif node.type == "bullet":
-                for item in node.items or []:
+                levels = node.levels or []
+                for idx, item in enumerate(node.items or []):
+                    item_level = levels[idx] if idx < len(levels) else 0
                     p = document.add_paragraph(item, style="List Bullet")
                     p.alignment = _docx_alignment(paragraph_alignment)
-                    p.paragraph_format.left_indent = Inches(max(0.0, bullet_base_indent_in))
+                    p.paragraph_format.left_indent = Inches(
+                        max(0.0, bullet_base_indent_in + (bullet_indent_per_level_in * item_level))
+                    )
                     p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
                     p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
                     p.paragraph_format.line_spacing = line_spacing
@@ -1006,9 +1025,14 @@ class DocumentExporter:
                         color_hex=body_color,
                     )
             elif node.type == "numbered":
-                for item in node.items or []:
+                levels = node.levels or []
+                for idx, item in enumerate(node.items or []):
+                    item_level = levels[idx] if idx < len(levels) else 0
                     p = document.add_paragraph(item, style="List Number")
                     p.alignment = _docx_alignment(paragraph_alignment)
+                    p.paragraph_format.left_indent = Inches(
+                        max(0.0, bullet_base_indent_in + (bullet_indent_per_level_in * item_level))
+                    )
                     p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
                     p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
                     p.paragraph_format.line_spacing = line_spacing

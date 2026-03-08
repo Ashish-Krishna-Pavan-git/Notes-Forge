@@ -96,8 +96,14 @@ def _heading_css(theme: ThemePayload) -> str:
         size = token.size if token.size else max(12, 26 - (level * 2))
         weight = token.weight if token.weight else ("700" if level == 1 else "600")
         color = token.color if token.color else theme.primaryColor
+        family = _style_str(
+            styles,
+            f"h{level}_family",
+            f"h{level}Family",
+            default=theme.fontFamily,
+        )
         chunks.append(
-            f"{key}{{font-size:{size}px;font-weight:{weight};color:{color};"
+            f"{key}{{font-family:{family};font-size:{size}px;font-weight:{weight};color:{color};"
             f"margin:{before_rem:.3f}rem 0 {after_rem:.3f}rem;}}"
         )
     return "".join(chunks)
@@ -117,6 +123,13 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
         "paragraphSpacingAfter",
         default=6.0,
     )
+    paragraph_before_pt = _style_num(
+        styles,
+        "paragraph_spacing_before",
+        "paragraphSpacingBefore",
+        default=0.0,
+    )
+    paragraph_before_rem = max(0.0, (paragraph_before_pt * 1.333) / 16.0)
     paragraph_after_rem = max(0.0, (paragraph_after_pt * 1.333) / 16.0)
     first_line_indent = _style_num(
         styles,
@@ -133,6 +146,30 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
     ).lower()
     if paragraph_align not in {"left", "center", "right", "justify"}:
         paragraph_align = "left"
+    bullet_base_indent = _style_num(
+        styles,
+        "bullet_base_indent",
+        "bulletBaseIndent",
+        default=0.25,
+    )
+    bullet_indent_per_level = _style_num(
+        styles,
+        "bullet_indent_per_level",
+        "bulletIndentPerLevel",
+        default=0.45,
+    )
+    quote_indent = _style_num(
+        styles,
+        "quote_indent",
+        "quoteIndent",
+        default=0.5,
+    )
+    code_indent = _style_num(
+        styles,
+        "code_indent",
+        "codeIndent",
+        default=0.0,
+    )
     page_size = _style_str(styles, "page_size", "pageSize", default="A4").upper()
     if page_size not in {"A4", "A3", "LETTER", "LEGAL"}:
         page_size = "A4"
@@ -147,13 +184,31 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
     body_color = _style_str(styles, "body_color", "bodyColor", default="#17202a")
     code_bg = _style_str(styles, "code_background", "codeBackground", default="#0f172a")
     code_text = _style_str(styles, "code_text", "codeText", default="#e2e8f0")
+    code_font = _style_str(
+        styles,
+        "code_font_family",
+        "codeFontFamily",
+        default="Consolas, Courier New, monospace",
+    )
+    code_font_size = _style_num(
+        styles,
+        "code_font_size",
+        "codeFontSize",
+        default=10.0,
+    )
     ascii_bg = _style_str(styles, "ascii_background", "asciiBackground", default=code_bg)
     ascii_text = _style_str(styles, "ascii_text", "asciiText", default=code_text)
     ascii_font = _style_str(
         styles,
         "ascii_font_family",
         "asciiFontFamily",
-        default=_style_str(styles, "code_font_family", "codeFontFamily", default="Consolas, Courier New, monospace"),
+        default=code_font,
+    )
+    bullet_font = _style_str(
+        styles,
+        "bullet_font_family",
+        "bulletFontFamily",
+        default=theme.fontFamily,
     )
     table_header_text = _style_str(styles, "table_header_text", "tableHeaderText", default="#111827")
     table_odd_row = _style_str(styles, "table_odd_row", "tableOddRow", default="#ffffff")
@@ -222,10 +277,18 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
         f"{theme.fontFamily};font-size:{body_size}px;line-height:{line_height};"
         f"padding:{margins.top}mm {margins.right}mm {margins.bottom}mm {margins.left}mm;"
         f"color:{body_color};{border_css}box-sizing:border-box;min-height:100%;"
+        f"--nf-bullet-base-indent:{bullet_base_indent:.3f}in;"
+        f"--nf-bullet-step-indent:{bullet_indent_per_level:.3f}in;"
+        f"--nf-quote-indent:{quote_indent:.3f}in;"
+        f"--nf-code-indent:{code_indent:.3f}in;"
         "}"
-        f"p{{margin:0 0 {paragraph_after_rem:.3f}rem 0;text-indent:{first_line_indent_em:.3f}em;text-align:{paragraph_align};}}"
-        "ul,ol{margin:0.4rem 0 0.8rem 1.3rem;}"
-        f"pre{{background:{code_bg};color:{code_text};padding:0.75rem;border-radius:8px;overflow:auto;}}"
+        f"p{{margin:{paragraph_before_rem:.3f}rem 0 {paragraph_after_rem:.3f}rem 0;text-indent:{first_line_indent_em:.3f}em;text-align:{paragraph_align};}}"
+        f".nf-paragraph.nf-quote{{margin-left:var(--nf-quote-indent);padding-left:0.75rem;border-left:4px solid {theme.primaryColor};font-style:italic;}}"
+        ".nf-paragraph.nf-note,.nf-paragraph.nf-important,.nf-paragraph.nf-highlight,.nf-paragraph.nf-footnote{padding:0.35rem 0.65rem;border-radius:0.5rem;background:#f8fafc;}"
+        f"ul.nf-list-root,ol.nf-list-root{{margin:0.4rem 0 0.8rem 0;padding-left:1.5rem;}}"
+        f".nf-list-item{{font-family:{bullet_font};margin-left:calc(var(--nf-bullet-base-indent) + (var(--nf-bullet-step-indent) * var(--nf-level, 0)));}}"
+        f"pre{{background:{code_bg};color:{code_text};padding:0.75rem;border-radius:8px;overflow:auto;margin-left:var(--nf-code-indent);font-family:{code_font};font-size:{code_font_size}px;}}"
+        f"code{{font-family:{code_font};font-size:{code_font_size}px;}}"
         f"table{{width:100%;border-collapse:collapse;margin:0.6rem 0;}}"
         f"th,td{{border:{table_width}px solid {table_border};padding:0.45rem;text-align:left;}}"
         f"thead{{background:{table_header};color:{table_header_text};}}"
@@ -234,9 +297,7 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
         f"a{{color:{link_color};}}"
         ".nf-watermark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"
         "pointer-events:none;z-index:0;}"
-        ".nf-watermark span{font-size:42px;font-weight:700;opacity:0.14;transform:rotate(-24deg);"
-        + f"color:{theme.primaryColor};"
-        + "}"
+        ".nf-watermark--header{align-items:flex-start;padding-top:12mm;}"
         ".nf-preview-root>*{position:relative;z-index:1;}"
         ".nf-page-break{margin:1rem 0;border-top:2px dashed #cbd5e1;height:1px;page-break-after:always;break-after:page;}"
         f".nf-ascii{{background:{ascii_bg};color:{ascii_text};font-family:{ascii_font};text-align:center;white-space:pre;}}"
@@ -255,16 +316,31 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
 def watermark_html(watermark: WatermarkPayload | None) -> str:
     if not watermark or not watermark.value:
         return ""
+    position_class = (
+        " nf-watermark--header"
+        if watermark.position == "header"
+        else ""
+    )
     if watermark.type == "text":
+        font_family = escape(watermark.fontFamily or "Calibri", quote=True)
+        font_size = max(18.0, float(watermark.size or 42))
+        color = escape(watermark.color or "#64748B", quote=True)
+        opacity = min(1.0, max(0.03, float(watermark.opacity or 0.14)))
+        rotation = float(watermark.rotation if watermark.rotation is not None else -24)
         return (
-            '<div class="nf-watermark" aria-hidden="true">'
-            f"<span>{escape(watermark.value)}</span></div>"
+            f'<div class="nf-watermark{position_class}" aria-hidden="true">'
+            f'<span style="font-family:{font_family};font-size:{font_size:.0f}px;'
+            f"font-weight:700;opacity:{opacity:.3f};transform:rotate({rotation:.0f}deg);"
+            f'color:{color};">{escape(watermark.value)}</span></div>'
         )
     # For preview image watermark we trust only URL-like values and escape otherwise.
     src = escape(watermark.value, quote=True)
+    opacity = min(1.0, max(0.03, float(watermark.opacity or 0.18)))
+    scale = min(100.0, max(10.0, float(watermark.scale or 38.0)))
+    rotation = float(watermark.rotation if watermark.rotation is not None else 0)
     return (
-        '<div class="nf-watermark" aria-hidden="true">'
-        f'<img src="{src}" alt="" style="max-width:38%;opacity:0.18;"/>'
+        f'<div class="nf-watermark{position_class}" aria-hidden="true">'
+        f'<img src="{src}" alt="" style="max-width:{scale:.0f}%;opacity:{opacity:.3f};transform:rotate({rotation:.0f}deg);"/>'
         "</div>"
     )
 

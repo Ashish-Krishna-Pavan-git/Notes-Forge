@@ -55,8 +55,8 @@
         "bullet_base_indent": 0.5,
         "bullet_indent_per_level": 0.75,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -234,8 +234,8 @@
         "bullet_base_indent": 0.5,
         "bullet_indent_per_level": 0.75,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -413,8 +413,8 @@
         "bullet_base_indent": 0.5,
         "bullet_indent_per_level": 0.75,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -592,8 +592,8 @@
         "bullet_base_indent": 0.5,
         "bullet_indent_per_level": 0.75,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -771,8 +771,8 @@
         "bullet_base_indent": 0.5,
         "bullet_indent_per_level": 0.75,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -950,8 +950,8 @@
         "bullet_base_indent": 0.5,
         "bullet_indent_per_level": 0.75,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -1129,8 +1129,8 @@
         "bullet_base_indent": 0.5,
         "bullet_indent_per_level": 0.75,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -1308,8 +1308,8 @@
         "bullet_base_indent": 0.25,
         "bullet_indent_per_level": 0.45,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -1487,8 +1487,8 @@
         "bullet_base_indent": 0.5,
         "bullet_indent_per_level": 0.75,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -1666,8 +1666,8 @@
         "bullet_base_indent": 0.5,
         "bullet_indent_per_level": 0.75,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -1845,8 +1845,8 @@
         "bullet_base_indent": 0.5,
         "bullet_indent_per_level": 0.75,
         "code_indent": 0.35,
-        "paragraph_alignment": "left",
-        "quote_indent": 0.5
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
       },
       "page": {
         "size": "A4",
@@ -1908,6 +1908,185 @@
         "size": 48,
         "color": "#C41E3A",
         "opacity": 0.08,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "frontlines_edutech_theme": {
+      "name": "Frontlines Edu Tech",
+      "description": "Times New Roman theme with purple-orange academic styling.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Times New Roman",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
+        "sizes": {
+          "h1": 20,
+          "h2": 18,
+          "h3": 16,
+          "h4": 14,
+          "h5": 12,
+          "h6": 12,
+          "body": 12,
+          "code": 11,
+          "header": 10,
+          "footer": 9
+        }
+      },
+      "colors": {
+        "h1": "#6A00F4",
+        "h2": "#7B2CBF",
+        "h3": "#9D4EDD",
+        "h4": "#B5179E",
+        "h5": "#7209B7",
+        "h6": "#560BAD",
+        "body": "#1F1F1F",
+        "code_background": "#1E1B2E",
+        "code_text": "#FFFFFF",
+        "table_header_bg": "#F77F00",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FFF4E6",
+        "table_even_row": "#FFE5B4",
+        "table_border": "#DC143C",
+        "link": "#6A00F4"
+      },
+      "spacing": {
+        "line_spacing": 1.5,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 14,
+        "heading_spacing_before": 14,
+        "heading_spacing_after": 8,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
+        },
+        "border": {
+          "enabled": true,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "Frontlines Edu Tech",
+        "alignment": "center",
+        "font_family": "Segoe UI",
+        "size": 10,
+        "color": "#F77F00",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "Cryptography |",
+        "alignment": "right",
+        "font_family": "Segoe UI",
+        "size": 10,
+        "color": "#7B2CBF",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "CONFIDENTIAL",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#6200EA",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100

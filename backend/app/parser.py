@@ -7,7 +7,7 @@ from typing import List, Sequence
 
 
 MARKER_RE = re.compile(
-    r"^\s*(HEADING|SUBHEADING|SUB-SUBHEADING|H[1-6]|PARAGRAPH|PARA|CENTER|RIGHT|JUSTIFY|BULLET|NUMBERED|CODE|ASCII|TABLE|PAGEBREAK|PAGE_BREAK|QUOTE|NOTE|IMPORTANT|TOC|IMAGE|LINK|HIGHLIGHT|FOOTNOTE)\s*:\s*(.*)$",
+    r"^\s*(HEADING|SUBHEADING|SUB-SUBHEADING|H[1-6]|PARAGRAPH|PARA|CENTER|RIGHT|JUSTIFY|BULLET|NUMBERED|CODE|ASCII|TABLE|PAGEBREAK|PAGE_BREAK|QUOTE|NOTE|IMPORTANT|TOC|IMAGE|LINK|HIGHLIGHT|FOOTNOTE)\s*:(.*)$",
     re.IGNORECASE,
 )
 
@@ -20,6 +20,8 @@ class Node:
     align: str = "left"
     items: List[str] | None = None
     rows: List[List[str]] | None = None
+    role: str = "paragraph"
+    levels: List[int] | None = None
 
 
 @dataclass
@@ -45,6 +47,22 @@ def _split_table_row(row: str) -> List[str]:
     return [col.strip() for col in cleaned.split("|")] if cleaned else []
 
 
+def _list_level(raw: str, unit: int = 2) -> int:
+    expanded = raw.replace("\t", " " * unit)
+    spaces = len(expanded) - len(expanded.lstrip(" "))
+    return max(0, spaces // max(1, unit))
+
+
+def _parse_list_item(raw: str, numbered: bool) -> tuple[str, int]:
+    level = _list_level(raw)
+    stripped = raw.lstrip()
+    if numbered:
+        stripped = re.sub(r"^\d+[.)]\s*", "", stripped)
+    else:
+        stripped = re.sub(r"^[-*]\s*", "", stripped)
+    return stripped.strip(), level
+
+
 def parse_notesforge(content: str) -> ParseResult:
     lines = content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     nodes: List[Node] = []
@@ -67,7 +85,8 @@ def parse_notesforge(content: str) -> ParseResult:
             continue
 
         marker = marker_match.group(1).upper()
-        payload = marker_match.group(2).strip()
+        payload_raw = marker_match.group(2)
+        payload = payload_raw.strip()
 
         if marker in {"HEADING", "H1"}:
             nodes.append(Node(type="heading", level=1, text=payload))
@@ -133,6 +152,7 @@ def parse_notesforge(content: str) -> ParseResult:
                     type="paragraph",
                     text=" ".join(p for p in paragraph_lines if p).strip(),
                     align=align,
+                    role=marker.lower() if marker not in {"PARAGRAPH", "PARA", "CENTER", "RIGHT", "JUSTIFY"} else "paragraph",
                 )
             )
             idx = next_idx if next_idx > idx else idx + 1
@@ -140,49 +160,72 @@ def parse_notesforge(content: str) -> ParseResult:
 
         if marker == "BULLET":
             items: List[str] = []
+            levels: List[int] = []
             if payload:
-                cleaned = payload.lstrip("-* ").strip()
+                cleaned, item_level = _parse_list_item(payload_raw, numbered=False)
                 if cleaned:
                     items.append(cleaned)
+                    levels.append(item_level)
             next_idx = idx + 1
             while next_idx < len(lines):
-                nline = lines[next_idx].strip()
-                if _is_marker_line(lines[next_idx]):
+                nraw = lines[next_idx]
+                marker_line = MARKER_RE.match(nraw)
+                if marker_line:
+                    if marker_line.group(1).upper() == "BULLET":
+                        cleaned, item_level = _parse_list_item(marker_line.group(2), numbered=False)
+                        if cleaned:
+                            items.append(cleaned)
+                            levels.append(item_level)
+                        next_idx += 1
+                        continue
                     break
+                nline = nraw.strip()
                 if not nline:
                     next_idx += 1
                     continue
-                if nline.startswith(("-", "*")):
-                    items.append(nline.lstrip("-* ").strip())
-                else:
-                    items.append(nline)
+                cleaned, item_level = _parse_list_item(nraw, numbered=False)
+                if cleaned:
+                    items.append(cleaned)
+                    levels.append(item_level)
                 next_idx += 1
             if not items:
                 warnings.append(f"Line {idx + 1}: BULLET block has no items.")
-            nodes.append(Node(type="bullet", items=items))
+            nodes.append(Node(type="bullet", items=items, levels=levels))
             idx = next_idx
             continue
 
         if marker == "NUMBERED":
             items = []
+            levels: List[int] = []
             if payload:
-                cleaned = re.sub(r"^\d+[.)]\s*", "", payload).strip()
+                cleaned, item_level = _parse_list_item(payload_raw, numbered=True)
                 if cleaned:
                     items.append(cleaned)
+                    levels.append(item_level)
             next_idx = idx + 1
             while next_idx < len(lines):
-                nline = lines[next_idx].strip()
-                if _is_marker_line(lines[next_idx]):
+                nraw = lines[next_idx]
+                marker_line = MARKER_RE.match(nraw)
+                if marker_line:
+                    if marker_line.group(1).upper() == "NUMBERED":
+                        cleaned, item_level = _parse_list_item(marker_line.group(2), numbered=True)
+                        if cleaned:
+                            items.append(cleaned)
+                            levels.append(item_level)
+                        next_idx += 1
+                        continue
                     break
+                nline = nraw.strip()
                 if not nline:
                     next_idx += 1
                     continue
-                cleaned = re.sub(r"^\d+[.)]\s*", "", nline).strip()
+                cleaned, item_level = _parse_list_item(nraw, numbered=True)
                 items.append(cleaned if cleaned else nline)
+                levels.append(item_level)
                 next_idx += 1
             if not items:
                 warnings.append(f"Line {idx + 1}: NUMBERED block has no items.")
-            nodes.append(Node(type="numbered", items=items))
+            nodes.append(Node(type="numbered", items=items, levels=levels))
             idx = next_idx
             continue
 
@@ -303,21 +346,34 @@ def render_preview_html(
             level = max(1, min(6, node.level))
             fragments.append(f"<h{level}>{escape(node.text)}</h{level}>")
         elif node.type == "paragraph":
+            classes = ["nf-paragraph"]
+            if node.role and node.role != "paragraph":
+                classes.append(f"nf-{escape(node.role)}")
+            style_attr = ""
             if node.align and node.align != "left":
-                fragments.append(f'<p style="text-align:{escape(node.align)}">{escape(node.text)}</p>')
-            else:
-                fragments.append(f"<p>{escape(node.text)}</p>")
+                style_attr = f' style="text-align:{escape(node.align)}"'
+            fragments.append(
+                f'<p class="{" ".join(classes)}"{style_attr}>{escape(node.text)}</p>'
+            )
         elif node.type == "bullet":
             items = node.items or []
-            fragments.append("<ul>")
-            for item in items:
-                fragments.append(f"<li>{escape(item)}</li>")
+            levels = node.levels or []
+            fragments.append('<ul class="nf-list-root">')
+            for idx, item in enumerate(items):
+                item_level = levels[idx] if idx < len(levels) else 0
+                fragments.append(
+                    f'<li class="nf-list-item" style="--nf-level:{item_level}">{escape(item)}</li>'
+                )
             fragments.append("</ul>")
         elif node.type == "numbered":
             items = node.items or []
-            fragments.append("<ol>")
-            for item in items:
-                fragments.append(f"<li>{escape(item)}</li>")
+            levels = node.levels or []
+            fragments.append('<ol class="nf-list-root">')
+            for idx, item in enumerate(items):
+                item_level = levels[idx] if idx < len(levels) else 0
+                fragments.append(
+                    f'<li class="nf-list-item" style="--nf-level:{item_level}">{escape(item)}</li>'
+                )
             fragments.append("</ol>")
         elif node.type == "code":
             fragments.append(f"<pre><code>{escape(node.text)}</code></pre>")
@@ -355,11 +411,15 @@ def to_markdown(nodes: Sequence[Node]) -> str:
         elif node.type == "pagebreak":
             lines.append("---")
         elif node.type == "bullet":
-            for item in node.items or []:
-                lines.append(f"- {item}")
+            levels = node.levels or []
+            for idx, item in enumerate(node.items or []):
+                item_level = levels[idx] if idx < len(levels) else 0
+                lines.append(f"{'  ' * item_level}- {item}")
         elif node.type == "numbered":
+            levels = node.levels or []
             for idx, item in enumerate(node.items or [], start=1):
-                lines.append(f"{idx}. {item}")
+                item_level = levels[idx - 1] if idx - 1 < len(levels) else 0
+                lines.append(f"{'  ' * item_level}{idx}. {item}")
         elif node.type == "code":
             lines.append("```")
             lines.append(node.text)
