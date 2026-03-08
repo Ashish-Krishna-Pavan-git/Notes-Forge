@@ -7,8 +7,19 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice \
     libreoffice-writer \
+    libreoffice-core \
+    default-jre-headless \
+    fontconfig \
     fonts-dejavu \
+    fonts-liberation \
+    fonts-noto-core \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
+    ghostscript \
     && rm -rf /var/lib/apt/lists/*
+
+RUN if [ -f /usr/lib/libreoffice/program/soffice ]; then ln -sf /usr/lib/libreoffice/program/soffice /usr/local/bin/soffice; fi
+RUN soffice --version
 
 WORKDIR /app
 

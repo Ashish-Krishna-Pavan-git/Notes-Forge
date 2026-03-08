@@ -33,6 +33,8 @@ class ApiIntegrationTests(unittest.TestCase):
 
     def test_preflight_cors(self) -> None:
         for origin in (
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
             "https://notes-forge-ruddy.vercel.app",
             "https://notes-forge.onrender.com",
         ):

@@ -1504,6 +1504,101 @@ const KBD = React.memo(
 );
 KBD.displayName = "KBD";
 
+type TourStep = {
+  id: string;
+  tab: TabId;
+  selector: string;
+  title: string;
+  description: string;
+};
+
+const GUIDED_TOUR_STEPS: readonly TourStep[] = [
+  {
+    id: "editor-nav",
+    tab: "editor",
+    selector: "nav-editor",
+    title: "Editor Tab",
+    description:
+      "Start here to write or paste your content. This is the main workspace.",
+  },
+  {
+    id: "editor-toolbar",
+    tab: "editor",
+    selector: "editor-toolbar",
+    title: "Editor Tools",
+    description:
+      "Use these buttons for preview, search, drafts, strict mode, and quick examples.",
+  },
+  {
+    id: "editor-area",
+    tab: "editor",
+    selector: "editor-textarea",
+    title: "Writing Area",
+    description:
+      "Type markers like H1:, PARAGRAPH:, BULLET:, ASCII:, and CODE: here.",
+  },
+  {
+    id: "generate",
+    tab: "editor",
+    selector: "generate-bar",
+    title: "Export Area",
+    description:
+      "Choose DOCX or PDF, set a filename, then generate your document.",
+  },
+  {
+    id: "templates-nav",
+    tab: "templates",
+    selector: "nav-templates",
+    title: "Templates",
+    description:
+      "Load starter documents or import your own template JSON files.",
+  },
+  {
+    id: "template-import",
+    tab: "templates",
+    selector: "template-import",
+    title: "Template Import",
+    description:
+      "Import reusable templates with ASCII and CODE examples already included.",
+  },
+  {
+    id: "settings-nav",
+    tab: "settings",
+    selector: "nav-settings",
+    title: "Settings",
+    description:
+      "Control fonts, colors, spacing, borders, header, footer, and page layout.",
+  },
+  {
+    id: "theme-import",
+    tab: "settings",
+    selector: "theme-import",
+    title: "Theme Import",
+    description:
+      "Import full theme JSON files with colors, fonts, size, spacing, page, header, and footer values.",
+  },
+  {
+    id: "prompt-nav",
+    tab: "prompt",
+    selector: "nav-prompt",
+    title: "AI Prompt",
+    description:
+      "Manage your prompt, import prompt files, and generate structured text from a topic.",
+  },
+  {
+    id: "prompt-import",
+    tab: "prompt",
+    selector: "prompt-import",
+    title: "Prompt Import",
+    description:
+      "Import a .txt or .json prompt file and reuse it whenever you want.",
+  },
+];
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════
@@ -1539,6 +1634,10 @@ export default function App() {
     () => localStorage.getItem("nf_onboard_done") !== "1"
   );
   const [onboardingExpanded, setOnboardingExpanded] = useState(true);
+  const [guidedTourOpen, setGuidedTourOpen] = useState(false);
+  const [guidedTourIndex, setGuidedTourIndex] = useState(0);
+  const [guidedTourRect, setGuidedTourRect] =
+    useState<DOMRect | null>(null);
   const [markerSuggestions, setMarkerSuggestions] = useState<
     string[]
   >([]);
@@ -1700,6 +1799,47 @@ export default function App() {
       icon: selectedCard.icon,
     } as ApiTemplate;
   }, [effectiveTemplates, selectedTemplateId]);
+
+  const activeTourStep = guidedTourOpen
+    ? GUIDED_TOUR_STEPS[guidedTourIndex] || null
+    : null;
+
+  const guidedTourCardStyle = useMemo(() => {
+    if (typeof window === "undefined") {
+      return {} as React.CSSProperties;
+    }
+    if (!guidedTourRect) {
+      return {
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+      } as React.CSSProperties;
+    }
+
+    const cardWidth = 340;
+    const preferredTop =
+      guidedTourRect.bottom + 16 + window.scrollY;
+    const fallbackTop =
+      guidedTourRect.top - 180 + window.scrollY;
+    const cardTop =
+      preferredTop + 180 < window.innerHeight + window.scrollY
+        ? preferredTop
+        : Math.max(16 + window.scrollY, fallbackTop);
+    const cardLeft = clamp(
+      guidedTourRect.left + window.scrollX,
+      16 + window.scrollX,
+      Math.max(
+        16 + window.scrollX,
+        window.innerWidth - cardWidth - 16 + window.scrollX
+      )
+    );
+
+    return {
+      top: `${cardTop}px`,
+      left: `${cardLeft}px`,
+      width: `${cardWidth}px`,
+    } as React.CSSProperties;
+  }, [guidedTourRect]);
 
   const previewHTML = useMemo(
     () =>
@@ -3140,6 +3280,40 @@ export default function App() {
     handleText,
   ]);
 
+  const openGuidedTour = useCallback((startIndex = 0) => {
+    setShowOnboarding(false);
+    setGuidedTourIndex(
+      clamp(startIndex, 0, GUIDED_TOUR_STEPS.length - 1)
+    );
+    setGuidedTourOpen(true);
+  }, []);
+
+  const finishGuidedTour = useCallback(() => {
+    setGuidedTourOpen(false);
+    setGuidedTourRect(null);
+    setShowOnboarding(false);
+    localStorage.setItem("nf_guided_tour_done", "1");
+    localStorage.setItem("nf_onboard_done", "1");
+  }, []);
+
+  const skipGuidedTour = useCallback(() => {
+    finishGuidedTour();
+    setSuccess("Guided tour skipped. You can restart it from the guide.");
+  }, [finishGuidedTour]);
+
+  const nextGuidedTourStep = useCallback(() => {
+    if (guidedTourIndex >= GUIDED_TOUR_STEPS.length - 1) {
+      finishGuidedTour();
+      setSuccess("Guided tour completed.");
+      return;
+    }
+    setGuidedTourIndex((prev) => prev + 1);
+  }, [guidedTourIndex, finishGuidedTour]);
+
+  const previousGuidedTourStep = useCallback(() => {
+    setGuidedTourIndex((prev) => Math.max(0, prev - 1));
+  }, []);
+
   const dismissOnboarding = useCallback(() => {
     setShowOnboarding(false);
     localStorage.setItem("nf_onboard_done", "1");
@@ -3394,6 +3568,18 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (localStorage.getItem("nf_guided_tour_done") === "1") {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setShowOnboarding(false);
+      setGuidedTourIndex(0);
+      setGuidedTourOpen(true);
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (online !== "online") return;
     loadThemes();
     loadTemplateCatalog();
@@ -3430,6 +3616,66 @@ export default function App() {
       setSelectedTemplateId(effectiveTemplates[0].id);
     }
   }, [effectiveTemplates, selectedTemplateId]);
+
+  useEffect(() => {
+    if (!guidedTourOpen || !activeTourStep) {
+      setGuidedTourRect(null);
+      return;
+    }
+
+    if (tab !== activeTourStep.tab) {
+      setTab(activeTourStep.tab);
+      setGuidedTourRect(null);
+    }
+
+    let cancelled = false;
+    const updateRect = () => {
+      if (cancelled) return;
+      const target = document.querySelector(
+        `[data-tour="${activeTourStep.selector}"]`
+      ) as HTMLElement | null;
+      if (!target) {
+        setGuidedTourRect(null);
+        return;
+      }
+      window.requestAnimationFrame(() => {
+        if (cancelled) return;
+        setGuidedTourRect(target.getBoundingClientRect());
+      });
+    };
+
+    const focusStep = () => {
+      if (cancelled) return;
+      const target = document.querySelector(
+        `[data-tour="${activeTourStep.selector}"]`
+      ) as HTMLElement | null;
+      if (!target) {
+        setGuidedTourRect(null);
+        return;
+      }
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+      updateRect();
+    };
+
+    const timer = window.setTimeout(
+      focusStep,
+      tab === activeTourStep.tab ? 120 : 300
+    );
+
+    window.addEventListener("resize", updateRect);
+    window.addEventListener("scroll", updateRect, true);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("scroll", updateRect, true);
+    };
+  }, [guidedTourOpen, activeTourStep, tab]);
 
   // Autosave
   useEffect(() => {
@@ -3817,6 +4063,7 @@ export default function App() {
               <button
                 key={t}
                 onClick={() => setTab(t as TabId)}
+                data-tour={`nav-${t}`}
                 className={tbtn(tab === t)}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -3937,6 +4184,7 @@ export default function App() {
             <div className="lg:col-span-2 flex flex-col gap-4">
               {/* Toolbar */}
               <div
+                data-tour="editor-toolbar"
                 className={`${card} p-3 flex items-center gap-2 flex-wrap`}
               >
                 <button
@@ -4063,6 +4311,12 @@ export default function App() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openGuidedTour(0)}
+                        className="text-xs px-2 py-1 rounded bg-purple-600 text-white"
+                      >
+                        Start tour
+                      </button>
                       <button
                         onClick={() =>
                           setOnboardingExpanded((v) => !v)
@@ -4321,6 +4575,7 @@ export default function App() {
                       </pre>
                     </div>
                     <textarea
+                      data-tour="editor-textarea"
                       ref={taRef}
                       value={text}
                       onChange={(e) => {
@@ -4436,7 +4691,7 @@ export default function App() {
               </div>
 
               {/* Generate Bar */}
-              <div className={`${card} p-4`}>
+              <div data-tour="generate-bar" className={`${card} p-4`}>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="flex items-center gap-2">
                     <Pencil className="w-4 h-4 text-gray-400 shrink-0" />
@@ -4725,6 +4980,7 @@ export default function App() {
                   </div>
                   <div className="flex flex-wrap gap-2 shrink-0">
                     <button
+                      data-tour="template-import"
                       onClick={() =>
                         templateImportInputRef.current?.click()
                       }
@@ -5062,6 +5318,12 @@ export default function App() {
                 >
                   Open Settings
                 </button>
+                <button
+                  onClick={() => openGuidedTour(0)}
+                  className="px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium"
+                >
+                  Start Guided Tour
+                </button>
               </div>
 
               <div className="px-6 pb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -5316,6 +5578,7 @@ backend: Render (Root: backend)`}
                         </p>
                         <div className="flex flex-wrap gap-2 mb-6">
                           <button
+                            data-tour="theme-import"
                             onClick={() =>
                               themeImportInputRef.current?.click()
                             }
@@ -7373,6 +7636,7 @@ backend: Render (Root: backend)`}
                       )}
                     </button>
                     <button
+                      data-tour="prompt-import"
                       onClick={() =>
                         promptImportInputRef.current?.click()
                       }
@@ -8174,6 +8438,90 @@ backend: Render (Root: backend)`}
             </div>
           </div>
         </div>
+      )}
+
+      {guidedTourOpen && activeTourStep && (
+        <>
+          <div className="fixed inset-0 z-[70] bg-slate-950/65 backdrop-blur-[1px]" />
+          {guidedTourRect && (
+            <>
+              <div
+                className="fixed z-[71] rounded-2xl ring-2 ring-cyan-400 shadow-[0_0_0_9999px_rgba(2,6,23,0.55)] pointer-events-none"
+                style={{
+                  top: `${Math.max(8, guidedTourRect.top - 8)}px`,
+                  left: `${Math.max(8, guidedTourRect.left - 8)}px`,
+                  width: `${guidedTourRect.width + 16}px`,
+                  height: `${guidedTourRect.height + 16}px`,
+                }}
+              />
+              <div
+                className="fixed z-[72] w-8 h-8 rounded-full bg-cyan-500 text-slate-950 text-sm font-bold flex items-center justify-center shadow-lg pointer-events-none"
+                style={{
+                  top: `${Math.max(8, guidedTourRect.top - 16)}px`,
+                  left: `${Math.max(8, guidedTourRect.left - 16)}px`,
+                }}
+              >
+                {guidedTourIndex + 1}
+              </div>
+            </>
+          )}
+          <div
+            className={`${card} fixed z-[73] p-5 border-cyan-300 dark:border-cyan-700 shadow-2xl`}
+            style={guidedTourCardStyle}
+          >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-500 font-bold">
+                  Guided Tour
+                </p>
+                <h3 className="text-base font-bold mt-1">
+                  {activeTourStep.title}
+                </h3>
+              </div>
+              <span className="text-xs text-gray-400 shrink-0">
+                {guidedTourIndex + 1}/{GUIDED_TOUR_STEPS.length}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              {activeTourStep.description}
+            </p>
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <button
+                onClick={skipGuidedTour}
+                className={`px-3 py-2 rounded-lg text-xs font-medium border ${
+                  dark
+                    ? "border-gray-600 hover:bg-gray-700"
+                    : "border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Skip
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={previousGuidedTourStep}
+                  disabled={guidedTourIndex === 0}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium border ${
+                    guidedTourIndex === 0
+                      ? "opacity-40 cursor-not-allowed border-transparent"
+                      : dark
+                        ? "border-gray-600 hover:bg-gray-700"
+                        : "border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  Back
+                </button>
+                <button
+                  onClick={nextGuidedTourStep}
+                  className="px-3 py-2 rounded-lg text-xs font-medium bg-cyan-500 hover:bg-cyan-400 text-slate-950"
+                >
+                  {guidedTourIndex === GUIDED_TOUR_STEPS.length - 1
+                    ? "Finish"
+                    : "Next"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       <input

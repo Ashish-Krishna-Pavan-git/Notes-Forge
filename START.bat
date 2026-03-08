@@ -65,10 +65,10 @@ if errorlevel 1 (
 cd /d "%ROOT_DIR%"
 
 REM Frontend
-start "" cmd /k "cd /d ""%FRONTEND_DIR%"" && npm run dev"
+start "" cmd /k "cd /d ""%FRONTEND_DIR%"" && set VITE_API_URL=http://localhost:10000 && npm run dev"
 
 REM Backend (canonical app entrypoint)
-start "" cmd /k "cd /d ""%BACKEND_DIR%"" && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 10000"
+start "" cmd /k "cd /d ""%BACKEND_DIR%"" && set FASTAPI_PORT=10000 && set NF_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000 && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 10000"
 
 REM =====================================================
 echo.

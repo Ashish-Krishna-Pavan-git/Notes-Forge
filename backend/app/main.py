@@ -59,6 +59,13 @@ PRODUCTION_CORS_ORIGINS = [
     "https://notes-forge.onrender.com",
 ]
 
+LOCAL_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 CANONICAL_CONFIG_PATH = BACKEND_ROOT / "config.json"
 CANONICAL_THEMES_PATH = BACKEND_ROOT / "themes.json"
@@ -102,7 +109,7 @@ def _allowed_origins() -> List[str]:
     extras_raw = os.environ.get("NF_CORS_ORIGINS", "").strip()
     extras = [item.strip() for item in extras_raw.split(",") if item.strip()] if extras_raw else []
     ordered: List[str] = []
-    for origin in [*PRODUCTION_CORS_ORIGINS, *extras]:
+    for origin in [*LOCAL_CORS_ORIGINS, *PRODUCTION_CORS_ORIGINS, *extras]:
         if origin not in ordered:
             ordered.append(origin)
     return ordered

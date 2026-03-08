@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from html import escape
@@ -47,6 +48,10 @@ def _allow_low_fidelity_pdf_fallback() -> bool:
         "NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK",
         default=False,
     )
+
+
+def _docx2pdf_supported() -> bool:
+    return sys.platform in {"win32", "darwin"}
 
 
 def _hex_to_rgb(value: str) -> RGBColor:
@@ -370,6 +375,17 @@ def _find_libreoffice_binary() -> str | None:
         if path:
             return path
 
+    if os.name != "nt":
+        candidates = [
+            Path("/usr/bin/soffice"),
+            Path("/usr/local/bin/soffice"),
+            Path("/usr/lib/libreoffice/program/soffice"),
+            Path("/opt/libreoffice/program/soffice"),
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+
     if os.name == "nt":
         candidates = [
             Path(os.environ.get("ProgramFiles", "")) / "LibreOffice" / "program" / "soffice.exe",
@@ -386,15 +402,18 @@ def _find_libreoffice_binary() -> str | None:
 def _convert_docx_to_pdf(docx_path: Path, pdf_path: Path) -> Tuple[bool, str]:
     errors: List[str] = []
 
-    try:
-        from docx2pdf import convert as docx2pdf_convert  # type: ignore
+    if _docx2pdf_supported():
+        try:
+            from docx2pdf import convert as docx2pdf_convert  # type: ignore
 
-        docx2pdf_convert(str(docx_path), str(pdf_path))
-        if pdf_path.exists() and pdf_path.stat().st_size > 0:
-            return True, "docx2pdf"
-        errors.append("docx2pdf produced no file")
-    except Exception as exc:
-        errors.append(f"docx2pdf failed: {exc}")
+            docx2pdf_convert(str(docx_path), str(pdf_path))
+            if pdf_path.exists() and pdf_path.stat().st_size > 0:
+                return True, "docx2pdf"
+            errors.append("docx2pdf produced no file")
+        except Exception as exc:
+            errors.append(f"docx2pdf failed: {exc}")
+    else:
+        errors.append(f"docx2pdf skipped on {sys.platform}")
 
     binary = _find_libreoffice_binary()
     if binary:

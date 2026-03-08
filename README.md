@@ -134,6 +134,8 @@ Copy `.env.example` to `.env` and adjust:
 
 - Recommended: use repo `render.yaml` (`env: docker`, `rootDir: backend`).
 - If you already use `render.yaml`, you do **not** need to change build/start commands.
+- After changing the Dockerfile, redeploy Render so the new image is rebuilt.
+- The Docker build now verifies `soffice` during build, so deployment should fail early if LibreOffice is missing.
 - If configuring manually (non-docker):
   - Root directory: `backend`
   - Build command: `pip install -r requirements.txt`
@@ -156,6 +158,7 @@ Recommended: use repo-managed [render.yaml](./render.yaml) so Render settings st
 - Required env:
   - `VITE_API_URL=https://notes-forge.onrender.com`
 - If you already have this setup, no build-command change is required.
+- For localhost, if `VITE_API_URL` is not set, frontend now auto-targets `http://localhost:10000`.
 
 ## Docker Setup
 
@@ -174,6 +177,89 @@ Stop:
 ```bash
 docker compose down
 ```
+
+## Beginner User Guide
+
+### What this app does
+
+NotesForge turns simple marker-based text into polished documents.
+You write content using markers like `H1:`, `PARAGRAPH:`, `BULLET:`, `ASCII:`, and `CODE:`.
+Then you export that content as `DOCX`, `PDF`, `HTML`, `Markdown`, or `TXT`.
+
+### First-time steps
+
+1. Open the app.
+2. The guided tour starts automatically on first launch.
+3. Go to `Templates` if you want a ready-made example.
+4. Go to `Editor` and type or paste your content.
+5. Use `Settings` to change fonts, colors, spacing, borders, header, and footer.
+6. Choose `DOCX` or `PDF` in the export area.
+7. Click `Generate Document`.
+
+### Main parts of the interface
+
+- `Editor`: Main writing area. Use it when you want to create or edit content.
+- `Templates`: Load starter content or import template JSON files.
+- `New User`: Simple help page with examples and a guided-tour restart button.
+- `Settings`: Change how the document looks.
+- `AI Prompt`: Manage your reusable AI prompt and import prompt files.
+- `Shortcuts`: Quick reference for markers and keyboard shortcuts.
+
+### Main buttons and when to use them
+
+- `Generate Document`: Use when your content is ready and you want the final file.
+- `Try Example`: Loads a sample document so you can see how the app works.
+- `Strict ON/OFF`: Use this when you want the app to warn you about invalid lines.
+- `Import Theme JSON`: Use when you want to load a full document style.
+- `Import Templates`: Use when you want to add reusable document structures.
+- `Import Prompt`: Use when you want to reuse a saved AI prompt.
+- `Save Settings`: Use after changing fonts, colors, spacing, borders, header, footer, or watermark.
+
+### Common tasks
+
+Create a basic report:
+1. Open `Templates`.
+2. Load a report template.
+3. Replace example text with your own content.
+4. Open `Settings` if you want a different look.
+5. Generate `DOCX` or `PDF`.
+
+Use ASCII and CODE blocks:
+1. Open `Editor`.
+2. Add lines like `ASCII: +---+` and `CODE: print('hello')`.
+3. Preview the result.
+4. Export the document.
+
+Import a theme:
+1. Open `Settings`.
+2. Click `Import Theme JSON`.
+3. Choose your theme file.
+4. Apply or edit the imported theme.
+
+## Frontend Onboarding Flow
+
+The app now includes a built-in guided tour.
+
+On first launch it:
+- starts automatically
+- highlights important UI elements
+- shows a tooltip for each step
+- moves through the app with `Next`, `Back`, and `Skip`
+- explains the editor, templates, settings, prompt tools, and export area
+
+Tour steps:
+1. Editor tab
+2. Editor toolbar
+3. Writing area
+4. Export/generate area
+5. Templates tab
+6. Template import button
+7. Settings tab
+8. Theme import button
+9. AI Prompt tab
+10. Prompt import button
+
+You can restart the tour from the `New User` tab or the onboarding card.
 
 ## API Contract (Current)
 
@@ -306,6 +392,7 @@ Persistence behavior:
 - Generate PDF on backend (Render), not on frontend serverless runtime.
 - Use DOCX->PDF path for fidelity (docx2pdf first, LibreOffice second).
 - If unavailable, return DOCX with user-visible warning and explicit `actualFormat=docx`.
+- Goal is LibreOffice-style conversion quality similar to common DOCX->PDF services.
 
 ### 5) UI/UX strategy
 - Keep existing app shell, improve hierarchy and editor ergonomics.
