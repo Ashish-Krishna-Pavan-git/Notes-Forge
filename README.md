@@ -17,15 +17,14 @@ Stack:
 
 ```text
 notesforge/
+  database/
+    migrations/
+    seeders/
+  docker/
+    Dockerfile
+  docker-compose.yml
   backend/
-    backend_server.py          # compatibility shim
-    config.json               # canonical runtime config
-    themes.json               # canonical theme catalog (builtins + custom)
-    Config.json               # legacy backup (read-only migration source)
-    Themes.json               # legacy backup (read-only migration source)
-    prompt.txt
-    requirements.txt
-    app/
+    app/                       # canonical FastAPI package
       main.py
       parser.py
       exporter.py
@@ -33,12 +32,42 @@ notesforge/
       templates_repo.py
       security.py
       models.py
+    config/                    # env/path config helpers
+    controllers/               # controller-facing app exports
+    middleware/                # middleware helpers
+    models/                    # model/schema wrappers
+    routes/                    # route contract map
+    services/                  # service wrappers
+    utils/                     # shared helpers
+    backend_server.py          # compatibility shim (legacy entrypoint)
+    server.py                  # explicit backend entrypoint
+    config.json                # canonical runtime config
+    themes.json                # canonical theme catalog (builtins + custom)
+    Config.json                # legacy backup (read-only migration source)
+    Themes.json                # legacy backup (read-only migration source)
+    prompt.txt
+    requirements.txt
     tests/
   frontend/
+    public/
     src/
-      App.tsx
+      assets/
+        images/
+        icons/
+      components/
+      pages/
+        EditorWorkspacePage.tsx
+      services/
+        api.ts
+      config/
+        env.ts
+      context/
+      hooks/
+      utils/
+      styles/
+        globals.css
       main.tsx
-      index.css
+      App.tsx
     package.json
   .env.example
   START.bat
@@ -83,6 +112,10 @@ npm install
 npm run dev
 ```
 
+Local edit/update behavior:
+- Frontend updates live via Vite HMR (`npm run dev`)
+- Backend updates live via FastAPI reload (`--reload`)
+
 ## Environment
 
 Copy `.env.example` to `.env` and adjust:
@@ -92,26 +125,25 @@ Copy `.env.example` to `.env` and adjust:
 - `FASTAPI_PORT`
 - `DOCX_TEMP_DIR`
 - `STORAGE_BACKEND`
+- `NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK` (`0` recommended for DOCX-matching PDF)
 - `VITE_API_URL`
 
 ## Deploy
 
 ### Render (backend)
 
-- Root directory: `backend`
-- Build command:
-```bash
-pip install -r requirements.txt
-```
-- Start command:
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}
-```
+- Recommended: use repo `render.yaml` (`env: docker`, `rootDir: backend`).
+- If you already use `render.yaml`, you do **not** need to change build/start commands.
+- If configuring manually (non-docker):
+  - Root directory: `backend`
+  - Build command: `pip install -r requirements.txt`
+  - Start command: `uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}`
 - Required env:
   - `FASTAPI_HOST=0.0.0.0`
   - `FASTAPI_PORT=10000`
   - `DOCX_TEMP_DIR=/tmp/notesforge`
   - `STORAGE_BACKEND=local`
+  - `NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK=0`
   - `NF_CORS_ORIGINS=https://notes-forge-ruddy.vercel.app,https://notes-forge.onrender.com`
 
 Recommended: use repo-managed [render.yaml](./render.yaml) so Render settings stay aligned with code.
@@ -123,6 +155,25 @@ Recommended: use repo-managed [render.yaml](./render.yaml) so Render settings st
 - Output directory: `dist`
 - Required env:
   - `VITE_API_URL=https://notes-forge.onrender.com`
+- If you already have this setup, no build-command change is required.
+
+## Docker Setup
+
+Run both frontend + backend:
+
+```bash
+docker compose up --build
+```
+
+Services:
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:10000`
+
+Stop:
+
+```bash
+docker compose down
+```
 
 ## API Contract (Current)
 
@@ -176,6 +227,62 @@ When enabled:
 - unknown markers are flagged
 - generate/preview payloads include strict mode so backend can return deterministic warnings
 
+## Import Features (3)
+
+Website now supports three import flows:
+1. `Theme JSON import` (Settings -> Themes)
+2. `Template JSON import` (Templates tab)
+3. `Prompt import` (`.txt` or `.json`) (AI Prompt tab)
+
+All three tabs also include a **Sample** download button.
+
+Persistence behavior:
+- Theme import: saved locally and also synced to backend theme API when available.
+- Template import: stored in browser local storage (client-side catalog extension).
+- Prompt import: applied locally and posted to backend prompt API when available.
+
+### Theme JSON sample
+
+```json
+{
+  "key": "oceanic_pro_import",
+  "name": "Oceanic Pro Import",
+  "description": "Full theme import with fonts, spacing, colors, page, header/footer",
+  "config": {
+    "fonts": { "family": "Segoe UI", "family_code": "Consolas" },
+    "colors": { "h1": "#0F766E", "h2": "#0D9488", "table_header_bg": "#CCFBF1" },
+    "spacing": { "line_spacing": 1.4 },
+    "page": { "size": "A4", "orientation": "portrait" },
+    "header": { "enabled": true, "text": "CONFIDENTIAL" },
+    "footer": { "enabled": true, "show_page_numbers": true, "page_format": "Page X of Y" }
+  }
+}
+```
+
+### Template JSON sample (`ASCII:` + `CODE:`)
+
+```json
+{
+  "templates": [
+    {
+      "id": "incident_ascii_code",
+      "name": "Incident + ASCII + CODE",
+      "category": "Technical",
+      "icon": "🛡️",
+      "content": "H1: Incident Investigation Report\nH2: Topology Diagram\nASCII: +---+ -> +---+\nH2: Commands Used\nCODE: python -m pytest -q"
+    }
+  ]
+}
+```
+
+### Prompt JSON sample
+
+```json
+{
+  "prompt": "Output strict NotesForge markers only. Use H1-H6, PARAGRAPH, BULLET, NUMBERED, TABLE, CODE, ASCII, PAGEBREAK."
+}
+```
+
 ## Production Engineering Plan (v5+)
 
 ### 1) Architecture changes
@@ -206,9 +313,9 @@ When enabled:
 - Keep onboarding contextual and dismissible.
 
 ### 6) Folder strategy
-- Extend existing files/modules only.
-- New modules/tests can be added, existing flow remains intact.
-- No destructive project restructuring.
+- Keep a layered shape similar to standard fullstack projects.
+- Preserve compatibility entrypoints (`backend_server.py`, `app.main`) during migration.
+- Expand incrementally: wrappers first, deeper module moves when stable.
 
 ### 7) Deployment strategy
 - Vercel frontend + Render backend.
@@ -249,12 +356,18 @@ Backend returns:
 
 ## PDF Export Notes
 
-PDF export supports two paths:
-- modern exporter path with theme/security payloads
-- legacy LibreOffice conversion path
+For DOCX/PDF parity, backend prioritizes high-fidelity DOCX->PDF conversion:
+- `docx2pdf`
+- `LibreOffice`
 
-If system converters are unavailable, backend attempts a pure-Python PDF fallback renderer (`reportlab`).
-If all PDF paths fail, backend returns HTTP 503 and does **not** fallback to DOCX for PDF requests.
+Default behavior (`NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK=0`):
+- If high-fidelity converter is unavailable, request returns `200` with DOCX fallback:
+  - `requestedFormat: "pdf"`
+  - `actualFormat: "docx"`
+  - warning message included
+
+Optional behavior (`NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK=1`):
+- Enables lower-fidelity fallback renderers (`weasyprint` / `reportlab`) before DOCX fallback.
 
 ## Deployment Contract Verification
 

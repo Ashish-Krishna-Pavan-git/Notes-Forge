@@ -190,6 +190,63 @@ class ApiIntegrationTests(unittest.TestCase):
             self.assertEqual(download.status_code, 200)
             self.assertTrue(download.headers["content-type"].startswith(ctype_prefix))
 
+    def test_generate_docx_marker_coverage_justify_ascii_code(self) -> None:
+        content = (
+            "H1: Main Title\n"
+            "H2: Section\n"
+            "H3: Subsection\n"
+            "H4: Topic\n"
+            "H5: Topic 5\n"
+            "H6: Topic 6\n"
+            "PARAGRAPH: left paragraph\n"
+            "CENTER: centered paragraph\n"
+            "RIGHT: right paragraph\n"
+            "JUSTIFY: this paragraph should be justified\n"
+            "with continuation text\n"
+            "BULLET: bullet one\n"
+            "- bullet two\n"
+            "NUMBERED: first item\n"
+            "2. second item\n"
+            "CODE: print('hello')\n"
+            "for i in range(2):\n"
+            "    print(i)\n"
+            "ASCII: +---+\n"
+            "| A |\n"
+            "+---+\n"
+            "TABLE: Col1 | Col2\n"
+            "TABLE: V1 | V2\n"
+            "PAGEBREAK:\n"
+            "PARAGRAPH: after break\n"
+        )
+        response = self.client.post(
+            "/api/generate",
+            json={
+                "content": content,
+                "theme": PROFESSIONAL_THEME.model_dump(),
+                "format": "docx",
+                "filename": "marker_coverage",
+                "security": {"disableEditingDocx": False, "removeMetadata": False},
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload.get("requestedFormat"), "docx")
+        self.assertEqual(payload.get("actualFormat"), "docx")
+
+        download = self.client.get(payload["downloadUrl"])
+        self.assertEqual(download.status_code, 200)
+        with zipfile.ZipFile(io.BytesIO(download.content)) as archive:
+            document_xml = archive.read("word/document.xml").decode("utf-8", "ignore")
+
+        self.assertIn("this paragraph should be justified with continuation text", document_xml)
+        self.assertIn("print('hello')", document_xml)
+        self.assertIn("+---+", document_xml)
+        self.assertIn("| A |", document_xml)
+        self.assertIn("Col1", document_xml)
+        self.assertIn("V1", document_xml)
+        self.assertIn("after break", document_xml)
+        self.assertIn('w:jc w:val="both"', document_xml)
+
     def test_config_endpoints(self) -> None:
         current = self.client.get("/api/config")
         self.assertEqual(current.status_code, 200)

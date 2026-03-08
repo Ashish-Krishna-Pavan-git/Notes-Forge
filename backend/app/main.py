@@ -356,7 +356,130 @@ def _default_themes(config: Mapping[str, Any]) -> Dict[str, Any]:
     )
     corporate["builtin"] = True
     corporate["user_created"] = False
-    return {"themes": {"professional": professional, "corporate": corporate}}
+
+    modern = _deep_merge(
+        professional,
+        {
+            "name": "Modern",
+            "description": "Clean modern styling with blue accents",
+            "colors": {
+                "h1": "#0F172A",
+                "h2": "#1D4ED8",
+                "h3": "#0284C7",
+                "table_header_bg": "#DBEAFE",
+                "table_border": "#93C5FD",
+            },
+            "fonts": {"family": "Segoe UI", "family_code": "Consolas"},
+        },
+    )
+    modern["builtin"] = True
+    modern["user_created"] = False
+
+    academic = _deep_merge(
+        professional,
+        {
+            "name": "Academic",
+            "description": "Conservative typography for reports and papers",
+            "colors": {
+                "h1": "#111827",
+                "h2": "#374151",
+                "h3": "#4B5563",
+                "table_header_bg": "#E5E7EB",
+                "table_border": "#D1D5DB",
+            },
+            "fonts": {"family": "Times New Roman", "family_code": "Consolas"},
+            "spacing": {"line_spacing": 1.6},
+        },
+    )
+    academic["builtin"] = True
+    academic["user_created"] = False
+
+    executive = _deep_merge(
+        professional,
+        {
+            "name": "Executive Slate",
+            "description": "High-contrast executive style",
+            "colors": {
+                "h1": "#0F172A",
+                "h2": "#1E293B",
+                "h3": "#334155",
+                "table_header_bg": "#E2E8F0",
+                "table_border": "#94A3B8",
+            },
+            "fonts": {"family": "Georgia", "family_code": "Consolas"},
+            "spacing": {"line_spacing": 1.5},
+        },
+    )
+    executive["builtin"] = True
+    executive["user_created"] = False
+
+    oceanic = _deep_merge(
+        professional,
+        {
+            "name": "Oceanic Teal",
+            "description": "Teal palette for technical and product docs",
+            "colors": {
+                "h1": "#0F766E",
+                "h2": "#0D9488",
+                "h3": "#14B8A6",
+                "table_header_bg": "#CCFBF1",
+                "table_border": "#5EEAD4",
+            },
+            "fonts": {"family": "Segoe UI", "family_code": "Consolas"},
+        },
+    )
+    oceanic["builtin"] = True
+    oceanic["user_created"] = False
+
+    monochrome = _deep_merge(
+        professional,
+        {
+            "name": "Monochrome",
+            "description": "Clean black-and-gray print-friendly style",
+            "colors": {
+                "h1": "#111827",
+                "h2": "#1F2937",
+                "h3": "#374151",
+                "table_header_bg": "#E5E7EB",
+                "table_border": "#9CA3AF",
+            },
+            "fonts": {"family": "Arial", "family_code": "Consolas"},
+        },
+    )
+    monochrome["builtin"] = True
+    monochrome["user_created"] = False
+
+    startup = _deep_merge(
+        professional,
+        {
+            "name": "Startup Pitch",
+            "description": "Pitch-deck oriented theme",
+            "colors": {
+                "h1": "#0E7490",
+                "h2": "#0284C7",
+                "h3": "#0369A1",
+                "table_header_bg": "#CFFAFE",
+                "table_border": "#67E8F9",
+            },
+            "fonts": {"family": "Calibri", "family_code": "Consolas"},
+            "spacing": {"line_spacing": 1.3},
+        },
+    )
+    startup["builtin"] = True
+    startup["user_created"] = False
+
+    return {
+        "themes": {
+            "professional": professional,
+            "corporate": corporate,
+            "modern": modern,
+            "academic": academic,
+            "executive": executive,
+            "oceanic": oceanic,
+            "monochrome": monochrome,
+            "startup": startup,
+        }
+    }
 
 
 def _normalize_config_payload(raw: Mapping[str, Any] | None) -> Dict[str, Any]:

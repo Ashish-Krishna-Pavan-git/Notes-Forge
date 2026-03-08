@@ -42,6 +42,13 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _allow_low_fidelity_pdf_fallback() -> bool:
+    return _env_flag(
+        "NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK",
+        default=False,
+    )
+
+
 def _hex_to_rgb(value: str) -> RGBColor:
     cleaned = value.strip().lstrip("#")
     if len(cleaned) != 6:
@@ -1109,9 +1116,10 @@ class DocumentExporter:
         if requested == "pdf":
             file_id, pdf_path = self.store.reserve_path("pdf")
             attempts: list[str] = []
+            allow_low_fidelity = _allow_low_fidelity_pdf_fallback()
             ok, method = _convert_docx_to_pdf(docx_path, pdf_path)
             attempts.append(method)
-            if not ok:
+            if not ok and allow_low_fidelity:
                 html_preview = self.create_preview_html(
                     nodes,
                     theme,
@@ -1119,16 +1127,25 @@ class DocumentExporter:
                     security,
                     include_running_blocks=False,
                 )
-                ok, method = _convert_html_to_pdf_weasyprint(html_preview, pdf_path)
+                ok, method = _convert_html_to_pdf_weasyprint(
+                    html_preview,
+                    pdf_path,
+                )
                 attempts.append(method)
-            if not ok:
-                ok, method = _convert_nodes_to_pdf_reportlab(nodes, theme, formatting, security, pdf_path)
+            if not ok and allow_low_fidelity:
+                ok, method = _convert_nodes_to_pdf_reportlab(
+                    nodes,
+                    theme,
+                    formatting,
+                    security,
+                    pdf_path,
+                )
                 attempts.append(method)
             if ok:
                 warnings.extend(secure_pdf(pdf_path, security.passwordProtectPdf, security.removeMetadata))
-                if method in {"weasyprint", "reportlab"} and _env_flag(
-                    "NF_WARN_ON_FALLBACK_PDF",
-                    default=False,
+                if (
+                    method in {"weasyprint", "reportlab"}
+                    and _env_flag("NF_WARN_ON_FALLBACK_PDF", default=False)
                 ):
                     warnings.append(
                         "PDF generated via fallback renderer; install LibreOffice for closer DOCX-to-PDF fidelity."
@@ -1148,8 +1165,9 @@ class DocumentExporter:
                     pass
 
             fallback_warning = (
-                "PDF conversion is unavailable on this host; returned DOCX instead. "
-                f"Converter detail: {' | '.join(attempts)}"
+                "High-fidelity PDF conversion is unavailable on this host; returned DOCX instead. "
+                f"Converter detail: {' | '.join(attempts)}. "
+                "Install LibreOffice (or enable NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK=1 for fallback renderers)."
             )
             warnings.append(fallback_warning)
             if security.passwordProtectPdf:

@@ -1,7 +1,8 @@
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK=0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice \

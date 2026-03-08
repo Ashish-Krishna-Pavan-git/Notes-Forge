@@ -34,6 +34,36 @@ class ParserTests(unittest.TestCase):
         self.assertTrue(
             any(n.type == "paragraph" and n.align == "center" for n in result.nodes)
         )
+        self.assertTrue(
+            any(n.type == "paragraph" and n.align == "justify" for n in result.nodes)
+        )
+
+    def test_parser_preserves_multiline_code_ascii_and_justify_paragraph(self) -> None:
+        content = (
+            "JUSTIFY: first justified line\n"
+            "second justified line\n"
+            "CODE: print('one')\n"
+            "for i in range(2):\n"
+            "    print(i)\n"
+            "ASCII: +---+\n"
+            "| A |\n"
+            "+---+\n"
+        )
+        result = parse_notesforge(content)
+
+        justified = [n for n in result.nodes if n.type == "paragraph" and n.align == "justify"]
+        self.assertEqual(len(justified), 1)
+        self.assertIn("first justified line", justified[0].text)
+        self.assertIn("second justified line", justified[0].text)
+
+        code_nodes = [n for n in result.nodes if n.type == "code"]
+        self.assertEqual(len(code_nodes), 1)
+        self.assertIn("print('one')", code_nodes[0].text)
+        self.assertIn("for i in range(2):", code_nodes[0].text)
+
+        ascii_nodes = [n for n in result.nodes if n.type == "ascii"]
+        self.assertEqual(len(ascii_nodes), 1)
+        self.assertIn("| A |", ascii_nodes[0].text)
 
     def test_parser_supports_multiline_ascii_and_table_padding(self) -> None:
         content = (
