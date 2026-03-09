@@ -1,4 +1,4 @@
-// App.tsx — NotesForge Professional v6.2 (Complete Rewrite)
+// App.tsx — NotesForge Professional v7.0.0
 // Fixes: Broken JSX nesting, XSS, dynamic Tailwind, missing types,
 //        performance (useMemo/useCallback), missing endpoints support
 
@@ -157,6 +157,9 @@ type TabId =
   | "prompt"
   | "guide"
   | "shortcuts";
+type EditorWorkspacePageProps = {
+  initialTab?: TabId;
+};
 type SettingsTabId = "themes" | "fonts" | "colors" | "spacing" | "page";
 type ConnectionStatus = "checking" | "waking" | "online" | "error";
 type ExportFormat = "docx" | "pdf" | "md" | "html" | "txt";
@@ -253,9 +256,12 @@ interface AppConfigState {
 const VALID_MARKERS = new Set([
   "HEADING", "H1", "SUBHEADING", "H2", "SUB-SUBHEADING", "H3",
   "H4", "H5", "H6", "PARAGRAPH", "PARA", "BULLET", "NUMBERED",
-  "CODE", "TABLE", "QUOTE", "NOTE", "IMPORTANT", "IMAGE", "LINK",
-  "HIGHLIGHT", "FOOTNOTE", "TOC", "ASCII", "DIAGRAM", "LABEL",
+  "CODE", "TABLE", "TABLE_CAPTION", "QUOTE", "NOTE", "IMPORTANT",
+  "IMAGE", "FIGURE", "FIGURE_CAPTION", "LINK", "HIGHLIGHT", "FOOTNOTE",
+  "TOC", "LIST_OF_TABLES", "LIST_OF_FIGURES", "ASCII", "DIAGRAM", "LABEL",
   "CENTER", "RIGHT", "JUSTIFY", "WATERMARK", "PAGEBREAK",
+  "COVER_PAGE", "CERTIFICATE_PAGE", "DECLARATION_PAGE", "ACKNOWLEDGEMENT_PAGE",
+  "ABSTRACT_PAGE", "CHAPTER", "REFERENCES", "REFERENCE", "APPENDIX",
 ]);
 
 const MARKER_AUTOCOMPLETE = [
@@ -274,15 +280,29 @@ const MARKER_AUTOCOMPLETE = [
   "CODE:",
   "ASCII:",
   "TABLE:",
+  "TABLE_CAPTION:",
   "IMAGE:",
+  "FIGURE:",
+  "FIGURE_CAPTION:",
   "LINK:",
   "HIGHLIGHT:",
   "FOOTNOTE:",
   "TOC:",
+  "LIST_OF_TABLES:",
+  "LIST_OF_FIGURES:",
+  "COVER_PAGE:",
+  "CERTIFICATE_PAGE:",
+  "DECLARATION_PAGE:",
+  "ACKNOWLEDGEMENT_PAGE:",
+  "ABSTRACT_PAGE:",
+  "CHAPTER:",
+  "REFERENCES:",
+  "REFERENCE:",
+  "APPENDIX:",
   "PAGEBREAK:",
 ];
 
-const PIPE_REQUIRED_MARKERS = new Set(["IMAGE", "LINK", "HIGHLIGHT"]);
+const PIPE_REQUIRED_MARKERS = new Set(["IMAGE", "FIGURE", "LINK", "HIGHLIGHT"]);
 
 const TYPE_COLOR: Record<string, string> = {
   h1: "bg-orange-500", h2: "bg-amber-500", h3: "bg-blue-600",
@@ -356,6 +376,16 @@ const BUILTIN_THEME_KEYS = new Set([
   "oceanic",
   "monochrome",
   "frontlines_edutech_theme",
+  "academic_classic",
+  "university_blue",
+  "engineering_report",
+  "clean_research",
+  "modern_minimal",
+  "corporate_white",
+  "dark_technical",
+  "elegant_thesis",
+  "lecture_notes",
+  "professional_docs",
 ]);
 
 const FALLBACK_THEME_CATALOG: Record<string, ThemeInfo> = {
@@ -370,7 +400,7 @@ const FALLBACK_THEME_CATALOG: Record<string, ThemeInfo> = {
       table_header_bg: "#E2E8F0",
     },
     fonts: { family: "Calibri" },
-    spacing: { line_spacing: 1.4 },
+    spacing: { line_spacing: 1.5 },
   },
   modern: {
     name: "Modern",
@@ -477,7 +507,7 @@ const FALLBACK_THEME_CATALOG: Record<string, ThemeInfo> = {
       table_header_text: "#111827",
     },
     fonts: { family: "Arial" },
-    spacing: { line_spacing: 1.4 },
+    spacing: { line_spacing: 1.5 },
   },
   frontlines_edutech_theme: {
     name: "Frontlines Edu Tech",
@@ -532,6 +562,95 @@ const FALLBACK_THEME_CATALOG: Record<string, ThemeInfo> = {
       code_indent: 0.35,
       quote_indent: 0.5,
     },
+  },
+  academic_classic: {
+    name: "Academic Classic",
+    description: "Formal academic style with serif typography.",
+    builtin: true,
+    colors: { h1: "#1F3A5F", h2: "#2F4F7F", h3: "#3D5A80", table_header_bg: "#E2E8F0" },
+    fonts: { family: "Times New Roman", family_code: "JetBrains Mono" },
+    spacing: { line_spacing: 1.5 },
+  },
+  university_blue: {
+    name: "University Blue",
+    description: "Institutional blue palette for reports.",
+    builtin: true,
+    colors: { h1: "#0B3D91", h2: "#1E5AA8", h3: "#2F6BC5", table_header_bg: "#DCEBFF" },
+    fonts: { family: "Times New Roman", family_code: "JetBrains Mono" },
+    spacing: { line_spacing: 1.5 },
+  },
+  engineering_report: {
+    name: "Engineering Report",
+    description: "Structured technical style with clean contrast.",
+    builtin: true,
+    colors: { h1: "#0F172A", h2: "#1F2937", h3: "#334155", table_header_bg: "#E2E8F0" },
+    fonts: { family: "Inter", family_code: "JetBrains Mono" },
+    spacing: { line_spacing: 1.15 },
+  },
+  clean_research: {
+    name: "Clean Research",
+    description: "Lightweight manuscript style for research notes.",
+    builtin: true,
+    colors: { h1: "#111827", h2: "#1F2937", h3: "#374151", table_header_bg: "#F3F4F6" },
+    fonts: { family: "Times New Roman", family_code: "JetBrains Mono" },
+    spacing: { line_spacing: 1.5 },
+  },
+  modern_minimal: {
+    name: "Modern Minimal",
+    description: "Minimal style with modern contrast.",
+    builtin: true,
+    colors: { h1: "#111827", h2: "#2563EB", h3: "#3B82F6", table_header_bg: "#EFF6FF" },
+    fonts: { family: "Inter", family_code: "JetBrains Mono" },
+    spacing: { line_spacing: 1.15 },
+  },
+  corporate_white: {
+    name: "Corporate White",
+    description: "White-paper corporate document style.",
+    builtin: true,
+    colors: { h1: "#0F172A", h2: "#1E293B", h3: "#334155", table_header_bg: "#F8FAFC" },
+    fonts: { family: "Georgia", family_code: "JetBrains Mono" },
+    spacing: { line_spacing: 1.5 },
+  },
+  dark_technical: {
+    name: "Dark Technical",
+    description: "Dark-accent technical docs with readable contrast.",
+    builtin: true,
+    colors: {
+      h1: "#0EA5E9",
+      h2: "#38BDF8",
+      h3: "#7DD3FC",
+      body: "#E2E8F0",
+      code_background: "#0B1220",
+      code_text: "#E2E8F0",
+      table_header_bg: "#0F172A",
+      table_header_text: "#E2E8F0",
+    },
+    fonts: { family: "Roboto", family_code: "JetBrains Mono" },
+    spacing: { line_spacing: 1.15 },
+  },
+  elegant_thesis: {
+    name: "Elegant Thesis",
+    description: "Elegant thesis style with generous spacing.",
+    builtin: true,
+    colors: { h1: "#4A2C2A", h2: "#6B3F3A", h3: "#8A5148", table_header_bg: "#F5EDE9" },
+    fonts: { family: "Georgia", family_code: "JetBrains Mono" },
+    spacing: { line_spacing: 2 },
+  },
+  lecture_notes: {
+    name: "Lecture Notes",
+    description: "Readable notes style for classroom usage.",
+    builtin: true,
+    colors: { h1: "#1D4ED8", h2: "#2563EB", h3: "#3B82F6", table_header_bg: "#DBEAFE" },
+    fonts: { family: "Roboto", family_code: "JetBrains Mono" },
+    spacing: { line_spacing: 1.15 },
+  },
+  professional_docs: {
+    name: "Professional Docs",
+    description: "Balanced professional documentation style.",
+    builtin: true,
+    colors: { h1: "#1F3A5F", h2: "#345995", h3: "#4A6FA5", table_header_bg: "#E2E8F0" },
+    fonts: { family: "Times New Roman", family_code: "JetBrains Mono" },
+    spacing: { line_spacing: 1.5 },
   },
 };
 
@@ -886,14 +1005,14 @@ NUMBERED: Contain affected service.
 NUMBERED: Rotate credentials.
 NUMBERED: Verify recovery and monitor.`,
       aiPromptTemplate:
-        "Generate strict marker content for {topic} using H1, H2, PARAGRAPH, TABLE, ASCII and CODE markers. Output only marker lines.",
+        "Generate strict marker content for {topic} using CHAPTER, PARAGRAPH, TABLE, TABLE_CAPTION, FIGURE, CODE and REFERENCES markers. Output only marker lines.",
     },
   ],
 };
 
 const SAMPLE_PROMPT_IMPORT = {
   prompt:
-    "You are NotesForge Formatter. Output only strict marker lines. Use H1-H6, PARAGRAPH, BULLET, NUMBERED, TABLE, CODE, ASCII, PAGEBREAK. Include CODE and ASCII when relevant. No markdown fences. No commentary.",
+    "You are NotesForge Formatter v7.0.0. Output only strict marker lines. Use H1-H6, PARAGRAPH, BULLET, NUMBERED, TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, ASCII, PAGEBREAK, TOC, LIST_OF_TABLES, LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE, COVER_PAGE, ABSTRACT_PAGE, APPENDIX.",
 };
 
 const DEFAULT_FONT_OPTIONS = [
@@ -946,7 +1065,7 @@ const DEFAULT_CODE_FONT_OPTIONS = [
 // FALLBACK AI PROMPT
 // ═══════════════════════════════════════════════════════════════════
 
-const FALLBACK_PROMPT = `You are NotesForge Formatter v6.2.
+const FALLBACK_PROMPT = `You are NotesForge Formatter v7.0.0.
 
 TASK:
 Convert user input into STRICT NotesForge marker syntax for direct export.
@@ -973,6 +1092,20 @@ NUMBERED:
 CODE:
 ASCII:
 TABLE:
+TABLE_CAPTION:
+FIGURE:
+FIGURE_CAPTION:
+LIST_OF_TABLES:
+LIST_OF_FIGURES:
+CHAPTER:
+REFERENCES:
+REFERENCE:
+COVER_PAGE:
+CERTIFICATE_PAGE:
+DECLARATION_PAGE:
+ACKNOWLEDGEMENT_PAGE:
+ABSTRACT_PAGE:
+APPENDIX:
 PAGEBREAK:
 NOTE:
 QUOTE:
@@ -983,19 +1116,26 @@ HIGHLIGHT:
 FOOTNOTE:
 
 OUTPUT PATTERN:
-H1: Title
-H2: Section
+COVER_PAGE: Title
+ABSTRACT_PAGE: Summary sentence.
+TOC:
+LIST_OF_TABLES:
+LIST_OF_FIGURES:
+CHAPTER: Introduction
 PARAGRAPH: Summary sentence.
-BULLET: Item 1
-BULLET: Item 2
 TABLE: Header A | Header B | Header C
 TABLE: Value A1 | Value B1 | Value C1
+TABLE_CAPTION: Summary table
+FIGURE: https://example.com/diagram.png | System flow | center | 80
 CODE: command --flag value
 PAGEBREAK:
-H2: Next Section
+REFERENCES:
+REFERENCE: [1] Primary source
+APPENDIX: Supporting notes
 
 QUALITY:
 - Include TABLE when the topic has structured data.
+- Include FIGURE/IMAGE where diagrams help.
 - Include CODE when technical actions are relevant.
 - Use PAGEBREAK between major sections in long documents.
 - Prefer clear heading hierarchy and short paragraphs.
@@ -1030,6 +1170,7 @@ const SHORTCUTS = [
       },
       { keys: ["CODE:"], desc: '"code line" — monospace block' },
       { keys: ["TABLE:"], desc: '"Col1 | Col2" — pipe separated' },
+      { keys: ["TABLE_CAPTION:"], desc: '"Caption for current table"' },
       { keys: ["NOTE:"], desc: '"Warning or tip"' },
       { keys: ["QUOTE:"], desc: '"Quoted text"' },
       { keys: ["HIGHLIGHT:"], desc: '"Text" | "yellow"' },
@@ -1038,8 +1179,17 @@ const SHORTCUTS = [
         keys: ["IMAGE:"],
         desc: '"file.png" | "Caption" | "center"',
       },
+      {
+        keys: ["FIGURE:"],
+        desc: '"source" | "Caption" | "center" | "80"',
+      },
+      { keys: ["FIGURE_CAPTION:"], desc: '"Caption for current figure"' },
       { keys: ["FOOTNOTE:"], desc: '"Source reference"' },
       { keys: ["TOC:"], desc: "Inserts table of contents" },
+      { keys: ["CHAPTER:"], desc: '"Chapter title"' },
+      { keys: ["REFERENCES:"], desc: "Starts references section" },
+      { keys: ["REFERENCE:"], desc: '"Single reference item"' },
+      { keys: ["APPENDIX:"], desc: '"Appendix section title"' },
       { keys: ["ASCII:"], desc: '"─── diagram line ───"' },
     ],
   },
@@ -1073,6 +1223,112 @@ ASCII: | Incident Flow Diagram |
 ASCII: +-----------------------+`;
 
 const TEMPLATES: readonly TemplateCard[] = [
+  {
+    id: "project_report_template",
+    name: "Project Report Template",
+    category: "Academic",
+    icon: "🧾",
+    content: `COVER_PAGE: "Project Report"
+CERTIFICATE_PAGE: "Certified submission statement"
+DECLARATION_PAGE: "Original work declaration"
+ACKNOWLEDGEMENT_PAGE: "Acknowledgement text"
+ABSTRACT_PAGE: "Brief abstract"
+TOC:
+LIST_OF_TABLES:
+LIST_OF_FIGURES:
+CHAPTER: "Introduction"
+PARAGRAPH: "Project scope and objective."
+CHAPTER: "Implementation"
+TABLE: "Module | Status | Notes"
+TABLE: "Parser | Complete | Marker expansion done"
+TABLE_CAPTION: "Implementation status"
+FIGURE: "https://example.com/architecture.png" | "System architecture" | "center" | "80"
+CHAPTER: "Conclusion"
+PARAGRAPH: "Final summary and future work."
+REFERENCES:
+REFERENCE: "[1] Reference source"
+APPENDIX: "Supporting data"`,
+  },
+  {
+    id: "research_paper_template",
+    name: "Research Paper Template",
+    category: "Academic",
+    icon: "🔬",
+    content: `COVER_PAGE: "Research Paper"
+ABSTRACT_PAGE: "Objective, method and findings summary."
+TOC:
+CHAPTER: "Introduction"
+PARAGRAPH: "Research background and motivation."
+CHAPTER: "Methodology"
+PARAGRAPH: "Approach, dataset and process."
+CHAPTER: "Results"
+TABLE: "Metric | Value"
+TABLE: "Accuracy | 0.94"
+TABLE_CAPTION: "Evaluation metrics"
+FIGURE_CAPTION: "Confusion matrix overview"
+CHAPTER: "Discussion"
+PARAGRAPH: "Interpretation and limitations."
+REFERENCES:
+REFERENCE: "[1] Journal citation"`,
+  },
+  {
+    id: "study_notes_template",
+    name: "Study Notes Template",
+    category: "Academic",
+    icon: "📘",
+    content: `COVER_PAGE: "Study Notes"
+TOC:
+CHAPTER: "Core Concepts"
+BULLET: "Concept 1"
+BULLET: "Concept 2"
+CHAPTER: "Practice"
+NUMBERED: "Problem set 1"
+NUMBERED: "Problem set 2"
+TABLE: "Topic | Formula | Notes"
+TABLE: "Networking | Throughput = Data/Time | Key relation"
+TABLE_CAPTION: "Formula quick sheet"
+APPENDIX: "Revision cards"`,
+  },
+  {
+    id: "technical_documentation_template",
+    name: "Technical Documentation Template",
+    category: "Technical",
+    icon: "🛠️",
+    content: `COVER_PAGE: "Technical Documentation"
+TOC:
+CHAPTER: "Overview"
+PARAGRAPH: "Scope and audience."
+CHAPTER: "Architecture"
+FIGURE: "https://example.com/service-map.png" | "Service interaction map" | "center" | "75"
+CHAPTER: "API Reference"
+TABLE: "Endpoint | Method | Purpose"
+TABLE: "/api/preview | POST | Generate preview"
+TABLE_CAPTION: "API endpoint table"
+CHAPTER: "Operations"
+CODE: "docker compose up --build"
+REFERENCES:
+REFERENCE: "[1] Standards doc"`,
+  },
+  {
+    id: "assignment_template",
+    name: "Assignment Template",
+    category: "Academic",
+    icon: "📝",
+    content: `COVER_PAGE: "Assignment"
+DECLARATION_PAGE: "I declare this assignment is my original submission."
+TOC:
+CHAPTER: "Problem Statement"
+PARAGRAPH: "Define assignment objective."
+CHAPTER: "Solution"
+PARAGRAPH: "Present solution with explanation."
+TABLE: "Criteria | Outcome"
+TABLE: "Correctness | Satisfied"
+TABLE_CAPTION: "Evaluation criteria"
+CHAPTER: "Conclusion"
+PARAGRAPH: "Summarize outcomes."
+REFERENCES:
+REFERENCE: "[1] Course source"`,
+  },
   {
     id: "quickstart",
     name: "Quick Start (New User)",
@@ -1437,6 +1693,35 @@ function buildPreviewHTML(
           `<h6 class="text-sm font-semibold mt-2 mb-1" style="color:${cH6}">${content}</h6>`
         );
         break;
+      case "COVER_PAGE":
+      case "CERTIFICATE_PAGE":
+      case "DECLARATION_PAGE":
+      case "ACKNOWLEDGEMENT_PAGE":
+      case "ABSTRACT_PAGE":
+        parts.push(
+          `<h1 class="text-2xl font-bold mt-4 mb-2" style="color:${cH1}">${content || marker.replaceAll("_", " ")}</h1>`
+        );
+        break;
+      case "CHAPTER":
+        parts.push(
+          `<h2 class="text-xl font-bold mt-4 mb-2 uppercase tracking-wide" style="color:${cH2}">Chapter: ${content}</h2>`
+        );
+        break;
+      case "APPENDIX":
+        parts.push(
+          `<h2 class="text-xl font-bold mt-4 mb-2" style="color:${cH2}">Appendix: ${content}</h2>`
+        );
+        break;
+      case "REFERENCES":
+        parts.push(
+          `<h2 class="text-xl font-bold mt-4 mb-2" style="color:${cH2}">${content || "References"}</h2>`
+        );
+        break;
+      case "REFERENCE":
+        parts.push(
+          `<p class="text-sm leading-relaxed mb-1" style="color:${cBody}">• ${content}</p>`
+        );
+        break;
       case "PARAGRAPH":
       case "PARA":
         parts.push(
@@ -1507,6 +1792,11 @@ function buildPreviewHTML(
         );
         break;
       }
+      case "TABLE_CAPTION":
+        parts.push(
+          `<p class="text-xs italic text-center mb-2" style="color:${cBody}">Table: ${content}</p>`
+        );
+        break;
       case "QUOTE":
         parts.push(
           `<blockquote class="border-l-4 border-yellow-500 pl-3 italic text-sm mb-2" style="color:${cBody}">"${content}"</blockquote>`
@@ -1549,6 +1839,22 @@ function buildPreviewHTML(
         );
         break;
       }
+      case "FIGURE": {
+        const figParts = content
+          .split("|")
+          .map((s) => s.trim().replace(/^["']|["']$/g, ""));
+        parts.push(
+          `<div class="text-center my-2"><div class="inline-block bg-gray-100 dark:bg-gray-800 rounded-lg p-4 text-sm text-gray-500">📊 ${
+            figParts[1] || figParts[0] || "Figure"
+          }</div></div>`
+        );
+        break;
+      }
+      case "FIGURE_CAPTION":
+        parts.push(
+          `<p class="text-xs italic text-center mb-2" style="color:${cBody}">Figure: ${content}</p>`
+        );
+        break;
       case "FOOTNOTE":
         parts.push(
           `<p class="text-xs text-gray-500 italic border-t pt-1 mt-2" style="color:${cBody}">[*] ${content}</p>`
@@ -1557,6 +1863,16 @@ function buildPreviewHTML(
       case "TOC":
         parts.push(
           `<p class="text-sm font-semibold mb-2" style="color:${cH2}">📑 Table of Contents</p>`
+        );
+        break;
+      case "LIST_OF_TABLES":
+        parts.push(
+          `<p class="text-sm font-semibold mb-2" style="color:${cH2}">📋 List of Tables</p>`
+        );
+        break;
+      case "LIST_OF_FIGURES":
+        parts.push(
+          `<p class="text-sm font-semibold mb-2" style="color:${cH2}">🖼️ List of Figures</p>`
         );
         break;
       case "ASCII":
@@ -1603,16 +1919,30 @@ function analyzeTextLocally(text: string): AnalysisResult {
     NUMBERED: "numbered",
     CODE: "code",
     TABLE: "table",
+    TABLE_CAPTION: "table_caption",
     ASCII: "ascii",
     DIAGRAM: "ascii",
     TOC: "toc",
+    LIST_OF_TABLES: "list_of_tables",
+    LIST_OF_FIGURES: "list_of_figures",
     NOTE: "note",
     IMPORTANT: "note",
     QUOTE: "quote",
     IMAGE: "image",
+    FIGURE: "figure",
+    FIGURE_CAPTION: "figure_caption",
     LINK: "link",
     HIGHLIGHT: "highlight",
     FOOTNOTE: "footnote",
+    COVER_PAGE: "section",
+    CERTIFICATE_PAGE: "section",
+    DECLARATION_PAGE: "section",
+    ACKNOWLEDGEMENT_PAGE: "section",
+    ABSTRACT_PAGE: "section",
+    CHAPTER: "chapter",
+    REFERENCES: "references",
+    REFERENCE: "reference",
+    APPENDIX: "appendix",
     PAGEBREAK: "pagebreak",
   };
 
@@ -1790,18 +2120,30 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+const LINE_SPACING_OPTIONS = [1, 1.15, 1.5, 2] as const;
+
+function normalizeLineSpacing(value: number): number {
+  return [...LINE_SPACING_OPTIONS].reduce((best, candidate) =>
+    Math.abs(candidate - value) < Math.abs(best - value)
+      ? candidate
+      : best
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════
 
-export default function App() {
+export default function App({
+  initialTab = "editor",
+}: EditorWorkspacePageProps) {
   // ── Core Editor State ─────────────────────────────────────────
   const [text, setText] = useState("");
   const [history, setHistory] = useState<string[]>([""]);
   const [hIdx, setHIdx] = useState(0);
 
   // ── UI State ──────────────────────────────────────────────────
-  const [tab, setTab] = useState<TabId>("editor");
+  const [tab, setTab] = useState<TabId>(initialTab);
   const [settingsTab, setSettingsTab] =
     useState<SettingsTabId>("themes");
   const [dark, setDark] = useState(
@@ -1862,7 +2204,7 @@ export default function App() {
   const [loadingThemes, setLoadingThemes] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("professional");
   const [config, setConfig] = useState<AppConfigState>({
-    fonts: { family: "Calibri", family_code: "Fira Code" },
+    fonts: { family: "Times New Roman", family_code: "JetBrains Mono" },
     header: { enabled: true },
     footer: { enabled: true },
     page: {},
@@ -2352,7 +2694,7 @@ export default function App() {
         primaryColor:
           config.colors?.h1 || config.header?.color || "#1F3A5F",
         fontFamily:
-          config.fonts?.family || "Calibri, Arial, sans-serif",
+          config.fonts?.family || "Times New Roman, Georgia, serif",
         headingStyle: {
           h1: {
             size: config.fonts?.sizes?.h1 || 24,
@@ -2409,7 +2751,7 @@ export default function App() {
         },
         bodyStyle: {
           size: config.fonts?.sizes?.body || 11,
-          lineHeight: config.spacing?.line_spacing || 1.4,
+          lineHeight: normalizeLineSpacing(config.spacing?.line_spacing || 1.5),
         },
         tableStyle: {
           borderWidth: 1,
@@ -2428,7 +2770,7 @@ export default function App() {
         },
         styles: {
           lineSpacing:
-            config.spacing?.line_spacing || 1.4,
+            normalizeLineSpacing(config.spacing?.line_spacing || 1.5),
           paragraph_spacing_before:
             config.spacing
               ?.paragraph_spacing_before ?? 0,
@@ -2503,7 +2845,7 @@ export default function App() {
             "Calibri",
           code_font_family:
             config.fonts?.family_code ||
-            "Consolas",
+            "JetBrains Mono",
           code_font_size:
             config.fonts?.sizes?.code || 10,
           header_alignment:
@@ -3863,7 +4205,7 @@ export default function App() {
           "{topic}",
           topic
         ) ||
-        `Using NotesForge marker syntax (H1–H6, PARAGRAPH, BULLET, NUMBERED, TABLE, CODE), generate structured content about '${topic}' for '${selectedTemplateId}' template. Output only markers.`;
+        `Using NotesForge marker syntax (H1-H6, PARAGRAPH, BULLET, NUMBERED, TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, TOC, LIST_OF_TABLES, LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE), generate structured content about '${topic}' for '${selectedTemplateId}' template. Output only markers.`;
       setPromptText(fallback);
       setWarn(
         "Template regenerate API unavailable. Prompt prepared locally."
@@ -3947,7 +4289,11 @@ export default function App() {
           }
           cur = cur[keys[i]] as Record<string, unknown>;
         }
-        cur[keys[keys.length - 1]] = value;
+        if (path === "spacing.line_spacing" && typeof value === "number") {
+          cur[keys[keys.length - 1]] = normalizeLineSpacing(value);
+        } else {
+          cur[keys[keys.length - 1]] = value;
+        }
         return next;
       });
       setDirty(true);
@@ -4317,7 +4663,7 @@ export default function App() {
           primaryColor:
             config.colors?.h1 || config.header?.color || "#1F3A5F",
           fontFamily:
-            config.fonts?.family || "Calibri, Arial, sans-serif",
+            config.fonts?.family || "Times New Roman, Georgia, serif",
           headingStyle: {
             h1: {
               size: config.fonts?.sizes?.h1 || 24,
@@ -4370,7 +4716,7 @@ export default function App() {
           },
           bodyStyle: {
             size: config.fonts?.sizes?.body || 11,
-            lineHeight: config.spacing?.line_spacing || 1.4,
+            lineHeight: normalizeLineSpacing(config.spacing?.line_spacing || 1.5),
           },
           tableStyle: {
             borderWidth: 1,
@@ -4442,7 +4788,7 @@ export default function App() {
               config.fonts?.family ||
               "Calibri",
             code_font_family:
-              config.fonts?.family_code || "Consolas",
+              config.fonts?.family_code || "JetBrains Mono",
             code_font_size:
               config.fonts?.sizes?.code || 10,
             header_alignment: config.header?.alignment || "center",
@@ -4493,7 +4839,7 @@ export default function App() {
           theme: previewTheme,
           formattingOptions: {
             margins,
-            lineSpacing: config.spacing?.line_spacing || 1.4,
+            lineSpacing: normalizeLineSpacing(config.spacing?.line_spacing || 1.5),
           },
           security: {
             removeMetadata: false,
@@ -4727,7 +5073,7 @@ export default function App() {
                   NotesForge Professional
                 </h1>
                 <p className="text-xs text-white/60">
-                  v6.2 · Full Featured
+                  v7.0.0 · Full Featured
                 </p>
               </div>
             </div>
@@ -5095,7 +5441,7 @@ export default function App() {
                         <br />
                         BULLET: "Finish API docs"
                         <br />
-                        BULLET: "Ship v6.3"
+                        BULLET: "Ship v7.1"
                       </div>
                       <div
                         className={`rounded-lg p-3 text-xs ${
@@ -6070,6 +6416,16 @@ export default function App() {
                 >
                   Start Guided Tour
                 </button>
+                <a
+                  href="/guide"
+                  className={`px-4 py-2.5 rounded-lg text-sm font-medium border ${
+                    dark
+                      ? "border-gray-600 hover:bg-gray-700"
+                      : "border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  Open /guide Page
+                </a>
               </div>
 
               <div className="px-6 pb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -7134,8 +7490,8 @@ backend: Render (Root: backend)`}
                             "spacing.line_spacing",
                             "Line Spacing (multiplier)",
                             1.0,
-                            3.0,
-                            0.1,
+                            2.0,
+                            0.05,
                           ],
                           [
                             "spacing.paragraph_spacing_after",
@@ -9436,7 +9792,7 @@ backend: Render (Root: backend)`}
             : "border-gray-200 text-gray-400"
         }`}
       >
-        NotesForge Professional v6.2 · {stats.words} words ·{" "}
+        NotesForge Professional v7.0.0 · {stats.words} words ·{" "}
         {stats.mins} min read · Theme:{" "}
         {themes[currentTheme]?.name || currentTheme}
       </footer>

@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "NotesForge Professional",
-    "version": "6.2",
+    "version": "7.0.0",
     "theme": "corporate"
   },
   "fonts": {
@@ -24,7 +24,9 @@
       "body": 11,
       "code": 10,
       "header": 10,
-      "footer": 9
+      "footer": 9,
+      "title": 20,
+      "footnote": 11
     }
   },
   "colors": {

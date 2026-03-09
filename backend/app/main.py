@@ -35,15 +35,18 @@ from .parser import MARKER_RE, parse_notesforge
 from .templates_repo import TemplateRepo
 
 
-logger = logging.getLogger("notesforge.v6")
+logger = logging.getLogger("notesforge.v7")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
-APP_VERSION = "6.2"
+APP_VERSION = "7.0.0"
 MAX_BODY_BYTES = 2_000_000
 MAX_PROMPT_BYTES = 200_000
 DEFAULT_PROMPT = (
-    "Using strict NotesForge marker syntax (H1-H6, PARAGRAPH, BULLET, NUMBERED, TABLE, CODE, ASCII, "
-    "PAGEBREAK), generate structured notes. Output only marker lines."
+    "Using strict NotesForge marker syntax (H1-H6, PARAGRAPH, CENTER, RIGHT, JUSTIFY, BULLET, NUMBERED, "
+    "TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, ASCII, PAGEBREAK, COVER_PAGE, "
+    "CERTIFICATE_PAGE, DECLARATION_PAGE, ACKNOWLEDGEMENT_PAGE, ABSTRACT_PAGE, TOC, LIST_OF_TABLES, "
+    "LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE, APPENDIX), generate a professional academic document. "
+    "Output only marker lines."
 )
 
 MEDIA_TYPES: Dict[str, str] = {
@@ -154,6 +157,15 @@ def _as_int(value: Any, default: int) -> int:
         return default
 
 
+def _normalize_line_spacing(value: Any, default: float = 1.5) -> float:
+    try:
+        candidate = float(value)
+    except (TypeError, ValueError):
+        candidate = default
+    allowed = [1.0, 1.15, 1.5, 2.0]
+    return min(allowed, key=lambda item: abs(item - candidate))
+
+
 def _margin_to_mm(value: Any, fallback: float) -> float:
     n = _as_float(value, fallback)
     return n * 25.4 if n <= 5.0 else n
@@ -173,26 +185,28 @@ def _default_config() -> Dict[str, Any]:
     return {
         "app": {"name": "NotesForge Professional", "version": APP_VERSION, "theme": "professional"},
         "fonts": {
-            "family": "Calibri",
-            "family_code": "Consolas",
-            "h1_family": "Calibri",
-            "h2_family": "Calibri",
-            "h3_family": "Calibri",
-            "h4_family": "Calibri",
-            "h5_family": "Calibri",
-            "h6_family": "Calibri",
-            "bullet_family": "Calibri",
+            "family": "Times New Roman",
+            "family_code": "JetBrains Mono",
+            "h1_family": "Times New Roman",
+            "h2_family": "Times New Roman",
+            "h3_family": "Times New Roman",
+            "h4_family": "Times New Roman",
+            "h5_family": "Times New Roman",
+            "h6_family": "Times New Roman",
+            "bullet_family": "Times New Roman",
             "sizes": {
-                "h1": 24,
-                "h2": 20,
-                "h3": 16,
+                "h1": 18,
+                "h2": 16,
+                "h3": 14,
                 "h4": 14,
-                "h5": 13,
+                "h5": 12,
                 "h6": 12,
-                "body": 11,
-                "code": 10,
+                "body": 12,
+                "code": 12,
                 "header": 10,
-                "footer": 9,
+                "footer": 11,
+                "title": 20,
+                "footnote": 11,
             },
         },
         "colors": {
@@ -213,7 +227,7 @@ def _default_config() -> Dict[str, Any]:
             "link": "#2563eb",
         },
         "spacing": {
-            "line_spacing": 1.4,
+            "line_spacing": 1.5,
             "paragraph_spacing_before": 0,
             "paragraph_spacing_after": 6,
             "heading_spacing_before": 10,
@@ -236,7 +250,7 @@ def _default_config() -> Dict[str, Any]:
             "type": "text",
             "text": "",
             "image_path": "",
-            "font": "Calibri",
+            "font": "Times New Roman",
             "size": 48,
             "color": "#1F3A5F",
             "opacity": 0.1,
@@ -248,7 +262,7 @@ def _default_config() -> Dict[str, Any]:
             "enabled": True,
             "text": "",
             "alignment": "center",
-            "font_family": "Calibri",
+            "font_family": "Times New Roman",
             "size": 10,
             "color": "#1F3A5F",
             "bold": False,
@@ -265,8 +279,8 @@ def _default_config() -> Dict[str, Any]:
             "enabled": True,
             "text": "",
             "alignment": "center",
-            "font_family": "Calibri",
-            "size": 9,
+            "font_family": "Times New Roman",
+            "size": 11,
             "color": "#1F3A5F",
             "bold": False,
             "italic": False,
@@ -303,7 +317,7 @@ def _default_theme_record(theme_key: str, name: str, config: Mapping[str, Any], 
         "text_alignment": "left",
     }
     code = {
-        "font_family": fonts.get("family_code", "Consolas"),
+        "font_family": fonts.get("family_code", "JetBrains Mono"),
         "font_size": sizes.get("code", 10),
         "background": colors.get("code_background", "#0f172a"),
         "text": colors.get("code_text", "#e2e8f0"),
@@ -554,7 +568,7 @@ def _default_themes(config: Mapping[str, Any]) -> Dict[str, Any]:
                 "enabled": True,
                 "type": "text",
                 "text": "CONFIDENTIAL",
-                "font": "Calibri",
+                "font": "Times New Roman",
                 "size": 48,
                 "color": "#6200EA",
                 "opacity": 0.1,
@@ -565,6 +579,152 @@ def _default_themes(config: Mapping[str, Any]) -> Dict[str, Any]:
     )
     frontlines["builtin"] = True
     frontlines["user_created"] = False
+
+    academic_classic = _deep_merge(
+        professional,
+        {
+            "name": "Academic Classic",
+            "description": "Classic university layout with formal typography.",
+            "fonts": {"family": "Times New Roman", "family_code": "JetBrains Mono"},
+            "spacing": {"line_spacing": 1.5},
+            "colors": {"h1": "#1F3A5F", "h2": "#2F4F7F", "h3": "#3D5A80"},
+        },
+    )
+    university_blue = _deep_merge(
+        professional,
+        {
+            "name": "University Blue",
+            "description": "Deep-blue institutional report style.",
+            "colors": {
+                "h1": "#0B3D91",
+                "h2": "#1E5AA8",
+                "h3": "#2F6BC5",
+                "table_header_bg": "#DCEBFF",
+                "table_border": "#9DC1F2",
+            },
+            "fonts": {"family": "Times New Roman", "family_code": "JetBrains Mono"},
+        },
+    )
+    engineering_report = _deep_merge(
+        professional,
+        {
+            "name": "Engineering Report",
+            "description": "Structured technical report with clear section contrast.",
+            "colors": {
+                "h1": "#0F172A",
+                "h2": "#1F2937",
+                "h3": "#334155",
+                "table_header_bg": "#E2E8F0",
+                "table_border": "#94A3B8",
+            },
+            "fonts": {"family": "Inter", "family_code": "JetBrains Mono"},
+        },
+    )
+    clean_research = _deep_merge(
+        professional,
+        {
+            "name": "Clean Research",
+            "description": "Light, clean research manuscript visual style.",
+            "colors": {
+                "h1": "#111827",
+                "h2": "#1F2937",
+                "h3": "#374151",
+                "table_header_bg": "#F3F4F6",
+            },
+            "spacing": {"line_spacing": 1.5, "paragraph_spacing_after": 8},
+            "fonts": {"family": "Times New Roman", "family_code": "JetBrains Mono"},
+        },
+    )
+    modern_minimal = _deep_merge(
+        professional,
+        {
+            "name": "Modern Minimal",
+            "description": "Minimalist modern style for concise documents.",
+            "colors": {"h1": "#111827", "h2": "#2563EB", "h3": "#3B82F6"},
+            "fonts": {"family": "Inter", "family_code": "JetBrains Mono"},
+            "spacing": {"line_spacing": 1.15},
+        },
+    )
+    corporate_white = _deep_merge(
+        professional,
+        {
+            "name": "Corporate White",
+            "description": "White-paper style with polished corporate contrast.",
+            "colors": {
+                "h1": "#0F172A",
+                "h2": "#1E293B",
+                "h3": "#334155",
+                "table_header_bg": "#F8FAFC",
+            },
+            "fonts": {"family": "Georgia", "family_code": "JetBrains Mono"},
+        },
+    )
+    dark_technical = _deep_merge(
+        professional,
+        {
+            "name": "Dark Technical",
+            "description": "Dark-accent technical layout optimized for code-heavy docs.",
+            "colors": {
+                "h1": "#0EA5E9",
+                "h2": "#38BDF8",
+                "h3": "#7DD3FC",
+                "body": "#E2E8F0",
+                "code_background": "#0B1220",
+                "code_text": "#E2E8F0",
+                "table_header_bg": "#0F172A",
+                "table_header_text": "#E2E8F0",
+                "table_odd_row": "#111827",
+                "table_even_row": "#0F172A",
+            },
+            "page": {"border": {"enabled": True, "color": "#0EA5E9", "width": 1, "style": "single", "offset": 24}},
+            "fonts": {"family": "Roboto", "family_code": "JetBrains Mono"},
+        },
+    )
+    elegant_thesis = _deep_merge(
+        professional,
+        {
+            "name": "Elegant Thesis",
+            "description": "Elegant thesis style with serif emphasis.",
+            "fonts": {"family": "Georgia", "family_code": "JetBrains Mono"},
+            "spacing": {"line_spacing": 2.0},
+            "colors": {"h1": "#4A2C2A", "h2": "#6B3F3A", "h3": "#8A5148"},
+        },
+    )
+    lecture_notes = _deep_merge(
+        professional,
+        {
+            "name": "Lecture Notes",
+            "description": "Readable notes style for classroom and revision docs.",
+            "fonts": {"family": "Roboto", "family_code": "JetBrains Mono"},
+            "spacing": {"line_spacing": 1.15},
+            "colors": {"h1": "#1D4ED8", "h2": "#2563EB", "h3": "#3B82F6"},
+        },
+    )
+    professional_docs = _deep_merge(
+        professional,
+        {
+            "name": "Professional Docs",
+            "description": "Balanced professional documentation theme.",
+            "fonts": {"family": "Times New Roman", "family_code": "JetBrains Mono"},
+            "spacing": {"line_spacing": 1.5},
+            "colors": {"h1": "#1F3A5F", "h2": "#345995", "h3": "#4A6FA5"},
+        },
+    )
+
+    for theme in [
+        academic_classic,
+        university_blue,
+        engineering_report,
+        clean_research,
+        modern_minimal,
+        corporate_white,
+        dark_technical,
+        elegant_thesis,
+        lecture_notes,
+        professional_docs,
+    ]:
+        theme["builtin"] = True
+        theme["user_created"] = False
 
     return {
         "themes": {
@@ -577,13 +737,27 @@ def _default_themes(config: Mapping[str, Any]) -> Dict[str, Any]:
             "monochrome": monochrome,
             "startup": startup,
             "frontlines_edutech_theme": frontlines,
+            "academic_classic": academic_classic,
+            "university_blue": university_blue,
+            "engineering_report": engineering_report,
+            "clean_research": clean_research,
+            "modern_minimal": modern_minimal,
+            "corporate_white": corporate_white,
+            "dark_technical": dark_technical,
+            "elegant_thesis": elegant_thesis,
+            "lecture_notes": lecture_notes,
+            "professional_docs": professional_docs,
         }
     }
 
 
 def _normalize_config_payload(raw: Mapping[str, Any] | None) -> Dict[str, Any]:
     payload = _as_dict(raw.get("config")) if isinstance(raw, Mapping) and isinstance(raw.get("config"), dict) else _as_dict(raw)
-    return _deep_merge(_default_config(), payload)
+    normalized = _deep_merge(_default_config(), payload)
+    app_section = _as_dict(normalized.get("app"))
+    app_section["version"] = APP_VERSION
+    normalized["app"] = app_section
+    return normalized
 
 
 def _payload_theme_to_record(theme_key: str, payload: Mapping[str, Any], config: Mapping[str, Any]) -> Dict[str, Any]:
@@ -677,7 +851,10 @@ def _set_by_path(root: MutableMapping[str, Any], path: str, value: Any) -> None:
         if not isinstance(current, dict):
             cursor[key] = {}
         cursor = cursor[key]
-    cursor[keys[-1]] = value
+    if path.lower() in {"spacing.line_spacing", "styles.line_spacing"}:
+        cursor[keys[-1]] = _normalize_line_spacing(value, default=1.5)
+    else:
+        cursor[keys[-1]] = value
 
 
 def _infer_page_mode(page_format: Any) -> str:
@@ -711,6 +888,7 @@ def _theme_to_payload(theme_key: str, theme: Mapping[str, Any]) -> ThemePayload:
         }
 
     style_map = {
+        "line_spacing": _normalize_line_spacing(spacing.get("line_spacing"), default=1.5),
         "paragraph_spacing_before": spacing.get("paragraph_spacing_before", 0),
         "paragraph_spacing_after": spacing.get("paragraph_spacing_after", 6),
         "heading_spacing_before": spacing.get("heading_spacing_before", 10),
@@ -728,17 +906,17 @@ def _theme_to_payload(theme_key: str, theme: Mapping[str, Any]) -> ThemePayload:
         "table_odd_row": colors.get("table_odd_row", "#ffffff"),
         "table_even_row": colors.get("table_even_row", "#f8fafc"),
         "link_color": colors.get("link", "#2563eb"),
-        "code_font_family": code.get("font_family", fonts.get("family_code", "Consolas")),
+        "code_font_family": code.get("font_family", fonts.get("family_code", "JetBrains Mono")),
         "code_font_size": code.get("font_size", sizes.get("code", 10)),
-        "h1_family": fonts.get("h1_family", fonts.get("family", "Calibri")),
-        "h2_family": fonts.get("h2_family", fonts.get("family", "Calibri")),
-        "h3_family": fonts.get("h3_family", fonts.get("family", "Calibri")),
-        "h4_family": fonts.get("h4_family", fonts.get("family", "Calibri")),
-        "h5_family": fonts.get("h5_family", fonts.get("family", "Calibri")),
-        "h6_family": fonts.get("h6_family", fonts.get("family", "Calibri")),
-        "bullet_font_family": fonts.get("bullet_family", fonts.get("family", "Calibri")),
+        "h1_family": fonts.get("h1_family", fonts.get("family", "Times New Roman")),
+        "h2_family": fonts.get("h2_family", fonts.get("family", "Times New Roman")),
+        "h3_family": fonts.get("h3_family", fonts.get("family", "Times New Roman")),
+        "h4_family": fonts.get("h4_family", fonts.get("family", "Times New Roman")),
+        "h5_family": fonts.get("h5_family", fonts.get("family", "Times New Roman")),
+        "h6_family": fonts.get("h6_family", fonts.get("family", "Times New Roman")),
+        "bullet_font_family": fonts.get("bullet_family", fonts.get("family", "Times New Roman")),
         "header_alignment": header.get("alignment", "center"),
-        "header_font_family": header.get("font_family", fonts.get("family", "Calibri")),
+        "header_font_family": header.get("font_family", fonts.get("family", "Times New Roman")),
         "header_size": header.get("size", sizes.get("header", 10)),
         "header_color": header.get("color", colors.get("h1", "#1F3A5F")),
         "header_bold": header.get("bold", False),
@@ -747,7 +925,7 @@ def _theme_to_payload(theme_key: str, theme: Mapping[str, Any]) -> ThemePayload:
         "header_separator_color": header.get("separator_color", "#CCCCCC"),
         "header_show_page_numbers": header.get("show_page_numbers", False),
         "footer_alignment": footer.get("alignment", "center"),
-        "footer_font_family": footer.get("font_family", fonts.get("family", "Calibri")),
+        "footer_font_family": footer.get("font_family", fonts.get("family", "Times New Roman")),
         "footer_size": footer.get("size", sizes.get("footer", 9)),
         "footer_color": footer.get("color", colors.get("h2", "#1F3A5F")),
         "footer_bold": footer.get("bold", False),
@@ -771,7 +949,7 @@ def _theme_to_payload(theme_key: str, theme: Mapping[str, Any]) -> ThemePayload:
         "table_border_style": table.get("border_style", "single"),
         "ascii_background": table.get("ascii_background", colors.get("code_background", "#0f172a")),
         "ascii_text": table.get("ascii_text", colors.get("code_text", "#e2e8f0")),
-        "ascii_font_family": code.get("font_family", fonts.get("family_code", "Consolas")),
+        "ascii_font_family": code.get("font_family", fonts.get("family_code", "JetBrains Mono")),
     }
     custom_styles = _as_dict(theme.get("styles"))
     style_map.update(custom_styles)
@@ -779,9 +957,12 @@ def _theme_to_payload(theme_key: str, theme: Mapping[str, Any]) -> ThemePayload:
     payload = {
         "name": str(theme.get("name") or theme_key),
         "primaryColor": str(colors.get("h1", "#1F3A5F")),
-        "fontFamily": str(fonts.get("family", "Calibri")),
+        "fontFamily": str(fonts.get("family", "Times New Roman")),
         "headingStyle": heading_data,
-        "bodyStyle": {"size": _as_int(sizes.get("body"), 11), "lineHeight": _as_float(spacing.get("line_spacing"), 1.4)},
+        "bodyStyle": {
+            "size": _as_int(sizes.get("body"), 12),
+            "lineHeight": _normalize_line_spacing(spacing.get("line_spacing"), default=1.5),
+        },
         "tableStyle": {
             "borderWidth": _as_int(table.get("border_width"), 1),
             "borderColor": str(table.get("border_color", colors.get("table_border", "#d1d5db"))),
@@ -1012,9 +1193,25 @@ def _classify_line(line: str) -> Dict[str, Any]:
             "CENTER": "paragraph",
             "RIGHT": "paragraph",
             "JUSTIFY": "paragraph",
+            "TOC": "toc",
+            "LIST_OF_TABLES": "list_of_tables",
+            "LIST_OF_FIGURES": "list_of_figures",
+            "COVER_PAGE": "section",
+            "CERTIFICATE_PAGE": "section",
+            "DECLARATION_PAGE": "section",
+            "ACKNOWLEDGEMENT_PAGE": "section",
+            "ABSTRACT_PAGE": "section",
+            "CHAPTER": "chapter",
+            "APPENDIX": "appendix",
+            "REFERENCES": "references",
+            "REFERENCE": "reference",
             "BULLET": "bullet",
             "NUMBERED": "numbered",
             "TABLE": "table",
+            "TABLE_CAPTION": "table_caption",
+            "FIGURE_CAPTION": "figure_caption",
+            "FIGURE": "figure",
+            "IMAGE": "image",
             "CODE": "code",
             "ASCII": "ascii",
             "PAGEBREAK": "pagebreak",
@@ -1120,7 +1317,10 @@ def create_app() -> FastAPI:
         )
         formatting = FormattingOptions(
             margins=req.formattingOptions.margins,
-            lineSpacing=req.formattingOptions.lineSpacing or merged_theme.bodyStyle.lineHeight or 1.4,
+            lineSpacing=_normalize_line_spacing(
+                req.formattingOptions.lineSpacing or merged_theme.bodyStyle.lineHeight or 1.5,
+                default=1.5,
+            ),
         )
         preview_html = state.exporter.create_preview_html(
             nodes=parsed.nodes,
@@ -1148,7 +1348,7 @@ def create_app() -> FastAPI:
         merged_theme, merged_security, _ = _build_theme_and_security(state, req.theme, req.security)
         formatting = FormattingOptions(
             margins=merged_theme.margins,
-            lineSpacing=merged_theme.bodyStyle.lineHeight or 1.4,
+            lineSpacing=_normalize_line_spacing(merged_theme.bodyStyle.lineHeight or 1.5, default=1.5),
         )
 
         try:

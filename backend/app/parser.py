@@ -3,13 +3,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from html import escape
 import re
-from typing import List, Sequence
+from typing import List, Sequence, Tuple
 
 
 MARKER_RE = re.compile(
-    r"^\s*(HEADING|SUBHEADING|SUB-SUBHEADING|H[1-6]|PARAGRAPH|PARA|CENTER|RIGHT|JUSTIFY|BULLET|NUMBERED|CODE|ASCII|TABLE|PAGEBREAK|PAGE_BREAK|QUOTE|NOTE|IMPORTANT|TOC|IMAGE|LINK|HIGHLIGHT|FOOTNOTE)\s*:(.*)$",
+    r"^\s*(HEADING|SUBHEADING|SUB-SUBHEADING|H[1-6]|PARAGRAPH|PARA|CENTER|RIGHT|JUSTIFY|BULLET|NUMBERED|CODE|ASCII|TABLE|TABLE_CAPTION|FIGURE|FIGURE_CAPTION|PAGEBREAK|PAGE_BREAK|QUOTE|NOTE|IMPORTANT|TOC|LIST_OF_TABLES|LIST_OF_FIGURES|IMAGE|LINK|HIGHLIGHT|FOOTNOTE|COVER_PAGE|CERTIFICATE_PAGE|DECLARATION_PAGE|ACKNOWLEDGEMENT_PAGE|ABSTRACT_PAGE|CHAPTER|REFERENCES|REFERENCE|APPENDIX)\s*:(.*)$",
     re.IGNORECASE,
 )
+
+
+FRONT_MATTER_MARKERS = {
+    "COVER_PAGE": "Cover Page",
+    "CERTIFICATE_PAGE": "Certificate",
+    "DECLARATION_PAGE": "Declaration",
+    "ACKNOWLEDGEMENT_PAGE": "Acknowledgement",
+    "ABSTRACT_PAGE": "Abstract",
+}
 
 
 @dataclass
@@ -22,6 +31,10 @@ class Node:
     rows: List[List[str]] | None = None
     role: str = "paragraph"
     levels: List[int] | None = None
+    source: str = ""
+    caption: str = ""
+    scale: float = 100.0
+    marker: str = ""
 
 
 @dataclass
@@ -36,6 +49,15 @@ class ParseResult:
     nodes: List[Node]
     warnings: List[str]
     summary: StructureSummary
+
+
+@dataclass
+class _CaptionState:
+    chapter_idx: int = 0
+    figure_global: int = 0
+    table_global: int = 0
+    figure_chapter: int = 0
+    table_chapter: int = 0
 
 
 def _is_marker_line(line: str) -> bool:
@@ -61,6 +83,88 @@ def _parse_list_item(raw: str, numbered: bool) -> tuple[str, int]:
     else:
         stripped = re.sub(r"^[-*]\s*", "", stripped)
     return stripped.strip(), level
+
+
+def _strip_wrapping_quotes(value: str) -> str:
+    text = value.strip()
+    if len(text) >= 2 and ((text[0] == '"' and text[-1] == '"') or (text[0] == "'" and text[-1] == "'")):
+        return text[1:-1].strip()
+    return text
+
+
+def _split_pipe_payload(raw: str) -> List[str]:
+    if "|" not in raw:
+        cleaned = _strip_wrapping_quotes(raw)
+        return [cleaned] if cleaned else []
+    parts = [_strip_wrapping_quotes(part) for part in raw.split("|")]
+    return [part.strip() for part in parts]
+
+
+def _normalize_align(raw: str, *, default: str = "center") -> str:
+    value = (raw or "").strip().lower()
+    if value in {"left", "center", "right", "justify"}:
+        return value
+    return default
+
+
+def _parse_scale(raw: str, *, default: float = 100.0) -> float:
+    if not raw:
+        return default
+    cleaned = raw.strip().rstrip("%")
+    try:
+        value = float(cleaned)
+    except ValueError:
+        return default
+    return max(10.0, min(100.0, value))
+
+
+def _parse_media_payload(raw: str) -> Tuple[str, str, str, float]:
+    parts = _split_pipe_payload(raw)
+    source = parts[0] if len(parts) > 0 else ""
+    caption = parts[1] if len(parts) > 1 else ""
+    align = _normalize_align(parts[2], default="center") if len(parts) > 2 else "center"
+    scale = _parse_scale(parts[3], default=100.0) if len(parts) > 3 else 100.0
+    return source, caption, align, scale
+
+
+def _caption_number(state: _CaptionState, kind: str) -> str:
+    if kind == "figure":
+        state.figure_global += 1
+        if state.chapter_idx > 0:
+            state.figure_chapter += 1
+            return f"{state.chapter_idx}.{state.figure_chapter}"
+        return str(state.figure_global)
+    state.table_global += 1
+    if state.chapter_idx > 0:
+        state.table_chapter += 1
+        return f"{state.chapter_idx}.{state.table_chapter}"
+    return str(state.table_global)
+
+
+def _collect_caption_entries(nodes: Sequence[Node]) -> tuple[list[str], list[str]]:
+    state = _CaptionState()
+    figures: list[str] = []
+    tables: list[str] = []
+    for node in nodes:
+        if node.type == "chapter":
+            state.chapter_idx += 1
+            state.figure_chapter = 0
+            state.table_chapter = 0
+            continue
+        if node.type in {"figure", "image"}:
+            caption = (node.caption or node.text or "").strip()
+            if node.type == "figure" or caption:
+                num = _caption_number(state, "figure")
+                figures.append(f"Figure {num}: {caption or node.source or 'Image'}")
+            continue
+        if node.type == "figure_caption":
+            num = _caption_number(state, "figure")
+            figures.append(f"Figure {num}: {node.text}")
+            continue
+        if node.type == "table_caption":
+            num = _caption_number(state, "table")
+            tables.append(f"Table {num}: {node.text}")
+    return figures, tables
 
 
 def parse_notesforge(content: str) -> ParseResult:
@@ -89,22 +193,98 @@ def parse_notesforge(content: str) -> ParseResult:
         payload = payload_raw.strip()
 
         if marker in {"HEADING", "H1"}:
-            nodes.append(Node(type="heading", level=1, text=payload))
+            nodes.append(Node(type="heading", level=1, text=payload, marker=marker))
             idx += 1
             continue
 
         if marker in {"SUBHEADING", "H2"}:
-            nodes.append(Node(type="heading", level=2, text=payload))
+            nodes.append(Node(type="heading", level=2, text=payload, marker=marker))
             idx += 1
             continue
 
         if marker in {"SUB-SUBHEADING", "H3"}:
-            nodes.append(Node(type="heading", level=3, text=payload))
+            nodes.append(Node(type="heading", level=3, text=payload, marker=marker))
             idx += 1
             continue
 
         if marker in {"H4", "H5", "H6"}:
-            nodes.append(Node(type="heading", level=int(marker[1:]), text=payload))
+            nodes.append(Node(type="heading", level=int(marker[1:]), text=payload, marker=marker))
+            idx += 1
+            continue
+
+        if marker in FRONT_MATTER_MARKERS:
+            nodes.append(
+                Node(
+                    type="section",
+                    text=payload or FRONT_MATTER_MARKERS[marker],
+                    role=marker.lower(),
+                    marker=marker,
+                )
+            )
+            idx += 1
+            continue
+
+        if marker == "CHAPTER":
+            nodes.append(Node(type="chapter", text=payload or "Chapter", role="chapter", marker=marker))
+            idx += 1
+            continue
+
+        if marker == "APPENDIX":
+            nodes.append(Node(type="appendix", text=payload or "Appendix", role="appendix", marker=marker))
+            idx += 1
+            continue
+
+        if marker == "REFERENCES":
+            nodes.append(Node(type="references_heading", text=payload or "References", role="references", marker=marker))
+            idx += 1
+            continue
+
+        if marker == "REFERENCE":
+            nodes.append(Node(type="reference", text=payload, role="reference", marker=marker))
+            idx += 1
+            continue
+
+        if marker == "TOC":
+            nodes.append(Node(type="toc", text=payload or "Table of Contents", role="toc", marker=marker))
+            idx += 1
+            continue
+
+        if marker == "LIST_OF_TABLES":
+            nodes.append(Node(type="list_of_tables", text=payload or "List of Tables", role="list_of_tables", marker=marker))
+            idx += 1
+            continue
+
+        if marker == "LIST_OF_FIGURES":
+            nodes.append(Node(type="list_of_figures", text=payload or "List of Figures", role="list_of_figures", marker=marker))
+            idx += 1
+            continue
+
+        if marker == "TABLE_CAPTION":
+            nodes.append(Node(type="table_caption", text=payload, role="table_caption", marker=marker))
+            idx += 1
+            continue
+
+        if marker == "FIGURE_CAPTION":
+            nodes.append(Node(type="figure_caption", text=payload, role="figure_caption", marker=marker))
+            idx += 1
+            continue
+
+        if marker in {"IMAGE", "FIGURE"}:
+            source, caption, align, scale = _parse_media_payload(payload_raw)
+            if not source:
+                warnings.append(f"Line {idx + 1}: {marker} has no image source.")
+            nodes.append(
+                Node(
+                    type="figure" if marker == "FIGURE" else "image",
+                    text=caption or payload,
+                    source=source,
+                    caption=caption,
+                    align=align,
+                    scale=scale,
+                    role=marker.lower(),
+                    marker=marker,
+                )
+            )
             idx += 1
             continue
 
@@ -117,8 +297,6 @@ def parse_notesforge(content: str) -> ParseResult:
             "QUOTE",
             "NOTE",
             "IMPORTANT",
-            "TOC",
-            "IMAGE",
             "LINK",
             "HIGHLIGHT",
             "FOOTNOTE",
@@ -141,8 +319,6 @@ def parse_notesforge(content: str) -> ParseResult:
                 "QUOTE": "left",
                 "NOTE": "left",
                 "IMPORTANT": "left",
-                "TOC": "left",
-                "IMAGE": "left",
                 "LINK": "left",
                 "HIGHLIGHT": "left",
                 "FOOTNOTE": "left",
@@ -153,6 +329,7 @@ def parse_notesforge(content: str) -> ParseResult:
                     text=" ".join(p for p in paragraph_lines if p).strip(),
                     align=align,
                     role=marker.lower() if marker not in {"PARAGRAPH", "PARA", "CENTER", "RIGHT", "JUSTIFY"} else "paragraph",
+                    marker=marker,
                 )
             )
             idx = next_idx if next_idx > idx else idx + 1
@@ -190,7 +367,7 @@ def parse_notesforge(content: str) -> ParseResult:
                 next_idx += 1
             if not items:
                 warnings.append(f"Line {idx + 1}: BULLET block has no items.")
-            nodes.append(Node(type="bullet", items=items, levels=levels))
+            nodes.append(Node(type="bullet", items=items, levels=levels, marker=marker))
             idx = next_idx
             continue
 
@@ -225,7 +402,7 @@ def parse_notesforge(content: str) -> ParseResult:
                 next_idx += 1
             if not items:
                 warnings.append(f"Line {idx + 1}: NUMBERED block has no items.")
-            nodes.append(Node(type="numbered", items=items, levels=levels))
+            nodes.append(Node(type="numbered", items=items, levels=levels, marker=marker))
             idx = next_idx
             continue
 
@@ -238,7 +415,7 @@ def parse_notesforge(content: str) -> ParseResult:
                 code_lines.append(lines[next_idx].rstrip())
                 next_idx += 1
             code_text = "\n".join(code_lines).strip("\n")
-            nodes.append(Node(type="code", text=code_text))
+            nodes.append(Node(type="code", text=code_text, marker=marker))
             idx = next_idx
             continue
 
@@ -253,7 +430,7 @@ def parse_notesforge(content: str) -> ParseResult:
                     break
                 ascii_lines.append(candidate.rstrip())
                 next_idx += 1
-            nodes.append(Node(type="ascii", text="\n".join(ascii_lines).rstrip("\n")))
+            nodes.append(Node(type="ascii", text="\n".join(ascii_lines).rstrip("\n"), marker=marker))
             idx = next_idx
             continue
 
@@ -296,22 +473,35 @@ def parse_notesforge(content: str) -> ParseResult:
             else:
                 max_cols = max(len(row) for row in rows)
                 rows = [row + [""] * (max_cols - len(row)) for row in rows]
-            nodes.append(Node(type="table", rows=rows))
+            nodes.append(Node(type="table", rows=rows, marker=marker))
             idx = next_idx
             continue
 
         if marker in {"PAGEBREAK", "PAGE_BREAK"}:
-            nodes.append(Node(type="pagebreak"))
+            nodes.append(Node(type="pagebreak", marker=marker))
             idx += 1
             continue
 
         idx += 1
 
-    heading_count = sum(1 for n in nodes if n.type == "heading")
+    heading_count = sum(1 for n in nodes if n.type in {"heading", "chapter", "section", "appendix", "references_heading"})
     all_text_parts: List[str] = []
     for node in nodes:
-        if node.type in {"heading", "paragraph", "code"} and node.text:
+        if node.type in {
+            "heading",
+            "chapter",
+            "section",
+            "appendix",
+            "references_heading",
+            "paragraph",
+            "code",
+            "table_caption",
+            "figure_caption",
+            "reference",
+        } and node.text:
             all_text_parts.append(node.text)
+        if node.caption:
+            all_text_parts.append(node.caption)
         if node.items:
             all_text_parts.extend(node.items)
         if node.rows:
@@ -341,10 +531,38 @@ def render_preview_html(
     if watermark_html:
         fragments.append(watermark_html)
 
+    caption_state = _CaptionState()
+    figures, tables = _collect_caption_entries(nodes)
+
     for node in nodes:
         if node.type == "heading":
             level = max(1, min(6, node.level))
             fragments.append(f"<h{level}>{escape(node.text)}</h{level}>")
+        elif node.type in {"section", "chapter", "appendix", "references_heading"}:
+            if node.type == "chapter":
+                caption_state.chapter_idx += 1
+                caption_state.figure_chapter = 0
+                caption_state.table_chapter = 0
+            title = node.text or node.type.replace("_", " ").title()
+            if node.type == "chapter":
+                title = f"CHAPTER {caption_state.chapter_idx}: {title}"
+            fragments.append(f"<h1>{escape(title)}</h1>")
+        elif node.type == "toc":
+            fragments.append(f'<p class="nf-paragraph nf-toc"><strong>{escape(node.text or "Table of Contents")}</strong></p>')
+        elif node.type == "list_of_tables":
+            fragments.append(f"<h2>{escape(node.text or 'List of Tables')}</h2>")
+            fragments.append('<ul class="nf-list-root">')
+            for item in tables or ["Table entries are generated during export."]:
+                fragments.append(f'<li class="nf-list-item">{escape(item)}</li>')
+            fragments.append("</ul>")
+        elif node.type == "list_of_figures":
+            fragments.append(f"<h2>{escape(node.text or 'List of Figures')}</h2>")
+            fragments.append('<ul class="nf-list-root">')
+            for item in figures or ["Figure entries are generated during export."]:
+                fragments.append(f'<li class="nf-list-item">{escape(item)}</li>')
+            fragments.append("</ul>")
+        elif node.type == "reference":
+            fragments.append(f'<p class="nf-paragraph nf-reference">{escape(node.text)}</p>')
         elif node.type == "paragraph":
             classes = ["nf-paragraph"]
             if node.role and node.role != "paragraph":
@@ -379,6 +597,21 @@ def render_preview_html(
             fragments.append(f"<pre><code>{escape(node.text)}</code></pre>")
         elif node.type == "ascii":
             fragments.append(f'<pre class="nf-ascii"><code>{escape(node.text)}</code></pre>')
+        elif node.type == "image" or node.type == "figure":
+            align_style = f'text-align:{escape(node.align or "center")};'
+            src = escape(node.source, quote=True)
+            scale = max(10.0, min(100.0, node.scale or 100.0))
+            fragments.append(f'<figure class="nf-figure" style="{align_style}">')
+            if src:
+                fragments.append(f'<img src="{src}" alt="" style="max-width:{scale:.0f}%;height:auto;" />')
+            else:
+                fragments.append('<div class="nf-image-missing">[Image source missing]</div>')
+            caption = (node.caption or "").strip()
+            if node.type == "figure" or caption:
+                num = _caption_number(caption_state, "figure")
+                text = caption or node.text or node.source or "Image"
+                fragments.append(f'<figcaption class="nf-caption">Figure {escape(num)}: {escape(text)}</figcaption>')
+            fragments.append("</figure>")
         elif node.type == "table":
             rows = node.rows or []
             if rows:
@@ -394,6 +627,12 @@ def render_preview_html(
                         fragments.append(f"<td>{escape(col)}</td>")
                     fragments.append("</tr>")
                 fragments.append("</tbody></table>")
+        elif node.type == "table_caption":
+            num = _caption_number(caption_state, "table")
+            fragments.append(f'<p class="nf-caption nf-table-caption">Table {escape(num)}: {escape(node.text)}</p>')
+        elif node.type == "figure_caption":
+            num = _caption_number(caption_state, "figure")
+            fragments.append(f'<p class="nf-caption nf-figure-caption">Figure {escape(num)}: {escape(node.text)}</p>')
         elif node.type == "pagebreak":
             fragments.append('<div class="nf-page-break" aria-hidden="true"></div>')
 
@@ -403,9 +642,34 @@ def render_preview_html(
 
 def to_markdown(nodes: Sequence[Node]) -> str:
     lines: List[str] = []
+    caption_state = _CaptionState()
+    figures, tables = _collect_caption_entries(nodes)
     for node in nodes:
         if node.type == "heading":
             lines.append(f"{'#' * max(1, min(6, node.level))} {node.text}")
+        elif node.type == "section":
+            lines.append(f"# {node.text}")
+        elif node.type == "chapter":
+            caption_state.chapter_idx += 1
+            caption_state.figure_chapter = 0
+            caption_state.table_chapter = 0
+            lines.append(f"# CHAPTER {caption_state.chapter_idx}: {node.text}")
+        elif node.type == "appendix":
+            lines.append(f"# Appendix: {node.text}")
+        elif node.type == "references_heading":
+            lines.append(f"## {node.text}")
+        elif node.type == "reference":
+            lines.append(f"- {node.text}")
+        elif node.type == "toc":
+            lines.append("## Table of Contents")
+        elif node.type == "list_of_tables":
+            lines.append(f"## {node.text or 'List of Tables'}")
+            for item in tables or ["Table entries are generated during export."]:
+                lines.append(f"- {item}")
+        elif node.type == "list_of_figures":
+            lines.append(f"## {node.text or 'List of Figures'}")
+            for item in figures or ["Figure entries are generated during export."]:
+                lines.append(f"- {item}")
         elif node.type == "paragraph":
             lines.append(node.text)
         elif node.type == "pagebreak":
@@ -428,6 +692,12 @@ def to_markdown(nodes: Sequence[Node]) -> str:
             lines.append("```text")
             lines.append(node.text)
             lines.append("```")
+        elif node.type == "image" or node.type == "figure":
+            text = node.caption or node.text or "Image"
+            lines.append(f"![{text}]({node.source})")
+            if node.type == "figure" or node.caption:
+                num = _caption_number(caption_state, "figure")
+                lines.append(f"*Figure {num}: {text}*")
         elif node.type == "table":
             rows = node.rows or []
             if rows:
@@ -435,15 +705,44 @@ def to_markdown(nodes: Sequence[Node]) -> str:
                 lines.append("| " + " | ".join("---" for _ in rows[0]) + " |")
                 for row in rows[1:]:
                     lines.append("| " + " | ".join(row) + " |")
+        elif node.type == "table_caption":
+            num = _caption_number(caption_state, "table")
+            lines.append(f"*Table {num}: {node.text}*")
+        elif node.type == "figure_caption":
+            num = _caption_number(caption_state, "figure")
+            lines.append(f"*Figure {num}: {node.text}*")
         lines.append("")
     return "\n".join(lines).strip() + "\n"
 
 
 def to_plain_text(nodes: Sequence[Node]) -> str:
     lines: List[str] = []
+    caption_state = _CaptionState()
+    figures, tables = _collect_caption_entries(nodes)
     for node in nodes:
         if node.type == "heading":
             lines.append(node.text)
+        elif node.type == "section":
+            lines.append(node.text)
+        elif node.type == "chapter":
+            caption_state.chapter_idx += 1
+            caption_state.figure_chapter = 0
+            caption_state.table_chapter = 0
+            lines.append(f"CHAPTER {caption_state.chapter_idx}: {node.text}")
+        elif node.type == "appendix":
+            lines.append(f"Appendix: {node.text}")
+        elif node.type == "references_heading":
+            lines.append(node.text)
+        elif node.type == "reference":
+            lines.append(f"- {node.text}")
+        elif node.type == "toc":
+            lines.append("Table of Contents")
+        elif node.type == "list_of_tables":
+            lines.append(node.text or "List of Tables")
+            lines.extend(f"- {entry}" for entry in tables)
+        elif node.type == "list_of_figures":
+            lines.append(node.text or "List of Figures")
+            lines.extend(f"- {entry}" for entry in figures)
         elif node.type == "paragraph":
             lines.append(node.text)
         elif node.type == "pagebreak":
@@ -457,8 +756,19 @@ def to_plain_text(nodes: Sequence[Node]) -> str:
             lines.append(node.text)
         elif node.type == "ascii":
             lines.append(node.text)
+        elif node.type == "image" or node.type == "figure":
+            lines.append(f"[IMAGE] {node.source}")
+            if node.type == "figure" or node.caption:
+                num = _caption_number(caption_state, "figure")
+                lines.append(f"Figure {num}: {node.caption or node.text or node.source}")
         elif node.type == "table":
             for row in node.rows or []:
                 lines.append(" | ".join(row))
+        elif node.type == "table_caption":
+            num = _caption_number(caption_state, "table")
+            lines.append(f"Table {num}: {node.text}")
+        elif node.type == "figure_caption":
+            num = _caption_number(caption_state, "figure")
+            lines.append(f"Figure {num}: {node.text}")
         lines.append("")
     return "\n".join(lines).strip() + "\n"

@@ -25,7 +25,9 @@
           "body": 12,
           "code": 10,
           "header": 10,
-          "footer": 10
+          "footer": 10,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -204,7 +206,9 @@
           "body": 12,
           "code": 11,
           "header": 10,
-          "footer": 10
+          "footer": 10,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -383,7 +387,9 @@
           "body": 11,
           "code": 9,
           "header": 9,
-          "footer": 9
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -562,7 +568,9 @@
           "body": 12,
           "code": 10,
           "header": 10,
-          "footer": 10
+          "footer": 10,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -741,7 +749,9 @@
           "body": 11,
           "code": 10,
           "header": 10,
-          "footer": 9
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -920,7 +930,9 @@
           "body": 12,
           "code": 11,
           "header": 11,
-          "footer": 10
+          "footer": 10,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -1099,7 +1111,9 @@
           "body": 11,
           "code": 10,
           "header": 10,
-          "footer": 9
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -1278,7 +1292,9 @@
           "body": 12,
           "code": 11,
           "header": 10,
-          "footer": 10
+          "footer": 10,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -1457,7 +1473,9 @@
           "body": 11,
           "code": 10,
           "header": 10,
-          "footer": 9
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -1636,7 +1654,9 @@
           "body": 11,
           "code": 10,
           "header": 10,
-          "footer": 9
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -1815,7 +1835,9 @@
           "body": 11,
           "code": 10,
           "header": 10,
-          "footer": 9
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -1994,7 +2016,9 @@
           "body": 12,
           "code": 11,
           "header": 10,
-          "footer": 9
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
         }
       },
       "colors": {
@@ -2087,6 +2111,1816 @@
         "size": 48,
         "color": "#6200EA",
         "opacity": 0.1,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "academic_classic": {
+      "name": "Academic Classic",
+      "description": "Classic university layout with formal typography.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Times New Roman",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "h4_family": "Trebuchet MS",
+        "h5_family": "Trebuchet MS",
+        "h6_family": "Trebuchet MS",
+        "bullet_family": "Tahoma",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#1F3A5F",
+        "h2": "#2F4F7F",
+        "h3": "#3D5A80",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#2C3E50",
+        "code_text": "#ECF0F1",
+        "table_header_bg": "#C41E3A",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FCE8E8",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#DC143C",
+        "link": "#C41E3A"
+      },
+      "spacing": {
+        "line_spacing": 1.5,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 10.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 3,
+          "color": "#C41E3A",
+          "style": "double",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2026 Corporation. All Rights Reserved.",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "university_blue": {
+      "name": "University Blue",
+      "description": "Deep-blue institutional report style.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Times New Roman",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "h4_family": "Trebuchet MS",
+        "h5_family": "Trebuchet MS",
+        "h6_family": "Trebuchet MS",
+        "bullet_family": "Tahoma",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#0B3D91",
+        "h2": "#1E5AA8",
+        "h3": "#2F6BC5",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#2C3E50",
+        "code_text": "#ECF0F1",
+        "table_header_bg": "#DCEBFF",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FCE8E8",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#9DC1F2",
+        "link": "#C41E3A"
+      },
+      "spacing": {
+        "line_spacing": 1.6,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 10.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 3,
+          "color": "#C41E3A",
+          "style": "double",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2026 Corporation. All Rights Reserved.",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "engineering_report": {
+      "name": "Engineering Report",
+      "description": "Structured technical report with clear section contrast.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Inter",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "h4_family": "Trebuchet MS",
+        "h5_family": "Trebuchet MS",
+        "h6_family": "Trebuchet MS",
+        "bullet_family": "Tahoma",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#0F172A",
+        "h2": "#1F2937",
+        "h3": "#334155",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#2C3E50",
+        "code_text": "#ECF0F1",
+        "table_header_bg": "#E2E8F0",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FCE8E8",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#94A3B8",
+        "link": "#C41E3A"
+      },
+      "spacing": {
+        "line_spacing": 1.6,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 10.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 3,
+          "color": "#C41E3A",
+          "style": "double",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2026 Corporation. All Rights Reserved.",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "clean_research": {
+      "name": "Clean Research",
+      "description": "Light, clean research manuscript visual style.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Times New Roman",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "h4_family": "Trebuchet MS",
+        "h5_family": "Trebuchet MS",
+        "h6_family": "Trebuchet MS",
+        "bullet_family": "Tahoma",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#111827",
+        "h2": "#1F2937",
+        "h3": "#374151",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#2C3E50",
+        "code_text": "#ECF0F1",
+        "table_header_bg": "#F3F4F6",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FCE8E8",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#DC143C",
+        "link": "#C41E3A"
+      },
+      "spacing": {
+        "line_spacing": 1.5,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 8,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 3,
+          "color": "#C41E3A",
+          "style": "double",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2026 Corporation. All Rights Reserved.",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "modern_minimal": {
+      "name": "Modern Minimal",
+      "description": "Minimalist modern style for concise documents.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Inter",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "h4_family": "Trebuchet MS",
+        "h5_family": "Trebuchet MS",
+        "h6_family": "Trebuchet MS",
+        "bullet_family": "Tahoma",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#111827",
+        "h2": "#2563EB",
+        "h3": "#3B82F6",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#2C3E50",
+        "code_text": "#ECF0F1",
+        "table_header_bg": "#C41E3A",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FCE8E8",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#DC143C",
+        "link": "#C41E3A"
+      },
+      "spacing": {
+        "line_spacing": 1.15,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 10.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 3,
+          "color": "#C41E3A",
+          "style": "double",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2026 Corporation. All Rights Reserved.",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "corporate_white": {
+      "name": "Corporate White",
+      "description": "White-paper style with polished corporate contrast.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Georgia",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "h4_family": "Trebuchet MS",
+        "h5_family": "Trebuchet MS",
+        "h6_family": "Trebuchet MS",
+        "bullet_family": "Tahoma",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#0F172A",
+        "h2": "#1E293B",
+        "h3": "#334155",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#2C3E50",
+        "code_text": "#ECF0F1",
+        "table_header_bg": "#F8FAFC",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FCE8E8",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#DC143C",
+        "link": "#C41E3A"
+      },
+      "spacing": {
+        "line_spacing": 1.6,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 10.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 3,
+          "color": "#C41E3A",
+          "style": "double",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2026 Corporation. All Rights Reserved.",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "dark_technical": {
+      "name": "Dark Technical",
+      "description": "Dark-accent technical layout optimized for code-heavy docs.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Roboto",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "h4_family": "Trebuchet MS",
+        "h5_family": "Trebuchet MS",
+        "h6_family": "Trebuchet MS",
+        "bullet_family": "Tahoma",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#0EA5E9",
+        "h2": "#38BDF8",
+        "h3": "#7DD3FC",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#E2E8F0",
+        "code_background": "#0B1220",
+        "code_text": "#E2E8F0",
+        "table_header_bg": "#0F172A",
+        "table_header_text": "#E2E8F0",
+        "table_odd_row": "#111827",
+        "table_even_row": "#0F172A",
+        "table_border": "#DC143C",
+        "link": "#C41E3A"
+      },
+      "spacing": {
+        "line_spacing": 1.6,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 10.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 1,
+          "color": "#0EA5E9",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2026 Corporation. All Rights Reserved.",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "elegant_thesis": {
+      "name": "Elegant Thesis",
+      "description": "Elegant thesis style with serif emphasis.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Georgia",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "h4_family": "Trebuchet MS",
+        "h5_family": "Trebuchet MS",
+        "h6_family": "Trebuchet MS",
+        "bullet_family": "Tahoma",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#4A2C2A",
+        "h2": "#6B3F3A",
+        "h3": "#8A5148",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#2C3E50",
+        "code_text": "#ECF0F1",
+        "table_header_bg": "#C41E3A",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FCE8E8",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#DC143C",
+        "link": "#C41E3A"
+      },
+      "spacing": {
+        "line_spacing": 2.0,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 10.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 3,
+          "color": "#C41E3A",
+          "style": "double",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2026 Corporation. All Rights Reserved.",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "lecture_notes": {
+      "name": "Lecture Notes",
+      "description": "Readable notes style for classroom and revision docs.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Roboto",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "h4_family": "Trebuchet MS",
+        "h5_family": "Trebuchet MS",
+        "h6_family": "Trebuchet MS",
+        "bullet_family": "Tahoma",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#1D4ED8",
+        "h2": "#2563EB",
+        "h3": "#3B82F6",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#2C3E50",
+        "code_text": "#ECF0F1",
+        "table_header_bg": "#C41E3A",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FCE8E8",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#DC143C",
+        "link": "#C41E3A"
+      },
+      "spacing": {
+        "line_spacing": 1.15,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 10.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 3,
+          "color": "#C41E3A",
+          "style": "double",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2026 Corporation. All Rights Reserved.",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 26,
+          "weight": "700",
+          "color": "#C41E3A"
+        },
+        "h2": {
+          "size": 20,
+          "weight": "600",
+          "color": "#DC143C"
+        },
+        "h3": {
+          "size": 16,
+          "weight": "600",
+          "color": "#E63946"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#CC5500"
+        },
+        "h5": {
+          "size": 13,
+          "weight": "600",
+          "color": "#333333"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#555555"
+        }
+      },
+      "table": {
+        "border_color": "#DC143C",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#C41E3A",
+        "header_text": "#FFFFFF",
+        "odd_row": "#FCE8E8",
+        "even_row": "#FFFFFF",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "Consolas",
+        "font_size": 10,
+        "background": "#2C3E50",
+        "text": "#ECF0F1"
+      },
+      "borders": {
+        "enabled": true,
+        "width": 3,
+        "color": "#C41E3A",
+        "style": "double",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "professional_docs": {
+      "name": "Professional Docs",
+      "description": "Balanced professional documentation theme.",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Times New Roman",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Arial",
+        "h2_family": "Arial",
+        "h3_family": "Arial",
+        "h4_family": "Trebuchet MS",
+        "h5_family": "Trebuchet MS",
+        "h6_family": "Trebuchet MS",
+        "bullet_family": "Tahoma",
+        "sizes": {
+          "h1": 26,
+          "h2": 20,
+          "h3": 16,
+          "h4": 14,
+          "h5": 13,
+          "h6": 12,
+          "body": 11,
+          "code": 10,
+          "header": 10,
+          "footer": 9,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#1F3A5F",
+        "h2": "#345995",
+        "h3": "#4A6FA5",
+        "h4": "#CC5500",
+        "h5": "#333333",
+        "h6": "#555555",
+        "body": "#1F1F1F",
+        "code_background": "#2C3E50",
+        "code_text": "#ECF0F1",
+        "table_header_bg": "#C41E3A",
+        "table_header_text": "#FFFFFF",
+        "table_odd_row": "#FCE8E8",
+        "table_even_row": "#FFFFFF",
+        "table_border": "#DC143C",
+        "link": "#C41E3A"
+      },
+      "spacing": {
+        "line_spacing": 1.5,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 10.0,
+        "heading_spacing_before": 14.0,
+        "heading_spacing_after": 8.0,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.5,
+        "bullet_indent_per_level": 0.75,
+        "code_indent": 0.35,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.25,
+          "bottom": 1.25,
+          "left": 1.25,
+          "right": 1.25
+        },
+        "border": {
+          "enabled": true,
+          "width": 3,
+          "color": "#C41E3A",
+          "style": "double",
+          "offset": 24
+        }
+      },
+      "header": {
+        "enabled": true,
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 12,
+        "color": "#C41E3A",
+        "bold": true,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "© 2026 Corporation. All Rights Reserved.",
+        "alignment": "center",
+        "font_family": "Arial",
+        "size": 9,
+        "color": "#666666",
+        "bold": false,
+        "italic": false,
+        "separator": true,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "X | Page"
+      },
+      "watermark": {
+        "enabled": true,
+        "type": "text",
+        "text": "INTERNAL USE ONLY",
+        "image_path": "",
+        "font": "Calibri",
+        "size": 48,
+        "color": "#C41E3A",
+        "opacity": 0.08,
         "rotation": 315,
         "position": "center",
         "scale": 100

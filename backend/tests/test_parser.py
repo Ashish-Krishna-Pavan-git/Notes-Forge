@@ -138,6 +138,55 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(numbered_nodes[0].items, ["Parent step", "Child step"])
         self.assertEqual(numbered_nodes[0].levels, [0, 1])
 
+    def test_parser_supports_v7_academic_markers_and_media_payloads(self) -> None:
+        content = (
+            "COVER_PAGE: Project Report\n"
+            "TOC:\n"
+            "LIST_OF_TABLES:\n"
+            "LIST_OF_FIGURES:\n"
+            "CHAPTER: Introduction\n"
+            "FIGURE: https://example.com/diagram.png | System Diagram | center | 80\n"
+            "TABLE: Key | Value\n"
+            "TABLE: A | B\n"
+            "TABLE_CAPTION: Result table\n"
+            "REFERENCES:\n"
+            "REFERENCE: [1] Primary source\n"
+            "APPENDIX: Supporting notes\n"
+        )
+        result = parse_notesforge(content)
+        types = [node.type for node in result.nodes]
+        self.assertIn("section", types)
+        self.assertIn("toc", types)
+        self.assertIn("list_of_tables", types)
+        self.assertIn("list_of_figures", types)
+        self.assertIn("chapter", types)
+        self.assertIn("figure", types)
+        self.assertIn("table_caption", types)
+        self.assertIn("references_heading", types)
+        self.assertIn("reference", types)
+        self.assertIn("appendix", types)
+
+        figure = next(node for node in result.nodes if node.type == "figure")
+        self.assertEqual(figure.source, "https://example.com/diagram.png")
+        self.assertEqual(figure.caption, "System Diagram")
+        self.assertEqual(figure.align, "center")
+        self.assertEqual(figure.scale, 80)
+
+    def test_markdown_conversion_includes_v7_figure_and_table_caption(self) -> None:
+        content = (
+            "CHAPTER: Results\n"
+            "FIGURE: https://example.com/fig.png | Accuracy trend | center | 70\n"
+            "TABLE: Metric | Value\n"
+            "TABLE: Accuracy | 0.91\n"
+            "TABLE_CAPTION: Metrics table\n"
+        )
+        result = parse_notesforge(content)
+        md = to_markdown(result.nodes)
+        self.assertIn("# CHAPTER 1: Results", md)
+        self.assertIn("![Accuracy trend](https://example.com/fig.png)", md)
+        self.assertIn("*Figure 1.1: Accuracy trend*", md)
+        self.assertIn("*Table 1.1: Metrics table*", md)
+
 
 if __name__ == "__main__":
     unittest.main()

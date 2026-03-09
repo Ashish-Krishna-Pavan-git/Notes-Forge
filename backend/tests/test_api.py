@@ -30,6 +30,38 @@ class ApiIntegrationTests(unittest.TestCase):
         payload = response.json()
         ids = {item["id"] for item in payload}
         self.assertTrue({"assignment", "resume", "report", "meeting", "cybersec"}.issubset(ids))
+        names = {item["name"] for item in payload}
+        self.assertTrue(
+            {
+                "Project Report Template",
+                "Research Paper Template",
+                "Study Notes Template",
+                "Technical Documentation Template",
+                "Assignment Template",
+            }.issubset(names)
+        )
+
+    def test_themes_include_required_v7_builtins(self) -> None:
+        response = self.client.get("/api/themes")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body.get("success"))
+        themes = body.get("themes", {})
+        names = {v.get("name") for v in themes.values() if isinstance(v, dict)}
+        self.assertTrue(
+            {
+                "Academic Classic",
+                "University Blue",
+                "Engineering Report",
+                "Clean Research",
+                "Modern Minimal",
+                "Corporate White",
+                "Dark Technical",
+                "Elegant Thesis",
+                "Lecture Notes",
+                "Professional Docs",
+            }.issubset(names)
+        )
 
     def test_preflight_cors(self) -> None:
         for origin in (

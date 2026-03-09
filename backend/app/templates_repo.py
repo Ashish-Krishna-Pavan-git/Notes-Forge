@@ -34,7 +34,9 @@ ASCII: +-----------------------+
 
 PROMPT_FORMAT = (
     "Using strict NotesForge marker syntax (H1-H6, PARAGRAPH, CENTER, RIGHT, JUSTIFY, BULLET, NUMBERED, "
-    "TABLE, CODE, ASCII, PAGEBREAK), generate a structured document about '{topic}' for the '{templateName}' template. "
+    "TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, ASCII, PAGEBREAK, COVER_PAGE, CERTIFICATE_PAGE, "
+    "DECLARATION_PAGE, ACKNOWLEDGEMENT_PAGE, ABSTRACT_PAGE, TOC, LIST_OF_TABLES, LIST_OF_FIGURES, CHAPTER, "
+    "REFERENCES, REFERENCE, APPENDIX), generate a structured document about '{topic}' for the '{templateName}' template. "
     "Every non-empty line must start with a marker and a colon. No free text lines. "
     "Keep sections concise, include TABLE and CODE where relevant, and produce deterministic output. "
     "Output ONLY NotesForge markers content with no commentary."
@@ -48,6 +50,207 @@ class TemplateRepo:
     @classmethod
     def build_default(cls) -> "TemplateRepo":
         items = [
+            TemplateDefinition(
+                id="project_report_template",
+                name="Project Report Template",
+                description="Professional project report with academic front matter and chapters.",
+                defaultTheme=PROFESSIONAL_THEME,
+                sampleContent=(
+                    "COVER_PAGE: Project Report\n"
+                    "CERTIFICATE_PAGE: Certified that this project report is submitted by [Student Name].\n"
+                    "DECLARATION_PAGE: I hereby declare that this work is original.\n"
+                    "ACKNOWLEDGEMENT_PAGE: I thank my mentors and institution.\n"
+                    "ABSTRACT_PAGE: Brief abstract of the project objective and outcomes.\n"
+                    "TOC:\n"
+                    "LIST_OF_TABLES:\n"
+                    "LIST_OF_FIGURES:\n"
+                    "CHAPTER: Introduction\n"
+                    "PARAGRAPH: This chapter introduces the project scope and goals.\n"
+                    "CHAPTER: Implementation\n"
+                    "TABLE: Module | Status | Notes\n"
+                    "TABLE: Parser | Complete | Marker handling implemented\n"
+                    "TABLE_CAPTION: Implementation status table\n"
+                    "FIGURE: https://example.com/architecture.png | System architecture | center | 80\n"
+                    "CHAPTER: Conclusion\n"
+                    "PARAGRAPH: Final project summary and future work.\n"
+                    "REFERENCES:\n"
+                    "REFERENCE: [1] IEEE reference entry.\n"
+                    "APPENDIX: Additional Data\n"
+                ),
+                aiPromptTemplate="Generate a strict marker-based project report template for {topic} including front matter, TOC, chapter sections, figures, tables, references and appendix.",
+                layout={
+                    "cover_page": True,
+                    "headers": True,
+                    "footers": True,
+                    "page_numbers": "page_x_of_y",
+                    "table_style": "professional",
+                    "chapter_layout": "chapter_first",
+                    "margins": "A4 standard",
+                    "spacing": 1.5,
+                    "title_format": "academic",
+                },
+                guideSteps=[
+                    "Fill project title and metadata in front matter markers.",
+                    "Update chapter content and table/figure captions.",
+                    "Add references and appendix before export.",
+                ],
+            ),
+            TemplateDefinition(
+                id="research_paper_template",
+                name="Research Paper Template",
+                description="Research manuscript structure with abstract, chapters and references.",
+                defaultTheme=PROFESSIONAL_THEME,
+                sampleContent=(
+                    "COVER_PAGE: Research Paper\n"
+                    "ABSTRACT_PAGE: Abstract with objective, method and key findings.\n"
+                    "TOC:\n"
+                    "CHAPTER: Introduction\n"
+                    "PARAGRAPH: Background and motivation.\n"
+                    "CHAPTER: Methodology\n"
+                    "PARAGRAPH: Method, datasets and evaluation process.\n"
+                    "CHAPTER: Results\n"
+                    "TABLE: Metric | Value\n"
+                    "TABLE: Accuracy | 0.94\n"
+                    "TABLE_CAPTION: Evaluation results\n"
+                    "FIGURE_CAPTION: Confusion matrix overview\n"
+                    "CHAPTER: Discussion\n"
+                    "PARAGRAPH: Interpretation of findings and limitations.\n"
+                    "REFERENCES:\n"
+                    "REFERENCE: [1] Journal article citation.\n"
+                ),
+                aiPromptTemplate="Generate a strict marker-based research paper for {topic} with abstract, methodology, results, discussion and references.",
+                layout={
+                    "cover_page": True,
+                    "headers": True,
+                    "footers": True,
+                    "page_numbers": "page_x_of_y",
+                    "table_style": "research",
+                    "chapter_layout": "academic",
+                    "margins": "A4 standard",
+                    "spacing": 1.5,
+                    "title_format": "research",
+                },
+                guideSteps=[
+                    "Write abstract first, then chapter sections.",
+                    "Place tables/figures with captions near discussion points.",
+                    "Finalize references before submission export.",
+                ],
+            ),
+            TemplateDefinition(
+                id="study_notes_template",
+                name="Study Notes Template",
+                description="Organized lecture/study notes template with chapter-wise structure.",
+                defaultTheme=PROFESSIONAL_THEME,
+                sampleContent=(
+                    "COVER_PAGE: Study Notes\n"
+                    "TOC:\n"
+                    "CHAPTER: Core Concepts\n"
+                    "BULLET: Concept 1 summary\n"
+                    "BULLET: Concept 2 summary\n"
+                    "CHAPTER: Examples\n"
+                    "NUMBERED: Worked example one\n"
+                    "NUMBERED: Worked example two\n"
+                    "TABLE: Topic | Key Formula | Comment\n"
+                    "TABLE: Networking | Throughput = Data / Time | Core formula\n"
+                    "TABLE_CAPTION: Formula reference table\n"
+                    "APPENDIX: Quick Revision Cards\n"
+                ),
+                aiPromptTemplate="Generate strict marker-based study notes for {topic} in chapter-wise format with bullet points, examples, and quick revision appendix.",
+                layout={
+                    "cover_page": True,
+                    "headers": True,
+                    "footers": True,
+                    "page_numbers": "page_x",
+                    "table_style": "lecture",
+                    "chapter_layout": "notes",
+                    "margins": "A4 compact",
+                    "spacing": 1.15,
+                    "title_format": "notes",
+                },
+                guideSteps=[
+                    "Break syllabus into chapters.",
+                    "Keep bullet notes concise and exam-focused.",
+                    "Use appendix for quick revision points.",
+                ],
+            ),
+            TemplateDefinition(
+                id="technical_documentation_template",
+                name="Technical Documentation Template",
+                description="Technical documentation layout with architecture, procedures and references.",
+                defaultTheme=PROFESSIONAL_THEME,
+                sampleContent=(
+                    "COVER_PAGE: Technical Documentation\n"
+                    "TOC:\n"
+                    "CHAPTER: Overview\n"
+                    "PARAGRAPH: Scope and intended audience.\n"
+                    "CHAPTER: Architecture\n"
+                    "FIGURE: https://example.com/service-map.png | Service interaction map | center | 75\n"
+                    "CHAPTER: API Reference\n"
+                    "TABLE: Endpoint | Method | Purpose\n"
+                    "TABLE: /api/preview | POST | Generate live preview\n"
+                    "TABLE_CAPTION: API endpoint reference\n"
+                    "CHAPTER: Operations\n"
+                    "CODE: docker compose up --build\n"
+                    "REFERENCES:\n"
+                    "REFERENCE: [1] Internal standards document.\n"
+                ),
+                aiPromptTemplate="Generate strict marker-based technical documentation for {topic} with architecture, API tables, operational commands and references.",
+                layout={
+                    "cover_page": True,
+                    "headers": True,
+                    "footers": True,
+                    "page_numbers": "page_x",
+                    "table_style": "technical",
+                    "chapter_layout": "technical",
+                    "margins": "A4 standard",
+                    "spacing": 1.15,
+                    "title_format": "technical",
+                },
+                guideSteps=[
+                    "Document architecture before API details.",
+                    "Keep command blocks executable and minimal.",
+                    "Include references for external dependencies.",
+                ],
+            ),
+            TemplateDefinition(
+                id="assignment_template",
+                name="Assignment Template",
+                description="Formal assignment format with declaration, chapters and references.",
+                defaultTheme=PROFESSIONAL_THEME,
+                sampleContent=(
+                    "COVER_PAGE: Assignment\n"
+                    "DECLARATION_PAGE: This assignment is submitted as original work.\n"
+                    "TOC:\n"
+                    "CHAPTER: Problem Statement\n"
+                    "PARAGRAPH: Define assignment objective and constraints.\n"
+                    "CHAPTER: Solution\n"
+                    "PARAGRAPH: Present method and explanation.\n"
+                    "TABLE: Criteria | Outcome\n"
+                    "TABLE: Correctness | Satisfied\n"
+                    "TABLE_CAPTION: Evaluation criteria\n"
+                    "CHAPTER: Conclusion\n"
+                    "PARAGRAPH: Summarize final learning outcomes.\n"
+                    "REFERENCES:\n"
+                    "REFERENCE: [1] Course reference book.\n"
+                ),
+                aiPromptTemplate="Generate strict marker-based assignment content for {topic} with declaration, chapter sections, evaluative table and references.",
+                layout={
+                    "cover_page": True,
+                    "headers": True,
+                    "footers": True,
+                    "page_numbers": "page_x",
+                    "table_style": "assignment",
+                    "chapter_layout": "assignment",
+                    "margins": "A4 standard",
+                    "spacing": 1.5,
+                    "title_format": "assignment",
+                },
+                guideSteps=[
+                    "Define the assignment question clearly.",
+                    "Explain the solution in chapter-wise format.",
+                    "Add references to official sources.",
+                ],
+            ),
             TemplateDefinition(
                 id="assignment",
                 name="Assignment",
@@ -173,6 +376,46 @@ class TemplateRepo:
 
     def _deterministic_content(self, template_id: str, topic: str) -> str:
         topic_clean = topic.strip()
+        if template_id == "project_report_template":
+            return (
+                f"COVER_PAGE: {topic_clean} Project Report\n"
+                "TOC:\nLIST_OF_TABLES:\nLIST_OF_FIGURES:\n"
+                "CHAPTER: Introduction\nPARAGRAPH: Concise project overview.\n"
+                "CHAPTER: Design\nTABLE: Component | Status\nTABLE: Parser | Complete\nTABLE_CAPTION: Component status\n"
+                "CHAPTER: Result\nFIGURE_CAPTION: Final implementation diagram\n"
+                "REFERENCES:\nREFERENCE: [1] Official reference source.\n"
+            )
+        if template_id == "research_paper_template":
+            return (
+                f"COVER_PAGE: {topic_clean} Research Paper\n"
+                "ABSTRACT_PAGE: Abstract of objective, method and findings.\n"
+                "TOC:\nCHAPTER: Introduction\nPARAGRAPH: Research motivation.\n"
+                "CHAPTER: Methodology\nPARAGRAPH: Method details.\n"
+                "CHAPTER: Results\nTABLE: Metric | Value\nTABLE: Accuracy | 0.90\nTABLE_CAPTION: Results summary\n"
+                "REFERENCES:\nREFERENCE: [1] Journal source.\n"
+            )
+        if template_id == "study_notes_template":
+            return (
+                f"COVER_PAGE: Study Notes - {topic_clean}\n"
+                "TOC:\nCHAPTER: Key Concepts\nBULLET: Core concept one\nBULLET: Core concept two\n"
+                "CHAPTER: Practice\nNUMBERED: Solve one problem\nNUMBERED: Review solutions\n"
+                "APPENDIX: Quick Revision\n"
+            )
+        if template_id == "technical_documentation_template":
+            return (
+                f"COVER_PAGE: Technical Documentation - {topic_clean}\n"
+                "TOC:\nCHAPTER: Overview\nPARAGRAPH: Scope and audience.\n"
+                "CHAPTER: API\nTABLE: Endpoint | Method\nTABLE: /api/health | GET\nTABLE_CAPTION: API surface\n"
+                "CHAPTER: Operations\nCODE: docker compose up --build\n"
+                "REFERENCES:\nREFERENCE: [1] Internal standards.\n"
+            )
+        if template_id == "assignment_template":
+            return (
+                f"COVER_PAGE: {topic_clean} Assignment\nDECLARATION_PAGE: I declare this submission is my work.\n"
+                "TOC:\nCHAPTER: Problem Statement\nPARAGRAPH: Assignment objective.\n"
+                "CHAPTER: Solution\nPARAGRAPH: Solution details.\n"
+                "REFERENCES:\nREFERENCE: [1] Course material.\n"
+            )
         if template_id == "assignment":
             return SAMPLE_EXAMPLE.replace(
                 "NotesForge — Cybersecurity Incident Summary",

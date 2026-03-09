@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
+import io
 import os
 from pathlib import Path
 import re
@@ -11,6 +13,7 @@ import tempfile
 import time
 from html import escape
 from typing import List, Sequence, Tuple
+from urllib.request import urlopen
 from uuid import uuid4
 
 from docx import Document
@@ -34,6 +37,15 @@ class ExportResult:
     requested_format: str
     actual_format: str
     warning: str | None = None
+
+
+@dataclass
+class CaptionTracker:
+    chapter_idx: int = 0
+    figure_global: int = 0
+    table_global: int = 0
+    figure_chapter: int = 0
+    table_chapter: int = 0
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -121,6 +133,160 @@ def _style_str(styles: dict[str, object], *keys: str, default: str) -> str:
             continue
         return str(raw).strip()
     return default
+
+
+def _normalize_line_spacing(value: float) -> float:
+    allowed = [1.0, 1.15, 1.5, 2.0]
+    return min(allowed, key=lambda item: abs(item - float(value)))
+
+
+def _next_caption_number(state: CaptionTracker, kind: str) -> str:
+    if kind == "figure":
+        state.figure_global += 1
+        if state.chapter_idx > 0:
+            state.figure_chapter += 1
+            return f"{state.chapter_idx}.{state.figure_chapter}"
+        return str(state.figure_global)
+    state.table_global += 1
+    if state.chapter_idx > 0:
+        state.table_chapter += 1
+        return f"{state.chapter_idx}.{state.table_chapter}"
+    return str(state.table_global)
+
+
+def _collect_caption_entries(nodes: Sequence[Node]) -> tuple[list[str], list[str]]:
+    state = CaptionTracker()
+    figure_entries: list[str] = []
+    table_entries: list[str] = []
+    for node in nodes:
+        if node.type == "chapter":
+            state.chapter_idx += 1
+            state.figure_chapter = 0
+            state.table_chapter = 0
+            continue
+        if node.type in {"figure", "image"}:
+            caption = (node.caption or node.text or "").strip()
+            if node.type == "figure" or caption:
+                number = _next_caption_number(state, "figure")
+                figure_entries.append(f"Figure {number}: {caption or node.source or 'Image'}")
+            continue
+        if node.type == "figure_caption":
+            number = _next_caption_number(state, "figure")
+            figure_entries.append(f"Figure {number}: {node.text}")
+            continue
+        if node.type == "table_caption":
+            number = _next_caption_number(state, "table")
+            table_entries.append(f"Table {number}: {node.text}")
+    return figure_entries, table_entries
+
+
+def _append_toc_field(paragraph) -> None:
+    run_begin = paragraph.add_run()
+    fld_begin = OxmlElement("w:fldChar")
+    fld_begin.set(qn("w:fldCharType"), "begin")
+    run_begin._r.append(fld_begin)
+
+    run_instr = paragraph.add_run()
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = r'TOC \o "1-3" \h \z \u'
+    run_instr._r.append(instr)
+
+    run_sep = paragraph.add_run()
+    fld_sep = OxmlElement("w:fldChar")
+    fld_sep.set(qn("w:fldCharType"), "separate")
+    run_sep._r.append(fld_sep)
+    paragraph.add_run("Update this field in Word to generate the TOC.")
+
+    run_end = paragraph.add_run()
+    fld_end = OxmlElement("w:fldChar")
+    fld_end.set(qn("w:fldCharType"), "end")
+    run_end._r.append(fld_end)
+
+
+def _decode_data_uri_image(source: str) -> bytes | None:
+    match = re.match(r"^data:image/[a-zA-Z0-9.+-]+;base64,(.+)$", source, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return None
+    try:
+        return base64.b64decode(match.group(1), validate=False)
+    except Exception:
+        return None
+
+
+def _resolve_image_stream(source: str, warnings: List[str]) -> io.BytesIO | None:
+    value = (source or "").strip()
+    if not value:
+        return None
+    try:
+        decoded = _decode_data_uri_image(value)
+        if decoded:
+            return io.BytesIO(decoded)
+
+        if value.lower().startswith(("http://", "https://")):
+            with urlopen(value, timeout=12) as response:  # nosec B310
+                payload = response.read()
+                return io.BytesIO(payload)
+
+        local = Path(value)
+        if local.exists() and local.is_file():
+            return io.BytesIO(local.read_bytes())
+    except Exception as exc:
+        warnings.append(f"Unable to load image source '{value}': {exc}")
+        return None
+    warnings.append(f"Image source not found: {value}")
+    return None
+
+
+def _apply_docx_background_watermark(section, security: GenerateSecurityPayload, theme: ThemePayload, warnings: List[str]) -> bool:
+    watermark = security.watermark
+    if not watermark or not watermark.value:
+        return False
+    if watermark.type != "text":
+        return False
+
+    try:
+        header = section.header
+        para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = para.add_run()
+
+        pict = OxmlElement("w:pict")
+        shape = OxmlElement("v:shape")
+        shape.set("id", "NotesForgeWatermark")
+        shape.set("type", "#_x0000_t136")
+        shape.set(
+            "style",
+            "position:absolute;"
+            "mso-position-horizontal:center;"
+            "mso-position-vertical:center;"
+            "width:468pt;height:117pt;"
+            "z-index:-251654144;"
+            "rotation:{};".format(int(float(watermark.rotation or 315))),
+        )
+
+        fill = OxmlElement("v:fill")
+        fill.set("opacity", f"{max(0.03, min(1.0, float(watermark.opacity or 0.10))):.2f}")
+
+        stroke = OxmlElement("v:stroke")
+        stroke.set("on", "f")
+
+        textpath = OxmlElement("v:textpath")
+        textpath.set("style", "font-family:{};font-size:{}pt".format(
+            _font_primary(watermark.fontFamily or theme.fontFamily),
+            max(28.0, float(watermark.size or 42.0)),
+        ))
+        textpath.set("string", str(watermark.value))
+
+        shape.append(fill)
+        shape.append(stroke)
+        shape.append(textpath)
+        pict.append(shape)
+        run._r.append(pict)
+        return True
+    except Exception as exc:
+        warnings.append(f"Background watermark insertion failed; using compatibility fallback. Detail: {exc}")
+        return False
 
 
 def _field_instruction(field_name: str, number_style: str) -> str:
@@ -460,6 +626,15 @@ def _nodes_to_plain_lines(nodes: Sequence[Node]) -> list[str]:
         if node.type == "heading":
             lines.append(node.text.strip())
             lines.append("")
+        elif node.type in {"section", "chapter", "appendix", "references_heading"}:
+            lines.append(node.text.strip())
+            lines.append("")
+        elif node.type in {"toc", "list_of_tables", "list_of_figures"}:
+            lines.append((node.text or node.type.replace("_", " ").title()).strip())
+            lines.append("")
+        elif node.type == "reference":
+            lines.append(f"- {node.text}".strip())
+            lines.append("")
         elif node.type == "paragraph":
             lines.append(node.text.strip())
             lines.append("")
@@ -481,6 +656,14 @@ def _nodes_to_plain_lines(nodes: Sequence[Node]) -> list[str]:
         elif node.type == "table":
             for row in node.rows or []:
                 lines.append(" | ".join(row))
+            lines.append("")
+        elif node.type in {"image", "figure"}:
+            lines.append(f"[IMAGE] {node.source}".strip())
+            if node.caption:
+                lines.append(node.caption)
+            lines.append("")
+        elif node.type in {"table_caption", "figure_caption"}:
+            lines.append(node.text.strip())
             lines.append("")
         elif node.type == "pagebreak":
             lines.append("__NF_PAGE_BREAK__")
@@ -510,7 +693,7 @@ def _convert_nodes_to_pdf_reportlab(
         margin_right = (formatting.margins.right or 25) * mm
         usable_h = max(60.0, page_h - margin_top - margin_bottom)
 
-        font_size = float(theme.bodyStyle.size or 11)
+        font_size = float(theme.bodyStyle.size or 12)
         line_height = max(12.0, font_size * 1.55)
         max_lines = max(5, int(usable_h // line_height) - 2)
 
@@ -679,18 +862,18 @@ class DocumentExporter:
                 styles,
                 "code_font_family",
                 "codeFontFamily",
-                default="Consolas, Courier New, monospace",
+                default="JetBrains Mono, Consolas, Courier New, monospace",
             )
         )
         bullet_font_name = _font_primary(
             _style_str(styles, "bullet_font_family", "bulletFontFamily", default=font_name)
         )
         code_font_size = _style_num(styles, "code_font_size", "codeFontSize", default=10.0)
-        line_spacing = formatting.lineSpacing or theme.bodyStyle.lineHeight or 1.4
+        line_spacing = _normalize_line_spacing(formatting.lineSpacing or theme.bodyStyle.lineHeight or 1.5)
 
         normal_style = document.styles["Normal"]
         normal_style.font.name = font_name
-        normal_style.font.size = Pt(theme.bodyStyle.size or 11)
+        normal_style.font.size = Pt(theme.bodyStyle.size or 12)
         normal_style.font.color.rgb = _hex_to_rgb(body_color)
         normal_style.paragraph_format.line_spacing = line_spacing
 
@@ -952,7 +1135,9 @@ class DocumentExporter:
             default="#F8FAFC",
         )
 
-        if security.watermark and security.watermark.type == "text" and security.watermark.value:
+        applied_background_watermark = _apply_docx_background_watermark(section, security, theme, warnings)
+        if security.watermark and security.watermark.type == "text" and security.watermark.value and not applied_background_watermark:
+            # Compatibility fallback if background watermark insertion fails.
             p = document.add_paragraph(security.watermark.value)
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             run = p.runs[0]
@@ -961,16 +1146,90 @@ class DocumentExporter:
             run.font.size = Pt(max(18.0, float(security.watermark.size or 28)))
             run.font.bold = True
         elif security.watermark and security.watermark.type == "image" and security.watermark.value:
-            image_path = Path(security.watermark.value)
-            if image_path.exists():
-                p = document.add_paragraph()
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                p.add_run().add_picture(str(image_path), width=Mm(80))
+            image_stream = _resolve_image_stream(security.watermark.value, warnings)
+            if image_stream:
+                try:
+                    p = section.header.add_paragraph()
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    p.add_run().add_picture(image_stream, width=Mm(80))
+                except Exception as exc:
+                    warnings.append(f"Image watermark insertion failed; skipped watermark image. Detail: {exc}")
             else:
-                warnings.append("Image watermark path not found; skipped watermark image.")
+                warnings.append("Image watermark source not found; skipped watermark image.")
+
+        figure_entries, table_entries = _collect_caption_entries(nodes)
+        caption_state = CaptionTracker()
+        has_written_content = False
 
         for node in nodes:
-            if node.type == "heading":
+            if node.type in {"section", "chapter", "appendix", "references_heading"}:
+                if has_written_content:
+                    document.add_page_break()
+                if node.type == "chapter":
+                    caption_state.chapter_idx += 1
+                    caption_state.figure_chapter = 0
+                    caption_state.table_chapter = 0
+                    title = f"CHAPTER {caption_state.chapter_idx}: {node.text or 'Chapter'}"
+                    p = document.add_heading(title, level=1)
+                elif node.type == "appendix":
+                    p = document.add_heading(f"Appendix: {node.text or 'Appendix'}", level=1)
+                else:
+                    p = document.add_heading(node.text or node.type.replace("_", " ").title(), level=1)
+                p.paragraph_format.space_before = Pt(max(0.0, heading_before_pt))
+                p.paragraph_format.space_after = Pt(max(0.0, heading_after_pt))
+                p.paragraph_format.line_spacing = line_spacing
+                if p.runs:
+                    run = p.runs[0]
+                    run.font.name = _font_primary(_style_str(styles, "h1_family", "h1Family", default=font_name))
+                    run.font.size = Pt(getattr(theme.headingStyle, "h1").size or 18)
+                    run.font.bold = True
+                    run.font.color.rgb = _hex_to_rgb(getattr(theme.headingStyle, "h1").color or theme.primaryColor)
+            elif node.type == "toc":
+                p = document.add_heading(node.text or "Table of Contents", level=1)
+                p.paragraph_format.line_spacing = line_spacing
+                toc_p = document.add_paragraph()
+                _append_toc_field(toc_p)
+                toc_p.paragraph_format.line_spacing = line_spacing
+                _style_paragraph_runs(
+                    toc_p,
+                    font_name=font_name,
+                    size_pt=float(theme.bodyStyle.size or 12),
+                    color_hex=body_color,
+                )
+            elif node.type == "list_of_tables":
+                p = document.add_heading(node.text or "List of Tables", level=1)
+                p.paragraph_format.line_spacing = line_spacing
+                for entry in table_entries or ["Table entries are generated when captions are available."]:
+                    item = document.add_paragraph(entry, style="List Bullet")
+                    item.paragraph_format.line_spacing = line_spacing
+                    _style_paragraph_runs(
+                        item,
+                        font_name=font_name,
+                        size_pt=float(theme.bodyStyle.size or 12),
+                        color_hex=body_color,
+                    )
+            elif node.type == "list_of_figures":
+                p = document.add_heading(node.text or "List of Figures", level=1)
+                p.paragraph_format.line_spacing = line_spacing
+                for entry in figure_entries or ["Figure entries are generated when captions are available."]:
+                    item = document.add_paragraph(entry, style="List Bullet")
+                    item.paragraph_format.line_spacing = line_spacing
+                    _style_paragraph_runs(
+                        item,
+                        font_name=font_name,
+                        size_pt=float(theme.bodyStyle.size or 12),
+                        color_hex=body_color,
+                    )
+            elif node.type == "reference":
+                p = document.add_paragraph(node.text, style="List Number")
+                p.paragraph_format.line_spacing = line_spacing
+                _style_paragraph_runs(
+                    p,
+                    font_name=font_name,
+                    size_pt=float(theme.bodyStyle.size or 12),
+                    color_hex=body_color,
+                )
+            elif node.type == "heading":
                 level = max(1, min(6, node.level))
                 p = document.add_heading(node.text, level=level)
                 p.paragraph_format.space_before = Pt(max(0.0, heading_before_pt))
@@ -1003,7 +1262,7 @@ class DocumentExporter:
                 _style_paragraph_runs(
                     p,
                     font_name=font_name,
-                    size_pt=float(theme.bodyStyle.size or 11),
+                    size_pt=float(theme.bodyStyle.size or 12),
                     color_hex=body_color,
                 )
             elif node.type == "bullet":
@@ -1021,7 +1280,7 @@ class DocumentExporter:
                     _style_paragraph_runs(
                         p,
                         font_name=bullet_font_name,
-                        size_pt=float(theme.bodyStyle.size or 11),
+                        size_pt=float(theme.bodyStyle.size or 12),
                         color_hex=body_color,
                     )
             elif node.type == "numbered":
@@ -1039,7 +1298,7 @@ class DocumentExporter:
                     _style_paragraph_runs(
                         p,
                         font_name=bullet_font_name,
-                        size_pt=float(theme.bodyStyle.size or 11),
+                        size_pt=float(theme.bodyStyle.size or 12),
                         color_hex=body_color,
                     )
             elif node.type == "code":
@@ -1090,6 +1349,72 @@ class DocumentExporter:
                         default=_style_str(styles, "code_text", "codeText", default="#1f2937"),
                     ),
                 )
+            elif node.type in {"image", "figure"}:
+                stream = _resolve_image_stream(node.source, warnings)
+                if stream:
+                    p = document.add_paragraph()
+                    p.alignment = _docx_alignment(node.align or "center")
+                    run = p.add_run()
+                    width_mm = max(20.0, min(170.0, 170.0 * ((node.scale or 100.0) / 100.0)))
+                    try:
+                        run.add_picture(stream, width=Mm(width_mm))
+                    except Exception as exc:
+                        warnings.append(f"Failed to render image '{node.source}': {exc}")
+                        fallback = document.add_paragraph(f"[Image: {node.source}]")
+                        fallback.alignment = _docx_alignment(node.align or "center")
+                else:
+                    fallback = document.add_paragraph(f"[Image: {node.source or 'missing source'}]")
+                    fallback.alignment = _docx_alignment(node.align or "center")
+                    _style_paragraph_runs(
+                        fallback,
+                        font_name=font_name,
+                        size_pt=float(theme.bodyStyle.size or 12),
+                        color_hex=body_color,
+                    )
+
+                caption_text = (node.caption or node.text or "").strip()
+                if node.type == "figure" or caption_text:
+                    number = _next_caption_number(caption_state, "figure")
+                    cp = document.add_paragraph(f"Figure {number}: {caption_text or node.source or 'Image'}")
+                    cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    cp.paragraph_format.space_before = Pt(2)
+                    cp.paragraph_format.space_after = Pt(max(4.0, paragraph_after_pt))
+                    cp.paragraph_format.line_spacing = line_spacing
+                    _style_paragraph_runs(
+                        cp,
+                        font_name=font_name,
+                        size_pt=max(11.0, float(theme.bodyStyle.size or 12) - 1.0),
+                        color_hex="#475569",
+                        italic=True,
+                    )
+            elif node.type == "table_caption":
+                number = _next_caption_number(caption_state, "table")
+                cp = document.add_paragraph(f"Table {number}: {node.text}")
+                cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                cp.paragraph_format.space_before = Pt(2)
+                cp.paragraph_format.space_after = Pt(max(4.0, paragraph_after_pt))
+                cp.paragraph_format.line_spacing = line_spacing
+                _style_paragraph_runs(
+                    cp,
+                    font_name=font_name,
+                    size_pt=max(11.0, float(theme.bodyStyle.size or 12) - 1.0),
+                    color_hex="#475569",
+                    italic=True,
+                )
+            elif node.type == "figure_caption":
+                number = _next_caption_number(caption_state, "figure")
+                cp = document.add_paragraph(f"Figure {number}: {node.text}")
+                cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                cp.paragraph_format.space_before = Pt(2)
+                cp.paragraph_format.space_after = Pt(max(4.0, paragraph_after_pt))
+                cp.paragraph_format.line_spacing = line_spacing
+                _style_paragraph_runs(
+                    cp,
+                    font_name=font_name,
+                    size_pt=max(11.0, float(theme.bodyStyle.size or 12) - 1.0),
+                    color_hex="#475569",
+                    italic=True,
+                )
             elif node.type == "table":
                 rows = node.rows or []
                 if not rows:
@@ -1120,12 +1445,15 @@ class DocumentExporter:
                             _style_paragraph_runs(
                                 para,
                                 font_name=font_name,
-                                size_pt=float(theme.bodyStyle.size or 11),
+                                size_pt=float(theme.bodyStyle.size or 12),
                                 color_hex=table_header_text if r_idx == 0 else body_color,
                                 bold=True if r_idx == 0 else None,
                             )
             elif node.type == "pagebreak":
                 document.add_page_break()
+
+            if node.type != "pagebreak":
+                has_written_content = True
 
         document.save(str(path))
 

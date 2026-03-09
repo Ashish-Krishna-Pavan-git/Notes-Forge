@@ -9,12 +9,13 @@ from .models import FormattingOptions, ThemePayload, WatermarkPayload
 PROFESSIONAL_THEME = ThemePayload(
     name="Professional",
     primaryColor="#1F3A5F",
-    fontFamily="Calibri, Arial, sans-serif",
+    fontFamily="Times New Roman, Georgia, serif",
     headingStyle={
-        "h1": {"size": 24, "weight": "700", "color": "#1F3A5F"},
-        "h2": {"size": 20, "weight": "600"},
+        "h1": {"size": 18, "weight": "700", "color": "#1F3A5F"},
+        "h2": {"size": 16, "weight": "600"},
+        "h3": {"size": 14, "weight": "600"},
     },
-    bodyStyle={"size": 11, "lineHeight": 1.4},
+    bodyStyle={"size": 12, "lineHeight": 1.5},
     tableStyle={"borderWidth": 1, "borderColor": "#ddd", "headerFill": "#f6f6f6"},
     margins={"top": 25, "bottom": 25, "left": 25, "right": 25},
 )
@@ -111,8 +112,10 @@ def _heading_css(theme: ThemePayload) -> str:
 
 def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
     styles = theme.styles if isinstance(theme.styles, dict) else {}
-    body_size = theme.bodyStyle.size or 11
-    line_height = formatting.lineSpacing or theme.bodyStyle.lineHeight or 1.4
+    body_size = theme.bodyStyle.size or 12
+    line_height = formatting.lineSpacing or theme.bodyStyle.lineHeight or 1.5
+    allowed_spacing = [1.0, 1.15, 1.5, 2.0]
+    line_height = min(allowed_spacing, key=lambda item: abs(item - float(line_height)))
     margins = formatting.margins
     table_border = theme.tableStyle.borderColor or "#ddd"
     table_width = theme.tableStyle.borderWidth or 1
@@ -188,7 +191,7 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
         styles,
         "code_font_family",
         "codeFontFamily",
-        default="Consolas, Courier New, monospace",
+        default="JetBrains Mono, Consolas, Courier New, monospace",
     )
     code_font_size = _style_num(
         styles,
@@ -213,6 +216,9 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
     table_header_text = _style_str(styles, "table_header_text", "tableHeaderText", default="#111827")
     table_odd_row = _style_str(styles, "table_odd_row", "tableOddRow", default="#ffffff")
     table_even_row = _style_str(styles, "table_even_row", "tableEvenRow", default="#f8fafc")
+    table_text_alignment = _style_str(styles, "table_text_alignment", "tableTextAlignment", default="left").lower()
+    if table_text_alignment not in {"left", "center", "right", "justify"}:
+        table_text_alignment = "left"
     link_color = _style_str(styles, "link_color", "linkColor", default=theme.primaryColor)
     page_border_enabled = _style_bool(
         styles,
@@ -285,12 +291,17 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
         f"p{{margin:{paragraph_before_rem:.3f}rem 0 {paragraph_after_rem:.3f}rem 0;text-indent:{first_line_indent_em:.3f}em;text-align:{paragraph_align};}}"
         f".nf-paragraph.nf-quote{{margin-left:var(--nf-quote-indent);padding-left:0.75rem;border-left:4px solid {theme.primaryColor};font-style:italic;}}"
         ".nf-paragraph.nf-note,.nf-paragraph.nf-important,.nf-paragraph.nf-highlight,.nf-paragraph.nf-footnote{padding:0.35rem 0.65rem;border-radius:0.5rem;background:#f8fafc;}"
+        ".nf-paragraph.nf-reference{padding-left:1rem;text-indent:-0.75rem;}"
+        ".nf-caption{font-size:0.92em;color:#475569;text-align:center;font-style:italic;margin:0.15rem 0 0.75rem;}"
+        ".nf-figure{margin:0.5rem 0 0.9rem;}"
+        ".nf-figure img{border-radius:0.25rem;}"
+        ".nf-image-missing{padding:0.75rem;border:1px dashed #94a3b8;color:#64748b;display:inline-block;}"
         f"ul.nf-list-root,ol.nf-list-root{{margin:0.4rem 0 0.8rem 0;padding-left:1.5rem;}}"
         f".nf-list-item{{font-family:{bullet_font};margin-left:calc(var(--nf-bullet-base-indent) + (var(--nf-bullet-step-indent) * var(--nf-level, 0)));}}"
         f"pre{{background:{code_bg};color:{code_text};padding:0.75rem;border-radius:8px;overflow:auto;margin-left:var(--nf-code-indent);font-family:{code_font};font-size:{code_font_size}px;}}"
         f"code{{font-family:{code_font};font-size:{code_font_size}px;}}"
         f"table{{width:100%;border-collapse:collapse;margin:0.6rem 0;}}"
-        f"th,td{{border:{table_width}px solid {table_border};padding:0.45rem;text-align:left;}}"
+        f"th,td{{border:{table_width}px solid {table_border};padding:0.45rem;text-align:{table_text_alignment};}}"
         f"thead{{background:{table_header};color:{table_header_text};}}"
         f"tbody tr:nth-child(odd){{background:{table_odd_row};}}"
         f"tbody tr:nth-child(even){{background:{table_even_row};}}"

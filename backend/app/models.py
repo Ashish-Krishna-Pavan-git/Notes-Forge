@@ -24,8 +24,20 @@ class HeadingStyle(BaseModel):
 
 
 class BodyStyle(BaseModel):
-    size: Optional[int] = 11
-    lineHeight: Optional[float] = 1.4
+    size: Optional[int] = 12
+    lineHeight: Optional[float] = 1.5
+
+    @field_validator("lineHeight", mode="before")
+    @classmethod
+    def normalize_line_height(cls, value: Any) -> Optional[float]:
+        if value is None:
+            return value
+        try:
+            candidate = float(value)
+        except (TypeError, ValueError):
+            return 1.5
+        allowed = [1.0, 1.15, 1.5, 2.0]
+        return min(allowed, key=lambda item: abs(item - candidate))
 
 
 class TableStyle(BaseModel):
@@ -44,7 +56,7 @@ class Margins(BaseModel):
 class ThemePayload(BaseModel):
     name: str = "Professional"
     primaryColor: str = "#1F3A5F"
-    fontFamily: str = "Calibri, Arial, sans-serif"
+    fontFamily: str = "Times New Roman, Georgia, serif"
     headingStyle: HeadingStyle = Field(default_factory=HeadingStyle)
     bodyStyle: BodyStyle = Field(default_factory=BodyStyle)
     tableStyle: TableStyle = Field(default_factory=TableStyle)
@@ -56,7 +68,17 @@ class ThemePayload(BaseModel):
 
 class FormattingOptions(BaseModel):
     margins: Margins = Field(default_factory=Margins)
-    lineSpacing: float = 1.4
+    lineSpacing: float = 1.5
+
+    @field_validator("lineSpacing", mode="before")
+    @classmethod
+    def normalize_line_spacing(cls, value: Any) -> float:
+        try:
+            candidate = float(value)
+        except (TypeError, ValueError):
+            candidate = 1.5
+        allowed = [1.0, 1.15, 1.5, 2.0]
+        return min(allowed, key=lambda item: abs(item - candidate))
 
 
 class WatermarkPayload(BaseModel):
@@ -142,6 +164,8 @@ class TemplateDefinition(BaseModel):
     defaultTheme: ThemePayload
     sampleContent: str
     aiPromptTemplate: str
+    layout: Dict[str, Any] = Field(default_factory=dict)
+    guideSteps: List[str] = Field(default_factory=list)
 
 
 class RegenerateTemplateRequest(BaseModel):
