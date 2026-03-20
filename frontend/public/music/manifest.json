@@ -1,5 +1,10 @@
 {
-  "smooth": ["Kushi Theme (Instrumental)_spotdown.org.mp3"],
+  "smooth": [
+    {
+      "title": "Kushi Theme (Instrumental)",
+      "file": "Kushi Theme (Instrumental)_spotdown.org.mp3"
+    }
+  ],
   "calming": [],
   "energetic": [],
   "gaming": [],
