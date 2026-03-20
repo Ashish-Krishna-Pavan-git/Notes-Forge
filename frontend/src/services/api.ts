@@ -5,6 +5,7 @@ export const API_ENDPOINTS = {
   healthLegacy: `${API}/health`,
   health: `${API}/api/health`,
   parserHealth: `${API}/api/health/parser`,
+  markers: `${API}/api/markers`,
   version: `${API}/api/version`,
   analyze: `${API}/api/analyze`,
   preview: `${API}/api/preview`,

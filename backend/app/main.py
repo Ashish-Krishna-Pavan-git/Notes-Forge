@@ -31,7 +31,8 @@ from .models import (
     ThemePayload,
     WatermarkPayload,
 )
-from .parser import MARKER_RE, parse_notesforge
+from .markers import MARKER_REGEX, marker_catalog_payload, normalize_marker
+from .parser import parse_notesforge
 from .templates_repo import TemplateRepo
 
 
@@ -162,8 +163,8 @@ def _normalize_line_spacing(value: Any, default: float = 1.5) -> float:
         candidate = float(value)
     except (TypeError, ValueError):
         candidate = default
-    allowed = [1.0, 1.15, 1.5, 2.0]
-    return min(allowed, key=lambda item: abs(item - candidate))
+    candidate = max(1.0, min(3.0, candidate))
+    return round(candidate, 2)
 
 
 def _margin_to_mm(value: Any, fallback: float) -> float:
@@ -183,7 +184,21 @@ def _deep_merge(base: Mapping[str, Any], incoming: Mapping[str, Any]) -> Dict[st
 
 def _default_config() -> Dict[str, Any]:
     return {
-        "app": {"name": "NotesForge Professional", "version": APP_VERSION, "theme": "professional"},
+        "app": {
+            "name": "NotesForge Professional",
+            "version": APP_VERSION,
+            "theme": "professional",
+        },
+        "app_ui": {
+            "theme": "aurora",
+            "mode": "smooth",
+            "music": {
+                "enabled": False,
+                "volume": 0.35,
+                "playlist_mode": "smooth",
+                "autoplay": False,
+            },
+        },
         "fonts": {
             "family": "Times New Roman",
             "family_code": "JetBrains Mono",
@@ -228,6 +243,7 @@ def _default_config() -> Dict[str, Any]:
         },
         "spacing": {
             "line_spacing": 1.5,
+            "tab_width": 4,
             "paragraph_spacing_before": 0,
             "paragraph_spacing_after": 6,
             "heading_spacing_before": 10,
@@ -853,6 +869,8 @@ def _set_by_path(root: MutableMapping[str, Any], path: str, value: Any) -> None:
         cursor = cursor[key]
     if path.lower() in {"spacing.line_spacing", "styles.line_spacing"}:
         cursor[keys[-1]] = _normalize_line_spacing(value, default=1.5)
+    elif path.lower() in {"spacing.tab_width", "styles.tab_width"}:
+        cursor[keys[-1]] = _normalize_tab_width(value, default=4)
     else:
         cursor[keys[-1]] = value
 
@@ -889,6 +907,7 @@ def _theme_to_payload(theme_key: str, theme: Mapping[str, Any]) -> ThemePayload:
 
     style_map = {
         "line_spacing": _normalize_line_spacing(spacing.get("line_spacing"), default=1.5),
+        "tab_width": _normalize_tab_width(spacing.get("tab_width"), default=4),
         "paragraph_spacing_before": spacing.get("paragraph_spacing_before", 0),
         "paragraph_spacing_after": spacing.get("paragraph_spacing_after", 6),
         "heading_spacing_before": spacing.get("heading_spacing_before", 10),
@@ -988,6 +1007,9 @@ def _merge_theme_payload(base_theme: ThemePayload, request_theme: ThemePayload) 
     if request_theme.model_dump() == DEFAULT_THEME_MODEL.model_dump():
         return base_theme
     merged = _deep_merge(base_theme.model_dump(), request_dump)
+    if "styles" in request_dump:
+        # Do not leak stale style keys from previously applied server-side themes.
+        merged["styles"] = _as_dict(request_dump.get("styles"))
     return ThemePayload.model_validate(merged)
 
 
@@ -1022,6 +1044,8 @@ def _compose_security_payload(
         page_mode = "page_x"
 
     watermark = incoming.watermark
+    if watermark is not None:
+        watermark = watermark.model_copy(update={"position": "center"})
     if watermark is None and effective_watermark.get("enabled"):
         wm_type = "image" if str(effective_watermark.get("type", "text")).lower() == "image" else "text"
         wm_value = str(
@@ -1030,11 +1054,10 @@ def _compose_security_payload(
             else effective_watermark.get("text", "")
         ).strip()
         if wm_value:
-            wm_position = str(effective_watermark.get("position", "center")).lower()
             watermark = WatermarkPayload(
                 type=wm_type,
                 value=wm_value,
-                position="header" if wm_position in {"header", "top"} else "center",
+                position="center",
                 fontFamily=str(effective_watermark.get("font") or effective_watermark.get("font_family") or ""),
                 size=_as_float(effective_watermark.get("size"), 48.0),
                 color=str(effective_watermark.get("color") or ""),
@@ -1175,21 +1198,37 @@ def _build_theme_and_security(
         return merged_theme, merged_security, theme_key
 
 
-def _classify_line(line: str) -> Dict[str, Any]:
+def _normalize_tab_width(value: Any, default: int = 4) -> int:
+    try:
+        candidate = int(value)
+    except (TypeError, ValueError):
+        candidate = default
+    return max(1, min(12, candidate))
+
+
+def _indent_columns(line: str, *, tab_width: int) -> int:
+    expanded = line.replace("\t", " " * _normalize_tab_width(tab_width))
+    return len(expanded) - len(expanded.lstrip(" "))
+
+
+def _classify_line(line: str, *, tab_width: int = 4) -> Dict[str, Any]:
     stripped = line.rstrip("\n")
     if not stripped.strip():
         return {"type": "empty", "content": "", "marker": None, "indent_level": 0}
 
-    marker_match = MARKER_RE.match(line)
+    marker_match = MARKER_REGEX.match(line)
     if marker_match:
-        marker = marker_match.group(1).upper()
-        payload = marker_match.group(2).strip()
+        marker = normalize_marker(marker_match.group(1).upper())
+        raw_payload = marker_match.group(2).rstrip()
+        payload = raw_payload[1:] if raw_payload.startswith(" ") else raw_payload
         marker_type_map = {
-            "HEADING": "heading",
-            "SUBHEADING": "heading",
-            "SUB-SUBHEADING": "heading",
+            "H1": "heading",
+            "H2": "heading",
+            "H3": "heading",
+            "H4": "heading",
+            "H5": "heading",
+            "H6": "heading",
             "PARAGRAPH": "paragraph",
-            "PARA": "paragraph",
             "CENTER": "paragraph",
             "RIGHT": "paragraph",
             "JUSTIFY": "paragraph",
@@ -1214,22 +1253,29 @@ def _classify_line(line: str) -> Dict[str, Any]:
             "IMAGE": "image",
             "CODE": "code",
             "ASCII": "ascii",
+            "DIAGRAM": "ascii",
             "PAGEBREAK": "pagebreak",
-            "PAGE_BREAK": "pagebreak",
+            "LABEL": "paragraph",
+            "WATERMARK": "paragraph",
         }
         return {
             "type": marker_type_map.get(marker, marker.lower()),
             "content": payload,
             "marker": marker,
-            "indent_level": len(line) - len(line.lstrip(" ")),
+            "indent_level": _indent_columns(line, tab_width=tab_width),
         }
 
     return {
         "type": "paragraph",
-        "content": stripped.strip(),
+        "content": stripped.rstrip(),
         "marker": None,
-        "indent_level": len(line) - len(line.lstrip(" ")),
+        "indent_level": _indent_columns(line, tab_width=tab_width),
     }
+
+
+def _theme_tab_width(theme: ThemePayload) -> int:
+    styles = theme.styles if isinstance(theme.styles, dict) else {}
+    return _normalize_tab_width(styles.get("tab_width") or styles.get("tabWidth"), default=4)
 
 
 def create_app() -> FastAPI:
@@ -1277,17 +1323,27 @@ def create_app() -> FastAPI:
     async def version() -> Dict[str, str]:
         return {"name": "NotesForge API", "version": APP_VERSION}
 
+    @app.get("/api/markers")
+    async def markers_catalog() -> Dict[str, Any]:
+        return {
+            "success": True,
+            "markers": marker_catalog_payload(),
+        }
+
     @app.post("/api/analyze")
     async def analyze(req: AnalyzeRequest):
-        content = (req.text or req.content or "").strip()
-        if not content:
+        content = req.text or req.content or ""
+        if not content.strip():
             raise HTTPException(status_code=422, detail="text is required")
+
+        with state.lock:
+            tab_width = _normalize_tab_width(_as_dict(state.config.get("spacing")).get("tab_width"), default=4)
 
         lines = content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
         classifications: List[Dict[str, Any]] = []
         stats: Dict[str, int] = {}
         for idx, line in enumerate(lines, start=1):
-            classified = _classify_line(line)
+            classified = _classify_line(line, tab_width=tab_width)
             classified["line_number"] = idx
             classified["original"] = line
             stats[classified["type"]] = stats.get(classified["type"], 0) + 1
@@ -1303,7 +1359,6 @@ def create_app() -> FastAPI:
 
     @app.post("/api/preview", response_model=PreviewResponse)
     async def preview(req: PreviewRequest) -> PreviewResponse:
-        parsed = parse_notesforge(req.content)
         merged_theme, merged_security, _ = _build_theme_and_security(
             state,
             req.theme,
@@ -1315,6 +1370,7 @@ def create_app() -> FastAPI:
                 footerText=req.security.footerText,
             ),
         )
+        parsed = parse_notesforge(req.content, tab_width=_theme_tab_width(merged_theme))
         formatting = FormattingOptions(
             margins=req.formattingOptions.margins,
             lineSpacing=_normalize_line_spacing(
@@ -1344,8 +1400,8 @@ def create_app() -> FastAPI:
         if target_format not in SUPPORTED_EXPORT_FORMATS:
             raise HTTPException(status_code=400, detail=f"Unsupported format: {target_format}")
 
-        parsed = parse_notesforge(req.content)
         merged_theme, merged_security, _ = _build_theme_and_security(state, req.theme, req.security)
+        parsed = parse_notesforge(req.content, tab_width=_theme_tab_width(merged_theme))
         formatting = FormattingOptions(
             margins=merged_theme.margins,
             lineSpacing=_normalize_line_spacing(merged_theme.bodyStyle.lineHeight or 1.5, default=1.5),

@@ -4,6 +4,16 @@
     "version": "7.0.0",
     "theme": "corporate"
   },
+  "app_ui": {
+    "theme": "aurora",
+    "mode": "smooth",
+    "music": {
+      "enabled": false,
+      "volume": 0.35,
+      "playlist_mode": "smooth",
+      "autoplay": false
+    }
+  },
   "fonts": {
     "family": "Arial",
     "family_code": "Consolas",
@@ -48,6 +58,7 @@
   },
   "spacing": {
     "line_spacing": 1.6,
+    "tab_width": 8,
     "paragraph_spacing_before": 0,
     "paragraph_spacing_after": 10.0,
     "heading_spacing_before": 14.0,

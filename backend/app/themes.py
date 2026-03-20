@@ -114,8 +114,7 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
     styles = theme.styles if isinstance(theme.styles, dict) else {}
     body_size = theme.bodyStyle.size or 12
     line_height = formatting.lineSpacing or theme.bodyStyle.lineHeight or 1.5
-    allowed_spacing = [1.0, 1.15, 1.5, 2.0]
-    line_height = min(allowed_spacing, key=lambda item: abs(item - float(line_height)))
+    line_height = max(1.0, min(3.0, float(line_height)))
     margins = formatting.margins
     table_border = theme.tableStyle.borderColor or "#ddd"
     table_width = theme.tableStyle.borderWidth or 1
@@ -327,11 +326,6 @@ def css_from_theme(theme: ThemePayload, formatting: FormattingOptions) -> str:
 def watermark_html(watermark: WatermarkPayload | None) -> str:
     if not watermark or not watermark.value:
         return ""
-    position_class = (
-        " nf-watermark--header"
-        if watermark.position == "header"
-        else ""
-    )
     if watermark.type == "text":
         font_family = escape(watermark.fontFamily or "Calibri", quote=True)
         font_size = max(18.0, float(watermark.size or 42))
@@ -339,7 +333,7 @@ def watermark_html(watermark: WatermarkPayload | None) -> str:
         opacity = min(1.0, max(0.03, float(watermark.opacity or 0.14)))
         rotation = float(watermark.rotation if watermark.rotation is not None else -24)
         return (
-            f'<div class="nf-watermark{position_class}" aria-hidden="true">'
+            '<div class="nf-watermark" aria-hidden="true">'
             f'<span style="font-family:{font_family};font-size:{font_size:.0f}px;'
             f"font-weight:700;opacity:{opacity:.3f};transform:rotate({rotation:.0f}deg);"
             f'color:{color};">{escape(watermark.value)}</span></div>'
@@ -350,7 +344,7 @@ def watermark_html(watermark: WatermarkPayload | None) -> str:
     scale = min(100.0, max(10.0, float(watermark.scale or 38.0)))
     rotation = float(watermark.rotation if watermark.rotation is not None else 0)
     return (
-        f'<div class="nf-watermark{position_class}" aria-hidden="true">'
+        '<div class="nf-watermark" aria-hidden="true">'
         f'<img src="{src}" alt="" style="max-width:{scale:.0f}%;opacity:{opacity:.3f};transform:rotate({rotation:.0f}deg);"/>'
         "</div>"
     )

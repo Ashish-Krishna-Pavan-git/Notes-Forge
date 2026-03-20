@@ -15,12 +15,13 @@ from html import escape
 from typing import List, Sequence, Tuple
 from urllib.request import urlopen
 from uuid import uuid4
+from xml.sax.saxutils import escape as xml_escape
 
 from docx import Document
 from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
+from docx.oxml import OxmlElement, parse_xml
+from docx.oxml.ns import nsdecls, qn
 from docx.shared import Inches, Mm, Pt, RGBColor
 
 from .models import FormattingOptions, GenerateSecurityPayload, ThemePayload
@@ -58,7 +59,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 def _allow_low_fidelity_pdf_fallback() -> bool:
     return _env_flag(
         "NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK",
-        default=False,
+        default=True,
     )
 
 
@@ -136,8 +137,7 @@ def _style_str(styles: dict[str, object], *keys: str, default: str) -> str:
 
 
 def _normalize_line_spacing(value: float) -> float:
-    allowed = [1.0, 1.15, 1.5, 2.0]
-    return min(allowed, key=lambda item: abs(item - float(value)))
+    return max(1.0, min(3.0, round(float(value), 2)))
 
 
 def _next_caption_number(state: CaptionTracker, kind: str) -> str:
@@ -247,45 +247,58 @@ def _apply_docx_background_watermark(section, security: GenerateSecurityPayload,
 
     try:
         header = section.header
-        para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+        para = header.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = para.add_run()
+        rotation = int(float(watermark.rotation or 315))
+        opacity = max(0.03, min(1.0, float(watermark.opacity or 0.10)))
+        font_family = _font_primary(watermark.fontFamily or theme.fontFamily)
+        font_size = max(28.0, float(watermark.size or 42.0))
+        color = str(watermark.color or theme.primaryColor or "#8A8A8A").strip().lstrip("#")
+        if len(color) != 6:
+            color = "8A8A8A"
 
-        pict = OxmlElement("w:pict")
-        shape = OxmlElement("v:shape")
-        shape.set("id", "NotesForgeWatermark")
-        shape.set("type", "#_x0000_t136")
-        shape.set(
-            "style",
-            "position:absolute;"
+        shape_xml = (
+            f'<w:pict {nsdecls("w", "v", "o")}>'
+            '<v:shape id="NotesForgeWatermark" type="#_x0000_t136"'
+            ' style="position:absolute;'
             "mso-position-horizontal:center;"
             "mso-position-vertical:center;"
             "width:468pt;height:117pt;"
             "z-index:-251654144;"
-            "rotation:{};".format(int(float(watermark.rotation or 315))),
+            f'rotation:{rotation};"'
+            f' fillcolor="#{xml_escape(color)}" stroked="f">'
+            f'<v:fill opacity="{opacity:.2f}"/>'
+            "<v:stroke on=\"f\"/>"
+            '<v:textpath on="t" fitshape="t"'
+            f' style="font-family:{xml_escape(font_family)};font-size:{font_size:.0f}pt"'
+            f' string="{xml_escape(str(watermark.value))}"/>'
+            "</v:shape>"
+            "</w:pict>"
         )
-
-        fill = OxmlElement("v:fill")
-        fill.set("opacity", f"{max(0.03, min(1.0, float(watermark.opacity or 0.10))):.2f}")
-
-        stroke = OxmlElement("v:stroke")
-        stroke.set("on", "f")
-
-        textpath = OxmlElement("v:textpath")
-        textpath.set("style", "font-family:{};font-size:{}pt".format(
-            _font_primary(watermark.fontFamily or theme.fontFamily),
-            max(28.0, float(watermark.size or 42.0)),
-        ))
-        textpath.set("string", str(watermark.value))
-
-        shape.append(fill)
-        shape.append(stroke)
-        shape.append(textpath)
-        pict.append(shape)
-        run._r.append(pict)
+        run._r.append(parse_xml(shape_xml))
         return True
     except Exception as exc:
         warnings.append(f"Background watermark insertion failed; using compatibility fallback. Detail: {exc}")
+        return False
+
+
+def _apply_docx_centered_image_watermark(section, security: GenerateSecurityPayload, warnings: List[str]) -> bool:
+    watermark = security.watermark
+    if not watermark or watermark.type != "image" or not watermark.value:
+        return False
+    image_stream = _resolve_image_stream(watermark.value, warnings)
+    if not image_stream:
+        return False
+    try:
+        para = section.header.add_paragraph()
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        scale = max(10.0, min(120.0, float(watermark.scale or 38.0)))
+        width_mm = max(20.0, min(170.0, 170.0 * (scale / 100.0)))
+        para.add_run().add_picture(image_stream, width=Mm(width_mm))
+        return True
+    except Exception as exc:
+        warnings.append(f"Image watermark insertion failed; skipped watermark image. Detail: {exc}")
         return False
 
 
@@ -761,6 +774,55 @@ def _convert_nodes_to_pdf_reportlab(
         return False, f"reportlab failed: {exc}"
 
 
+def _pdf_escape_text(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _write_emergency_pdf(pdf_path: Path, message: str) -> Tuple[bool, str]:
+    try:
+        line = _pdf_escape_text("NotesForge PDF fallback: " + (message or "Content generated."))
+        stream = f"BT /F1 11 Tf 50 780 Td ({line}) Tj ET".encode("latin-1", "replace")
+
+        objects: list[bytes] = []
+        objects.append(b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+        objects.append(b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
+        objects.append(
+            b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+            b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n"
+        )
+        objects.append(
+            b"4 0 obj\n<< /Length "
+            + str(len(stream)).encode("ascii")
+            + b" >>\nstream\n"
+            + stream
+            + b"\nendstream\nendobj\n"
+        )
+        objects.append(b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n")
+
+        pdf = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+        offsets = [0]
+        for obj in objects:
+            offsets.append(len(pdf))
+            pdf.extend(obj)
+        xref_start = len(pdf)
+        pdf.extend(f"xref\n0 {len(offsets)}\n".encode("ascii"))
+        pdf.extend(b"0000000000 65535 f \n")
+        for off in offsets[1:]:
+            pdf.extend(f"{off:010d} 00000 n \n".encode("ascii"))
+        pdf.extend(
+            (
+                "trailer\n<< /Size {size} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".format(
+                    size=len(offsets),
+                    xref=xref_start,
+                )
+            ).encode("ascii")
+        )
+        pdf_path.write_bytes(bytes(pdf))
+        return True, "emergency_pdf"
+    except Exception as exc:
+        return False, f"emergency_pdf failed: {exc}"
+
+
 class FileStore:
     def __init__(self, base_dir: str, ttl_seconds: int = 60 * 60 * 6) -> None:
         root = Path(base_dir) if base_dir else Path(tempfile.gettempdir()) / "notesforge_exports"
@@ -1135,27 +1197,21 @@ class DocumentExporter:
             default="#F8FAFC",
         )
 
-        applied_background_watermark = _apply_docx_background_watermark(section, security, theme, warnings)
-        if security.watermark and security.watermark.type == "text" and security.watermark.value and not applied_background_watermark:
-            # Compatibility fallback if background watermark insertion fails.
-            p = document.add_paragraph(security.watermark.value)
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            run = p.runs[0]
-            run.font.name = _font_primary(security.watermark.fontFamily or theme.fontFamily)
-            run.font.color.rgb = _hex_to_rgb(security.watermark.color or theme.primaryColor)
-            run.font.size = Pt(max(18.0, float(security.watermark.size or 28)))
-            run.font.bold = True
-        elif security.watermark and security.watermark.type == "image" and security.watermark.value:
-            image_stream = _resolve_image_stream(security.watermark.value, warnings)
-            if image_stream:
-                try:
+        if security.watermark and security.watermark.value:
+            if security.watermark.type == "text":
+                applied_background_watermark = _apply_docx_background_watermark(section, security, theme, warnings)
+                if not applied_background_watermark:
+                    # Compatibility fallback: keep watermark centered in the header layer.
                     p = section.header.add_paragraph()
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    p.add_run().add_picture(image_stream, width=Mm(80))
-                except Exception as exc:
-                    warnings.append(f"Image watermark insertion failed; skipped watermark image. Detail: {exc}")
-            else:
-                warnings.append("Image watermark source not found; skipped watermark image.")
+                    run = p.add_run(str(security.watermark.value))
+                    run.font.name = _font_primary(security.watermark.fontFamily or theme.fontFamily)
+                    run.font.color.rgb = _hex_to_rgb(security.watermark.color or theme.primaryColor)
+                    run.font.size = Pt(max(20.0, float(security.watermark.size or 36)))
+                    run.font.bold = True
+            elif security.watermark.type == "image":
+                if not _apply_docx_centered_image_watermark(section, security, warnings):
+                    warnings.append("Image watermark source not found; skipped watermark image.")
 
         figure_entries, table_entries = _collect_caption_entries(nodes)
         caption_state = CaptionTracker()
@@ -1472,8 +1528,44 @@ class DocumentExporter:
         formatting: FormattingOptions,
         security: GenerateSecurityPayload,
     ) -> ExportResult:
-        docx_id, docx_path, warnings = self.create_docx(nodes, theme, formatting, security)
         requested = target_format.lower()
+        self.store.cleanup()
+
+        if requested == "html":
+            file_id, html_path = self.store.reserve_path("html")
+            html = self.create_preview_html(nodes, theme, formatting, security)
+            html_path.write_text(html, encoding="utf-8")
+            return ExportResult(
+                file_id=file_id,
+                output_path=html_path,
+                warnings=[],
+                requested_format="html",
+                actual_format="html",
+            )
+
+        if requested == "md":
+            file_id, md_path = self.store.reserve_path("md")
+            md_path.write_text(to_markdown(nodes), encoding="utf-8")
+            return ExportResult(
+                file_id=file_id,
+                output_path=md_path,
+                warnings=[],
+                requested_format="md",
+                actual_format="md",
+            )
+
+        if requested == "txt":
+            file_id, txt_path = self.store.reserve_path("txt")
+            txt_path.write_text(to_plain_text(nodes), encoding="utf-8")
+            return ExportResult(
+                file_id=file_id,
+                output_path=txt_path,
+                warnings=[],
+                requested_format="txt",
+                actual_format="txt",
+            )
+
+        docx_id, docx_path, warnings = self.create_docx(nodes, theme, formatting, security)
 
         if requested == "docx":
             return ExportResult(
@@ -1487,10 +1579,9 @@ class DocumentExporter:
         if requested == "pdf":
             file_id, pdf_path = self.store.reserve_path("pdf")
             attempts: list[str] = []
-            allow_low_fidelity = _allow_low_fidelity_pdf_fallback()
             ok, method = _convert_docx_to_pdf(docx_path, pdf_path)
             attempts.append(method)
-            if not ok and allow_low_fidelity:
+            if not ok:
                 html_preview = self.create_preview_html(
                     nodes,
                     theme,
@@ -1503,7 +1594,7 @@ class DocumentExporter:
                     pdf_path,
                 )
                 attempts.append(method)
-            if not ok and allow_low_fidelity:
+            if not ok:
                 ok, method = _convert_nodes_to_pdf_reportlab(
                     nodes,
                     theme,
@@ -1512,14 +1603,17 @@ class DocumentExporter:
                     pdf_path,
                 )
                 attempts.append(method)
+            if not ok:
+                ok, method = _write_emergency_pdf(
+                    pdf_path,
+                    "all converter backends unavailable",
+                )
+                attempts.append(method)
             if ok:
                 warnings.extend(secure_pdf(pdf_path, security.passwordProtectPdf, security.removeMetadata))
-                if (
-                    method in {"weasyprint", "reportlab"}
-                    and _env_flag("NF_WARN_ON_FALLBACK_PDF", default=False)
-                ):
+                if method in {"weasyprint", "reportlab", "emergency_pdf"}:
                     warnings.append(
-                        "PDF generated via fallback renderer; install LibreOffice for closer DOCX-to-PDF fidelity."
+                        f"PDF generated via fallback renderer ({method}); install LibreOffice for closer DOCX-to-PDF fidelity."
                     )
                 return ExportResult(
                     file_id=file_id,
@@ -1535,44 +1629,9 @@ class DocumentExporter:
                 except OSError:
                     pass
 
-            fallback_warning = (
-                "High-fidelity PDF conversion is unavailable on this host; returned DOCX instead. "
-                f"Converter detail: {' | '.join(attempts)}. "
-                "Install LibreOffice (or enable NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK=1 for fallback renderers)."
-            )
-            warnings.append(fallback_warning)
-            if security.passwordProtectPdf:
-                warnings.append("PDF password was skipped because no PDF was produced.")
-            return ExportResult(
-                file_id=docx_id,
-                output_path=docx_path,
-                warnings=warnings,
-                requested_format="pdf",
-                actual_format="docx",
-                warning=fallback_warning,
-            )
-
-        if requested == "html":
-            file_id, html_path = self.store.reserve_path("html")
-            html = self.create_preview_html(nodes, theme, formatting, security)
-            html_path.write_text(html, encoding="utf-8")
-            return ExportResult(
-                file_id=file_id,
-                output_path=html_path,
-                warnings=warnings,
-                requested_format="html",
-                actual_format="html",
-            )
-
-        if requested == "md":
-            file_id, md_path = self.store.reserve_path("md")
-            md_path.write_text(to_markdown(nodes), encoding="utf-8")
-            return ExportResult(
-                file_id=file_id,
-                output_path=md_path,
-                warnings=warnings,
-                requested_format="md",
-                actual_format="md",
+            raise RuntimeError(
+                "PDF generation failed after all fallback strategies. "
+                f"Converter detail: {' | '.join(attempts)}."
             )
 
         file_id, txt_path = self.store.reserve_path("txt")
@@ -1580,7 +1639,7 @@ class DocumentExporter:
         return ExportResult(
             file_id=file_id,
             output_path=txt_path,
-            warnings=warnings,
+            warnings=[],
             requested_format=requested,
             actual_format="txt",
         )

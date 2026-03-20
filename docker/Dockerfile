@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK=0
+    NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice \
@@ -15,6 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-noto-core \
     fonts-noto-cjk \
     fonts-noto-color-emoji \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    libffi-dev \
     ghostscript \
     && rm -rf /var/lib/apt/lists/*
 

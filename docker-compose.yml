@@ -10,7 +10,7 @@ services:
       - FASTAPI_PORT=10000
       - DOCX_TEMP_DIR=/tmp/notesforge
       - STORAGE_BACKEND=local
-      - NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK=0
+      - NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK=1
 
   frontend:
     image: node:20-alpine

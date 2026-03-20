@@ -36,8 +36,7 @@ class BodyStyle(BaseModel):
             candidate = float(value)
         except (TypeError, ValueError):
             return 1.5
-        allowed = [1.0, 1.15, 1.5, 2.0]
-        return min(allowed, key=lambda item: abs(item - candidate))
+        return max(1.0, min(3.0, round(candidate, 2)))
 
 
 class TableStyle(BaseModel):
@@ -77,14 +76,13 @@ class FormattingOptions(BaseModel):
             candidate = float(value)
         except (TypeError, ValueError):
             candidate = 1.5
-        allowed = [1.0, 1.15, 1.5, 2.0]
-        return min(allowed, key=lambda item: abs(item - candidate))
+        return max(1.0, min(3.0, round(candidate, 2)))
 
 
 class WatermarkPayload(BaseModel):
     type: Literal["text", "image"] = "text"
     value: str = ""
-    position: Literal["center", "header"] = "center"
+    position: Literal["center", "header", "top", "bottom", "left", "right"] = "center"
     fontFamily: Optional[str] = None
     size: Optional[float] = None
     color: Optional[str] = None

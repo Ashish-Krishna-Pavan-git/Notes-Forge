@@ -7,39 +7,45 @@ from .models import RegenerateTemplateRequest, TemplateDefinition
 from .themes import PROFESSIONAL_THEME
 
 
-SAMPLE_EXAMPLE = """H1: NotesForge - Cybersecurity Incident Summary
-H2: Executive Summary
-PARAGRAPH: A brief summary of the incident, its impact, and immediate actions taken.
-H2: Details
-PARAGRAPH: The incident occurred on 2026-02-24 at 22:15 IST. Affected systems included DB server and internal API.
+SAMPLE_EXAMPLE = """COVER_PAGE: NotesForge - Cybersecurity Incident Summary
+ABSTRACT_PAGE: Concise incident abstract with impact and containment status.
+TOC:
+LIST_OF_TABLES:
+LIST_OF_FIGURES:
+CHAPTER: Executive Summary
+PARAGRAPH: A brief summary of the incident, impact, and immediate actions.
+CHAPTER: Timeline and Details
+PARAGRAPH: Incident started on 2026-02-24 22:15 IST and affected API and DB services.
 BULLET: Initial detection via IDS alert.
-BULLET: Systems isolated.
-BULLET: Forensic snapshot taken.
-H2: Indicators of Compromise (IOCs)
+BULLET: \\tSOC escalation and triage.
+BULLET: \\tHost isolation and forensic snapshot.
+CHAPTER: Indicators of Compromise
 TABLE: Type | Value | Notes
 TABLE: IP | 203.0.113.45 | Suspicious outbound traffic
 TABLE: Hash | e3b0c442... | Malware sample hash
-H2: Recommendations
-NUMBERED: Rotate compromised credentials.
-NUMBERED: Patch vulnerable services.
-NUMBERED: Run a full internal audit.
+TABLE_CAPTION: IOCs captured during containment
+FIGURE: https://example.com/incident-flow.png | Incident flow | center | 80
+CHAPTER: Containment Commands
 CODE: curl -X GET "https://internal-api.local/health" -H "Authorization: Bearer <token>"
+CODE: docker compose logs api --tail 100
 PAGEBREAK:
-H2: Appendix
-ASCII: +-----------------------+
-ASCII: | Incident Flow Diagram |
-ASCII: +-----------------------+
+REFERENCES:
+REFERENCE: [1] SOC Incident Runbook
+APPENDIX: Diagram
+DIAGRAM: +-----------------------+
+DIAGRAM: | Incident Flow Diagram |
+DIAGRAM: +-----------------------+
 """
 
 
 PROMPT_FORMAT = (
-    "Using strict NotesForge marker syntax (H1-H6, PARAGRAPH, CENTER, RIGHT, JUSTIFY, BULLET, NUMBERED, "
-    "TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, ASCII, PAGEBREAK, COVER_PAGE, CERTIFICATE_PAGE, "
-    "DECLARATION_PAGE, ACKNOWLEDGEMENT_PAGE, ABSTRACT_PAGE, TOC, LIST_OF_TABLES, LIST_OF_FIGURES, CHAPTER, "
-    "REFERENCES, REFERENCE, APPENDIX), generate a structured document about '{topic}' for the '{templateName}' template. "
-    "Every non-empty line must start with a marker and a colon. No free text lines. "
-    "Keep sections concise, include TABLE and CODE where relevant, and produce deterministic output. "
-    "Output ONLY NotesForge markers content with no commentary."
+    "Using strict NotesForge marker syntax (H1-H6, HEADING/SUBHEADING aliases, PARAGRAPH, CENTER, RIGHT, JUSTIFY, "
+    "BULLET, NUMBERED, TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, ASCII/DIAGRAM, PAGEBREAK, "
+    "COVER_PAGE, CERTIFICATE_PAGE, DECLARATION_PAGE, ACKNOWLEDGEMENT_PAGE, ABSTRACT_PAGE, TOC, LIST_OF_TABLES, "
+    "LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE, APPENDIX), generate a structured document about '{topic}' "
+    "for the '{templateName}' template. Every non-empty line must start with a marker and colon. Preserve meaningful "
+    "indentation in list/code payloads. Keep sections concise, include TABLE + FIGURE + CODE where relevant, and output "
+    "ONLY marker lines with no commentary."
 )
 
 

@@ -60,6 +60,13 @@ import {
   Monitor,
   AlertTriangle,
   ImagePlus,
+  Music2,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -160,7 +167,13 @@ type TabId =
 type EditorWorkspacePageProps = {
   initialTab?: TabId;
 };
-type SettingsTabId = "themes" | "fonts" | "colors" | "spacing" | "page";
+type SettingsTabId =
+  | "themes"
+  | "fonts"
+  | "colors"
+  | "spacing"
+  | "page"
+  | "experience";
 type ConnectionStatus = "checking" | "waking" | "online" | "error";
 type ExportFormat = "docx" | "pdf" | "md" | "html" | "txt";
 
@@ -238,6 +251,16 @@ interface PageConfig {
 
 interface AppConfigState {
   app?: { name?: string; version?: string; theme?: string };
+  app_ui?: {
+    theme?: string;
+    mode?: string;
+    music?: {
+      enabled?: boolean;
+      volume?: number;
+      playlist_mode?: string;
+      autoplay?: boolean;
+    };
+  };
   fonts: FontsConfig;
   header: HeaderFooterConfig;
   footer: HeaderFooterConfig;
@@ -249,11 +272,51 @@ interface AppConfigState {
   pageNumberPlacement?: string;
 }
 
+interface MarkerCatalogEntry {
+  key: string;
+  aliases?: string[];
+  category?: string;
+  syntax?: string;
+  example?: string;
+  description?: string;
+  payloadRules?: string;
+}
+
+interface MusicTrack {
+  title: string;
+  file: string;
+  artist?: string;
+  duration?: string;
+}
+
+type MusicManifest = Partial<
+  Record<
+    ModeName,
+    Array<
+      | string
+      | {
+          title?: string;
+          file?: string;
+          artist?: string;
+          duration?: string;
+        }
+    >
+  >
+>;
+
+type ModeName =
+  | "smooth"
+  | "calming"
+  | "energetic"
+  | "gaming"
+  | "vibing"
+  | "focus";
+
 // ═══════════════════════════════════════════════════════════════════
 // CONSTANTS & MAPS
 // ═══════════════════════════════════════════════════════════════════
 
-const VALID_MARKERS = new Set([
+const FALLBACK_MARKERS = [
   "HEADING", "H1", "SUBHEADING", "H2", "SUB-SUBHEADING", "H3",
   "H4", "H5", "H6", "PARAGRAPH", "PARA", "BULLET", "NUMBERED",
   "CODE", "TABLE", "TABLE_CAPTION", "QUOTE", "NOTE", "IMPORTANT",
@@ -262,45 +325,21 @@ const VALID_MARKERS = new Set([
   "CENTER", "RIGHT", "JUSTIFY", "WATERMARK", "PAGEBREAK",
   "COVER_PAGE", "CERTIFICATE_PAGE", "DECLARATION_PAGE", "ACKNOWLEDGEMENT_PAGE",
   "ABSTRACT_PAGE", "CHAPTER", "REFERENCES", "REFERENCE", "APPENDIX",
-]);
+] as const;
 
-const MARKER_AUTOCOMPLETE = [
-  "H1:",
-  "H2:",
-  "H3:",
-  "H4:",
-  "H5:",
-  "H6:",
-  "PARAGRAPH:",
-  "CENTER:",
-  "RIGHT:",
-  "JUSTIFY:",
-  "BULLET:",
-  "NUMBERED:",
-  "CODE:",
-  "ASCII:",
-  "TABLE:",
-  "TABLE_CAPTION:",
-  "IMAGE:",
-  "FIGURE:",
-  "FIGURE_CAPTION:",
-  "LINK:",
-  "HIGHLIGHT:",
-  "FOOTNOTE:",
-  "TOC:",
-  "LIST_OF_TABLES:",
-  "LIST_OF_FIGURES:",
-  "COVER_PAGE:",
-  "CERTIFICATE_PAGE:",
-  "DECLARATION_PAGE:",
-  "ACKNOWLEDGEMENT_PAGE:",
-  "ABSTRACT_PAGE:",
-  "CHAPTER:",
-  "REFERENCES:",
-  "REFERENCE:",
-  "APPENDIX:",
-  "PAGEBREAK:",
-];
+const FALLBACK_MARKER_CATALOG: MarkerCatalogEntry[] = FALLBACK_MARKERS.map(
+  (marker) => ({
+    key: marker,
+    category: "general",
+    syntax: `${marker}: value`,
+    example: `${marker}: "Sample"`,
+    description: `${marker} marker`,
+    payloadRules: "Marker-prefixed line.",
+    aliases: [],
+  })
+);
+
+const MARKER_AUTOCOMPLETE = FALLBACK_MARKERS.map((marker) => `${marker}:`);
 
 const PIPE_REQUIRED_MARKERS = new Set(["IMAGE", "FIGURE", "LINK", "HIGHLIGHT"]);
 
@@ -654,6 +693,180 @@ const FALLBACK_THEME_CATALOG: Record<string, ThemeInfo> = {
   },
 };
 
+const APP_UI_THEMES = {
+  aurora: {
+    name: "Aurora Flow",
+    rootLight: "bg-[radial-gradient(circle_at_20%_0%,#dbeafe_0%,#f8fafc_42%,#fdf2f8_100%)]",
+    rootDark: "bg-[radial-gradient(circle_at_20%_0%,#0f172a_0%,#111827_48%,#1f2937_100%)]",
+    headerLight: "bg-gradient-to-r from-sky-600 via-cyan-600 to-blue-700",
+    headerDark: "bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950",
+  },
+  ember: {
+    name: "Ember Studio",
+    rootLight: "bg-[radial-gradient(circle_at_15%_10%,#ffedd5_0%,#fef9c3_42%,#fff7ed_100%)]",
+    rootDark: "bg-[radial-gradient(circle_at_15%_10%,#292524_0%,#1c1917_55%,#111827_100%)]",
+    headerLight: "bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600",
+    headerDark: "bg-gradient-to-r from-stone-900 via-zinc-900 to-rose-950",
+  },
+  mintwave: {
+    name: "Mint Wave",
+    rootLight: "bg-[radial-gradient(circle_at_80%_0%,#dcfce7_0%,#ecfeff_44%,#f8fafc_100%)]",
+    rootDark: "bg-[radial-gradient(circle_at_80%_0%,#052e2b_0%,#0f172a_46%,#111827_100%)]",
+    headerLight: "bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700",
+    headerDark: "bg-gradient-to-r from-emerald-950 via-teal-950 to-cyan-950",
+  },
+  cobalt: {
+    name: "Cobalt Grid",
+    rootLight: "bg-[radial-gradient(circle_at_70%_0%,#dbeafe_0%,#eef2ff_44%,#f8fafc_100%)]",
+    rootDark: "bg-[radial-gradient(circle_at_70%_0%,#172554_0%,#111827_50%,#020617_100%)]",
+    headerLight: "bg-gradient-to-r from-indigo-700 via-blue-700 to-sky-700",
+    headerDark: "bg-gradient-to-r from-indigo-950 via-slate-900 to-sky-950",
+  },
+} as const;
+
+const MODE_PROFILES: Record<
+  ModeName,
+  {
+    label: string;
+    pill: string;
+    hint: string;
+    shellLight: string;
+    shellDark: string;
+  }
+> = {
+  smooth: {
+    label: "Smooth",
+    pill: "from-sky-500 to-blue-600",
+    hint: "Balanced transitions and neutral focus.",
+    shellLight: "ring-sky-200/40",
+    shellDark: "ring-sky-900/30",
+  },
+  calming: {
+    label: "Calming",
+    pill: "from-emerald-500 to-teal-600",
+    hint: "Softer contrast and slower visual rhythm.",
+    shellLight: "ring-emerald-200/40",
+    shellDark: "ring-emerald-900/30",
+  },
+  energetic: {
+    label: "Energetic",
+    pill: "from-orange-500 to-rose-600",
+    hint: "Higher contrast and active visual tone.",
+    shellLight: "ring-orange-200/40",
+    shellDark: "ring-orange-900/30",
+  },
+  gaming: {
+    label: "Gaming",
+    pill: "from-fuchsia-600 to-indigo-700",
+    hint: "Bold neon-like accents for high intensity.",
+    shellLight: "ring-fuchsia-200/40",
+    shellDark: "ring-fuchsia-900/30",
+  },
+  vibing: {
+    label: "Vibing",
+    pill: "from-pink-500 to-purple-600",
+    hint: "Expressive gradients and creative mood.",
+    shellLight: "ring-pink-200/40",
+    shellDark: "ring-pink-900/30",
+  },
+  focus: {
+    label: "Focus",
+    pill: "from-slate-600 to-slate-800",
+    hint: "Low distraction and utilitarian layout.",
+    shellLight: "ring-slate-300/50",
+    shellDark: "ring-slate-800/40",
+  },
+};
+
+const MODE_ORDER: ModeName[] = [
+  "smooth",
+  "calming",
+  "energetic",
+  "gaming",
+  "vibing",
+  "focus",
+];
+
+const MUSIC_MANIFEST_URL = "/music/manifest.json";
+
+const EMPTY_MUSIC_LIBRARY: Record<ModeName, MusicTrack[]> = {
+  smooth: [],
+  calming: [],
+  energetic: [],
+  gaming: [],
+  vibing: [],
+  focus: [],
+};
+
+const DEFAULT_CONFIG: AppConfigState = {
+  fonts: { family: "Times New Roman", family_code: "JetBrains Mono" },
+  app_ui: {
+    theme: "aurora",
+    mode: "smooth",
+    music: {
+      enabled: false,
+      volume: 0.35,
+      playlist_mode: "smooth",
+      autoplay: false,
+    },
+  },
+  header: { enabled: true },
+  footer: { enabled: true },
+  page: {},
+  colors: {},
+  spacing: { line_spacing: 1.5, tab_width: 4 },
+  watermark: { enabled: false, type: "text", position: "center" },
+};
+
+function normalizeMode(value: unknown): ModeName {
+  const raw = String(value || "").trim().toLowerCase() as ModeName;
+  return MODE_ORDER.includes(raw) ? raw : "smooth";
+}
+
+function normalizeTabWidth(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 4;
+  return Math.min(12, Math.max(1, Math.round(parsed)));
+}
+
+function normalizeAppConfig(value: Partial<AppConfigState> | null | undefined): AppConfigState {
+  const base = {
+    ...DEFAULT_CONFIG,
+    ...(value || {}),
+  } as AppConfigState;
+  const mode = normalizeMode(base.app_ui?.mode);
+  const themeKey = (base.app_ui?.theme || "aurora").toLowerCase();
+  const uiTheme =
+    themeKey in APP_UI_THEMES ? themeKey : "aurora";
+  return {
+    ...base,
+    app_ui: {
+      ...(DEFAULT_CONFIG.app_ui || {}),
+      ...(base.app_ui || {}),
+      theme: uiTheme,
+      mode,
+      music: {
+        ...(DEFAULT_CONFIG.app_ui?.music || {}),
+        ...(base.app_ui?.music || {}),
+        playlist_mode: mode,
+        autoplay: false,
+      },
+    },
+    spacing: {
+      ...(DEFAULT_CONFIG.spacing || {}),
+      ...(base.spacing || {}),
+      line_spacing: normalizeLineSpacing(
+        Number(base.spacing?.line_spacing || 1.5)
+      ),
+      tab_width: normalizeTabWidth(base.spacing?.tab_width),
+    },
+    watermark: {
+      ...(base.watermark || {}),
+      position: "center",
+    },
+  };
+}
+
 function mergeThemeIntoConfig(
   prev: AppConfigState,
   themeKey: string,
@@ -767,12 +980,6 @@ function slugifyIdentifier(value: string, fallback: string): string {
     .replace(/\s+/g, "_")
     .replace(/[^a-z0-9_]/g, "");
   return cleaned || fallback;
-}
-
-function asObject(value: unknown): Record<string, any> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, any>)
-    : {};
 }
 
 function pickString(...values: unknown[]): string | undefined {
@@ -1011,8 +1218,30 @@ NUMBERED: Verify recovery and monitor.`,
 };
 
 const SAMPLE_PROMPT_IMPORT = {
-  prompt:
-    "You are NotesForge Formatter v7.0.0. Output only strict marker lines. Use H1-H6, PARAGRAPH, BULLET, NUMBERED, TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, ASCII, PAGEBREAK, TOC, LIST_OF_TABLES, LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE, COVER_PAGE, ABSTRACT_PAGE, APPENDIX.",
+  prompt: `You are NotesForge Formatter vNext.
+Return ONLY strict marker lines. No markdown fences, no commentary, no prose outside markers.
+
+Rules:
+1. Every non-empty line must be MARKER: payload.
+2. Preserve intended indentation and tabs inside payload text.
+3. Use deterministic section structure: heading -> details -> table/figure/code where relevant -> references.
+4. Keep language concise and professional.
+
+Required marker coverage when relevant:
+H1-H6, PARAGRAPH, CENTER, RIGHT, JUSTIFY, BULLET, NUMBERED, CODE, ASCII, DIAGRAM, TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, NOTE, IMPORTANT, LINK, HIGHLIGHT, FOOTNOTE, TOC, LIST_OF_TABLES, LIST_OF_FIGURES, COVER_PAGE, ABSTRACT_PAGE, CHAPTER, REFERENCES, REFERENCE, APPENDIX, PAGEBREAK.
+
+Example output:
+H1: Incident Summary
+H2: Timeline
+PARAGRAPH: Primary event sequence.
+TABLE: Time | Event | Owner
+TABLE: 22:15 | Alert triggered | SOC
+TABLE_CAPTION: Incident timeline
+FIGURE: https://example.com/flow.png | Response flow | center | 80
+CODE: curl -X GET "https://internal-api.local/health"
+PAGEBREAK:
+REFERENCES:
+REFERENCE: [1] Internal SOC report`,
 };
 
 const DEFAULT_FONT_OPTIONS = [
@@ -1065,82 +1294,55 @@ const DEFAULT_CODE_FONT_OPTIONS = [
 // FALLBACK AI PROMPT
 // ═══════════════════════════════════════════════════════════════════
 
-const FALLBACK_PROMPT = `You are NotesForge Formatter v7.0.0.
+const FALLBACK_PROMPT = `You are NotesForge Formatter vNext.
 
 TASK:
-Convert user input into STRICT NotesForge marker syntax for direct export.
+Convert user input into strict NotesForge marker syntax for direct export.
 
-STRICT RULES:
-1. Every non-empty line MUST start with a valid marker and colon.
-2. No markdown fences, no explanations, no extra commentary.
-3. Use deterministic structure and concise professional language.
-4. Keep all data in marker lines only (no free text lines).
+NON-NEGOTIABLE RULES:
+1. Every non-empty line MUST be MARKER: payload.
+2. No markdown fences, no explanatory text, no JSON wrapper.
+3. Keep indentation/tabs when they are semantically meaningful (lists/code/aligned text).
+4. Use concise professional wording and deterministic section order.
 
-VALID MARKERS:
-H1:
-H2:
-H3:
-H4:
-H5:
-H6:
-PARAGRAPH:
-CENTER:
-RIGHT:
-JUSTIFY:
-BULLET:
-NUMBERED:
-CODE:
-ASCII:
-TABLE:
-TABLE_CAPTION:
-FIGURE:
-FIGURE_CAPTION:
-LIST_OF_TABLES:
-LIST_OF_FIGURES:
-CHAPTER:
-REFERENCES:
-REFERENCE:
-COVER_PAGE:
-CERTIFICATE_PAGE:
-DECLARATION_PAGE:
-ACKNOWLEDGEMENT_PAGE:
-ABSTRACT_PAGE:
-APPENDIX:
-PAGEBREAK:
-NOTE:
-QUOTE:
-TOC:
-LINK:
-IMAGE:
-HIGHLIGHT:
-FOOTNOTE:
+SUPPORTED MARKERS:
+H1 H2 H3 H4 H5 H6
+PARAGRAPH PARA CENTER RIGHT JUSTIFY QUOTE NOTE IMPORTANT LABEL
+BULLET NUMBERED
+CODE ASCII DIAGRAM
+TABLE TABLE_CAPTION
+IMAGE FIGURE FIGURE_CAPTION
+LINK HIGHLIGHT FOOTNOTE
+TOC LIST_OF_TABLES LIST_OF_FIGURES
+COVER_PAGE CERTIFICATE_PAGE DECLARATION_PAGE ACKNOWLEDGEMENT_PAGE ABSTRACT_PAGE
+CHAPTER REFERENCES REFERENCE APPENDIX
+PAGEBREAK PAGE_BREAK
 
-OUTPUT PATTERN:
-COVER_PAGE: Title
-ABSTRACT_PAGE: Summary sentence.
-TOC:
-LIST_OF_TABLES:
-LIST_OF_FIGURES:
-CHAPTER: Introduction
-PARAGRAPH: Summary sentence.
-TABLE: Header A | Header B | Header C
-TABLE: Value A1 | Value B1 | Value C1
-TABLE_CAPTION: Summary table
-FIGURE: https://example.com/diagram.png | System flow | center | 80
-CODE: command --flag value
+PAYLOAD GUIDELINES:
+- IMAGE/FIGURE: source | caption | align | scale
+- LINK: label | url
+- HIGHLIGHT: text | color
+- TABLE: col1 | col2 | col3
+- PAGEBREAK/TOC/LIST_OF_TABLES/LIST_OF_FIGURES/REFERENCES can be marker-only lines.
+
+PREFERRED STRUCTURE:
+COVER_PAGE -> ABSTRACT_PAGE -> TOC -> LIST_OF_TABLES -> LIST_OF_FIGURES -> CHAPTER blocks -> REFERENCES -> APPENDIX.
+
+EXAMPLE:
+H1: Security Review
+H2: Executive Summary
+PARAGRAPH: High-level summary of findings and business impact.
+H2: Findings
+TABLE: Control | Status | Notes
+TABLE: MFA | Partial | Enforce on legacy apps
+TABLE_CAPTION: Control assessment
+FIGURE: https://example.com/network.png | Network overview | center | 80
+CODE: nmap -sV 10.0.0.0/24
 PAGEBREAK:
 REFERENCES:
-REFERENCE: [1] Primary source
-APPENDIX: Supporting notes
+REFERENCE: [1] NIST guidance
 
-QUALITY:
-- Include TABLE when the topic has structured data.
-- Include FIGURE/IMAGE where diagrams help.
-- Include CODE when technical actions are relevant.
-- Use PAGEBREAK between major sections in long documents.
-- Prefer clear heading hierarchy and short paragraphs.
-
-Return ONLY NotesForge marker lines.`;
+Return ONLY NotesForge markers output.`;
 
 // ═══════════════════════════════════════════════════════════════════
 // SHORTCUTS DATA
@@ -1160,18 +1362,21 @@ const SHORTCUTS = [
   {
     group: "Markers (type in editor)",
     items: [
-      { keys: ["HEADING:"], desc: '"Title" — H1 main heading' },
-      { keys: ["SUBHEADING:"], desc: '"Name" — H2 section' },
-      { keys: ["SUB-SUBHEADING:"], desc: '"Name" — H3 sub-section' },
+      { keys: ["H1:"], desc: '"Title" — main heading (alias: HEADING:)' },
+      { keys: ["H2:"], desc: '"Name" — section heading (alias: SUBHEADING:)' },
+      { keys: ["H3:"], desc: '"Name" — subsection heading (alias: SUB-SUBHEADING:)' },
       { keys: ["PARAGRAPH:"], desc: '"Text…" — body paragraph' },
       {
         keys: ["BULLET:"],
-        desc: '"Point" or "  Indented" (2 spaces)',
+        desc: '"Point" or "\\tNested"/"  Nested" based on tab width',
       },
+      { keys: ["NUMBERED:"], desc: '"Step" with optional nesting/number prefix' },
       { keys: ["CODE:"], desc: '"code line" — monospace block' },
+      { keys: ["DIAGRAM:"], desc: 'Alias of ASCII: for diagram lines' },
       { keys: ["TABLE:"], desc: '"Col1 | Col2" — pipe separated' },
       { keys: ["TABLE_CAPTION:"], desc: '"Caption for current table"' },
       { keys: ["NOTE:"], desc: '"Warning or tip"' },
+      { keys: ["IMPORTANT:"], desc: '"High-priority note"' },
       { keys: ["QUOTE:"], desc: '"Quoted text"' },
       { keys: ["HIGHLIGHT:"], desc: '"Text" | "yellow"' },
       { keys: ["LINK:"], desc: '"Label" | "https://url"' },
@@ -1186,11 +1391,14 @@ const SHORTCUTS = [
       { keys: ["FIGURE_CAPTION:"], desc: '"Caption for current figure"' },
       { keys: ["FOOTNOTE:"], desc: '"Source reference"' },
       { keys: ["TOC:"], desc: "Inserts table of contents" },
+      { keys: ["LIST_OF_TABLES:"], desc: "Inserts list of tables placeholder" },
+      { keys: ["LIST_OF_FIGURES:"], desc: "Inserts list of figures placeholder" },
       { keys: ["CHAPTER:"], desc: '"Chapter title"' },
       { keys: ["REFERENCES:"], desc: "Starts references section" },
       { keys: ["REFERENCE:"], desc: '"Single reference item"' },
       { keys: ["APPENDIX:"], desc: '"Appendix section title"' },
       { keys: ["ASCII:"], desc: '"─── diagram line ───"' },
+      { keys: ["PAGEBREAK:"], desc: "Manual page break (alias: PAGE_BREAK:)" },
     ],
   },
 ];
@@ -1521,7 +1729,10 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function validateMarkersInText(text: string): MarkerError[] {
+function validateMarkersInText(
+  text: string,
+  validMarkers: Set<string>
+): MarkerError[] {
   const errors: MarkerError[] = [];
   const lines = text.split("\n");
 
@@ -1534,8 +1745,8 @@ function validateMarkersInText(text: string): MarkerError[] {
 
     const [, marker, rest] = match;
 
-    if (!VALID_MARKERS.has(marker)) {
-      const suggestion = [...VALID_MARKERS].find((m) =>
+    if (!validMarkers.has(marker)) {
+      const suggestion = [...validMarkers].find((m) =>
         m.startsWith(marker.slice(0, 3))
       );
       errors.push({
@@ -1571,7 +1782,10 @@ function validateMarkersInText(text: string): MarkerError[] {
   return errors;
 }
 
-function validateStrictModeLines(text: string): MarkerError[] {
+function validateStrictModeLines(
+  text: string,
+  validMarkers: Set<string>
+): MarkerError[] {
   const errors: MarkerError[] = [];
   const lines = text.split("\n");
   for (let idx = 0; idx < lines.length; idx++) {
@@ -1590,7 +1804,7 @@ function validateStrictModeLines(text: string): MarkerError[] {
       continue;
     }
     const marker = match[1];
-    if (!VALID_MARKERS.has(marker)) {
+    if (!validMarkers.has(marker)) {
       errors.push({
         line: idx + 1,
         column: 0,
@@ -1614,10 +1828,12 @@ function previewColor(
 
 function buildPreviewHTML(
   text: string,
-  colors: Record<string, string> = {}
+  colors: Record<string, string> = {},
+  tabWidth = 4
 ): string {
   const lines = text.split("\n");
   const parts: string[] = [];
+  const safeTabWidth = Math.max(1, Math.min(12, Math.floor(tabWidth || 4)));
 
   const cH1 = previewColor(colors.h1, "#ea580c");
   const cH2 = previewColor(colors.h2, "#d97706");
@@ -1745,9 +1961,10 @@ function buildPreviewHTML(
         break;
       case "BULLET": {
         const raw = rawRest.trim().replace(/^["']|["']$/g, "");
+        const expanded = raw.replace(/\t/g, " ".repeat(safeTabWidth));
         const indent =
-          (raw.length - raw.trimStart().length) / 2;
-        const cleaned = escapeHtml(raw.trim());
+          (expanded.length - expanded.trimStart().length) / 2;
+        const cleaned = escapeHtml(expanded.trim());
         parts.push(
           `<div class="text-sm mb-1" style="margin-left:${
             indent * 20 + 20
@@ -1756,14 +1973,16 @@ function buildPreviewHTML(
         break;
       }
       case "NUMBERED": {
+        const expanded = rawRest.replace(/\t/g, " ".repeat(safeTabWidth));
+        const leading = expanded.length - expanded.trimStart().length;
         const numContent = escapeHtml(
-          rawRest
+          expanded
             .trim()
             .replace(/^["']|["']$/g, "")
             .replace(/^\s*\d+[.)]\s*/, "")
         );
         parts.push(
-          `<div class="text-sm mb-1 ml-5" style="color:${cBody}">${numContent}</div>`
+          `<div class="text-sm mb-1" style="margin-left:${leading * 8 + 20}px;color:${cBody}">${numContent}</div>`
         );
         break;
       }
@@ -1898,10 +2117,11 @@ function buildPreviewHTML(
   return DOMPurify.sanitize(parts.join(""));
 }
 
-function analyzeTextLocally(text: string): AnalysisResult {
+function analyzeTextLocally(text: string, tabWidth = 4): AnalysisResult {
   const lines = text.split("\n");
   const statistics: Record<string, number> = {};
   const classifications: ClassRow[] = [];
+  const safeTabWidth = Math.max(1, Math.min(12, Math.floor(tabWidth || 4)));
 
   const markerTypeMap: Record<string, string> = {
     HEADING: "h1",
@@ -1959,9 +2179,10 @@ function analyzeTextLocally(text: string): AnalysisResult {
         marker = m[1].toUpperCase();
         type = markerTypeMap[marker] || marker.toLowerCase();
         content = m[2] || "";
-        if (marker === "BULLET" && content) {
+        if ((marker === "BULLET" || marker === "NUMBERED") && content) {
+          const expanded = content.replace(/\t/g, " ".repeat(safeTabWidth));
           const leading =
-            content.length - content.trimStart().length;
+            expanded.length - expanded.trimStart().length;
           indent_level = Math.max(
             0,
             Math.floor(leading / 2)
@@ -2064,7 +2285,7 @@ const GUIDED_TOUR_STEPS: readonly TourStep[] = [
     selector: "generate-bar",
     title: "Export Area",
     description:
-      "Choose DOCX or PDF, set a filename, then generate your document.",
+      "Choose an output format and generate. PDF always returns as PDF with fallback engines when needed.",
   },
   {
     id: "templates-nav",
@@ -2099,6 +2320,22 @@ const GUIDED_TOUR_STEPS: readonly TourStep[] = [
       "Import full theme JSON files with colors, fonts, size, spacing, page, header, and footer values.",
   },
   {
+    id: "app-experience",
+    tab: "settings",
+    selector: "app-experience",
+    title: "App Experience",
+    description:
+      "Switch app UI theme/mode and mode-based music without changing document output styling.",
+  },
+  {
+    id: "watermark-panel",
+    tab: "settings",
+    selector: "watermark-panel",
+    title: "Watermark",
+    description:
+      "Watermark controls are center-only for text and image, with shared opacity, rotation, and scale.",
+  },
+  {
     id: "prompt-nav",
     tab: "prompt",
     selector: "nav-prompt",
@@ -2114,20 +2351,26 @@ const GUIDED_TOUR_STEPS: readonly TourStep[] = [
     description:
       "Import a .txt or .json prompt file and reuse it whenever you want.",
   },
+  {
+    id: "marker-lab",
+    tab: "shortcuts",
+    selector: "marker-lab",
+    title: "Marker Lab",
+    description:
+      "Search every supported marker, copy snippets, and check payload rules with examples.",
+  },
 ];
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-const LINE_SPACING_OPTIONS = [1, 1.15, 1.5, 2] as const;
+const LINE_SPACING_PRESETS = [1, 1.15, 1.5, 2, 2.5, 3] as const;
 
 function normalizeLineSpacing(value: number): number {
-  return [...LINE_SPACING_OPTIONS].reduce((best, candidate) =>
-    Math.abs(candidate - value) < Math.abs(best - value)
-      ? candidate
-      : best
-  );
+  if (!Number.isFinite(value)) return 1.5;
+  const clamped = Math.min(3, Math.max(1, value));
+  return Math.round(clamped * 100) / 100;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2174,6 +2417,18 @@ export default function App({
   const [markerSuggestions, setMarkerSuggestions] = useState<
     string[]
   >([]);
+  const [markerCatalog, setMarkerCatalog] = useState<
+    MarkerCatalogEntry[]
+  >(FALLBACK_MARKER_CATALOG);
+  const [markerSearch, setMarkerSearch] = useState("");
+  const [musicLibrary, setMusicLibrary] = useState<
+    Record<ModeName, MusicTrack[]>
+  >(EMPTY_MUSIC_LIBRARY);
+  const [musicIndex, setMusicIndex] = useState(0);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [musicLoadError, setMusicLoadError] = useState<string | null>(
+    null
+  );
 
   // ── Generation State ──────────────────────────────────────────
   const [generating, setGenerating] = useState(false);
@@ -2203,14 +2458,9 @@ export default function App({
   );
   const [loadingThemes, setLoadingThemes] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("professional");
-  const [config, setConfig] = useState<AppConfigState>({
-    fonts: { family: "Times New Roman", family_code: "JetBrains Mono" },
-    header: { enabled: true },
-    footer: { enabled: true },
-    page: {},
-    colors: {},
-    spacing: {},
-  });
+  const [config, setConfig] = useState<AppConfigState>(() =>
+    normalizeAppConfig(DEFAULT_CONFIG)
+  );
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [dirty, setDirty] = useState(false);
 
@@ -2265,6 +2515,7 @@ export default function App({
   const themeImportInputRef = useRef<HTMLInputElement>(null);
   const templateImportInputRef = useRef<HTMLInputElement>(null);
   const promptImportInputRef = useRef<HTMLInputElement>(null);
+  const musicAudioRef = useRef<HTMLAudioElement | null>(null);
   const healthCheckInFlight = useRef(false);
   const themeFallbackNotified = useRef(false);
   const analyzeFallbackNotified = useRef(false);
@@ -2274,21 +2525,98 @@ export default function App({
   // ═════════════════════════════════════════════════════════════
 
   const debouncedText = useDebounce(text, ANALYZE_DEBOUNCE_MS);
+  const currentUiThemeKey = (
+    config.app_ui?.theme || "aurora"
+  ).toLowerCase();
+  const activeUiTheme =
+    APP_UI_THEMES[
+      (currentUiThemeKey in APP_UI_THEMES
+        ? currentUiThemeKey
+        : "aurora") as keyof typeof APP_UI_THEMES
+    ];
+  const currentMode = normalizeMode(config.app_ui?.mode);
+  const activeMode = MODE_PROFILES[currentMode] || MODE_PROFILES.smooth;
+  const modeShellRing = dark
+    ? activeMode.shellDark
+    : activeMode.shellLight;
+  const markerMap = useMemo(() => {
+    const map = new Map<string, MarkerCatalogEntry>();
+    markerCatalog.forEach((entry) => {
+      map.set(entry.key.toUpperCase(), entry);
+      (entry.aliases || []).forEach((alias) =>
+        map.set(alias.toUpperCase(), entry)
+      );
+    });
+    return map;
+  }, [markerCatalog]);
+  const validMarkers = useMemo(() => {
+    const set = new Set<string>();
+    markerCatalog.forEach((entry) => {
+      set.add(entry.key.toUpperCase());
+      (entry.aliases || []).forEach((alias) =>
+        set.add(alias.toUpperCase())
+      );
+    });
+    if (set.size === 0) {
+      FALLBACK_MARKERS.forEach((marker) => set.add(marker));
+    }
+    return set;
+  }, [markerCatalog]);
+  const markerAutocomplete = useMemo(() => {
+    const options = new Set<string>();
+    markerCatalog.forEach((entry) => {
+      options.add(`${entry.key.toUpperCase()}:`);
+      (entry.aliases || []).forEach((alias) =>
+        options.add(`${alias.toUpperCase()}:`)
+      );
+    });
+    if (options.size === 0) {
+      MARKER_AUTOCOMPLETE.forEach((marker) => options.add(marker));
+    }
+    return Array.from(options).sort();
+  }, [markerCatalog]);
+  const filteredMarkerCatalog = useMemo(() => {
+    const query = markerSearch.trim().toLowerCase();
+    if (!query) return markerCatalog;
+    return markerCatalog.filter((item) =>
+      [
+        item.key,
+        ...(item.aliases || []),
+        item.category || "",
+        item.description || "",
+        item.syntax || "",
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [markerCatalog, markerSearch]);
+  const activeTracks = useMemo(
+    () => musicLibrary[currentMode] || [],
+    [musicLibrary, currentMode]
+  );
+  const activeTrack = useMemo(
+    () =>
+      activeTracks.length > 0
+        ? activeTracks[clamp(musicIndex, 0, activeTracks.length - 1)]
+        : null,
+    [activeTracks, musicIndex]
+  );
 
   const markerErrors = useMemo(
     () =>
       debouncedText.trim()
-        ? validateMarkersInText(debouncedText)
+        ? validateMarkersInText(debouncedText, validMarkers)
         : [],
-    [debouncedText]
+    [debouncedText, validMarkers]
   );
 
   const strictErrors = useMemo(
     () =>
       strictMode && debouncedText.trim()
-        ? validateStrictModeLines(debouncedText)
+        ? validateStrictModeLines(debouncedText, validMarkers)
         : [],
-    [strictMode, debouncedText]
+    [strictMode, debouncedText, validMarkers]
   );
 
   const allMarkerErrors = useMemo(
@@ -2377,9 +2705,13 @@ export default function App({
   const previewHTML = useMemo(
     () =>
       (showPreview || splitPreview) && text.trim()
-        ? buildPreviewHTML(text, config.colors)
+        ? buildPreviewHTML(
+            text,
+            config.colors,
+            Number(config.spacing?.tab_width || 4)
+          )
         : "",
-    [text, showPreview, splitPreview, config.colors]
+    [text, showPreview, splitPreview, config.colors, config.spacing?.tab_width]
   );
   const activePreviewHTML = remotePreviewHTML || previewHTML;
 
@@ -2562,6 +2894,105 @@ export default function App({
     }
   }, []);
 
+  const loadMarkerCatalog = useCallback(async () => {
+    try {
+      const payload = await withRetry(
+        () =>
+          apiGet<{
+            success?: boolean;
+            markers?: MarkerCatalogEntry[];
+          }>(API_ENDPOINTS.markers, { timeout: 8000 }),
+        { attempts: 4, baseDelayMs: 500, maxDelayMs: 2500 }
+      );
+      const list = Array.isArray(payload?.markers)
+        ? payload.markers
+        : [];
+      if (list.length > 0) {
+        setMarkerCatalog(
+          list.map((item) => ({
+            key: String(item.key || "").toUpperCase(),
+            aliases: Array.isArray(item.aliases)
+              ? item.aliases.map((a) => String(a).toUpperCase())
+              : [],
+            category: String(item.category || "general"),
+            syntax: String(item.syntax || `${item.key}: value`),
+            example: String(item.example || `${item.key}: "Sample"`),
+            description: String(item.description || `${item.key} marker`),
+            payloadRules: String(item.payloadRules || "Marker-prefixed line."),
+          }))
+        );
+      } else {
+        setMarkerCatalog(FALLBACK_MARKER_CATALOG);
+      }
+    } catch {
+      setMarkerCatalog(FALLBACK_MARKER_CATALOG);
+    }
+  }, []);
+
+  const loadMusicManifest = useCallback(async () => {
+    try {
+      const response = await fetch(MUSIC_MANIFEST_URL, {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        setMusicLibrary(EMPTY_MUSIC_LIBRARY);
+        setMusicLoadError(
+          "No music manifest found in /public/music. Add tracks to enable player."
+        );
+        return;
+      }
+      const raw = (await response.json()) as MusicManifest;
+      const parsed: Record<ModeName, MusicTrack[]> = {
+        smooth: [],
+        calming: [],
+        energetic: [],
+        gaming: [],
+        vibing: [],
+        focus: [],
+      };
+
+      MODE_ORDER.forEach((mode) => {
+        const rows = Array.isArray(raw?.[mode]) ? raw?.[mode] : [];
+        parsed[mode] = rows
+          .map((item, index) => {
+            if (typeof item === "string") {
+              const file = item.trim();
+              if (!file) return null;
+              return {
+                title: `Track ${index + 1}`,
+                file,
+              } as MusicTrack;
+            }
+            const file = String(item?.file || "").trim();
+            if (!file) return null;
+            return {
+              title: String(item?.title || `Track ${index + 1}`),
+              file,
+              artist: item?.artist ? String(item.artist) : undefined,
+              duration: item?.duration ? String(item.duration) : undefined,
+            } as MusicTrack;
+          })
+          .filter((track): track is MusicTrack => Boolean(track));
+      });
+
+      setMusicLibrary(parsed);
+      const total = Object.values(parsed).reduce(
+        (sum, list) => sum + list.length,
+        0
+      );
+      setMusicLoadError(
+        total > 0
+          ? null
+          : "Music manifest loaded, but no tracks are mapped yet."
+      );
+    } catch {
+      setMusicLibrary(EMPTY_MUSIC_LIBRARY);
+      setMusicLoadError(
+        "Failed to read /music/manifest.json. Check JSON syntax and file paths."
+      );
+    }
+  }, []);
+
   const loadThemes = useCallback(async () => {
     setLoadingThemes(true);
     const localThemes = readLocalThemeCatalog();
@@ -2629,17 +3060,25 @@ export default function App({
         success?: boolean;
         config?: AppConfigState;
       }>(API_ENDPOINTS.config);
-      if (r.success && r.config) setConfig(r.config);
+      if (r.success && r.config) setConfig(normalizeAppConfig(r.config));
       else {
         const local = localStorage.getItem("nf_local_config");
-        if (local) setConfig(JSON.parse(local));
+        if (local) {
+          setConfig(normalizeAppConfig(JSON.parse(local)));
+        } else {
+          setConfig(normalizeAppConfig(DEFAULT_CONFIG));
+        }
       }
     } catch {
       try {
         const local = localStorage.getItem("nf_local_config");
-        if (local) setConfig(JSON.parse(local));
+        if (local) {
+          setConfig(normalizeAppConfig(JSON.parse(local)));
+        } else {
+          setConfig(normalizeAppConfig(DEFAULT_CONFIG));
+        }
       } catch {
-        /* ignore */
+        setConfig(normalizeAppConfig(DEFAULT_CONFIG));
       }
     } finally {
       setLoadingConfig(false);
@@ -2673,14 +3112,25 @@ export default function App({
         text: debouncedText,
       });
       if (r.success) setAnalysis(r);
-      else setAnalysis(analyzeTextLocally(debouncedText));
+      else
+        setAnalysis(
+          analyzeTextLocally(
+            debouncedText,
+            Number(config.spacing?.tab_width || 4)
+          )
+        );
     } catch {
-      setAnalysis(analyzeTextLocally(debouncedText));
+      setAnalysis(
+        analyzeTextLocally(
+          debouncedText,
+          Number(config.spacing?.tab_width || 4)
+        )
+      );
       analyzeFallbackNotified.current = true;
     } finally {
       setAnalyzing(false);
     }
-  }, [debouncedText]);
+  }, [debouncedText, config.spacing?.tab_width]);
 
   const doGenerate = useCallback(async () => {
     if (!text.trim() || generating) return;
@@ -2771,6 +3221,7 @@ export default function App({
         styles: {
           lineSpacing:
             normalizeLineSpacing(config.spacing?.line_spacing || 1.5),
+          tab_width: normalizeTabWidth(config.spacing?.tab_width || 4),
           paragraph_spacing_before:
             config.spacing
               ?.paragraph_spacing_before ?? 0,
@@ -3017,11 +3468,7 @@ export default function App({
                     config.watermark?.type === "image"
                       ? config.watermark?.image_path || ""
                       : config.watermark?.text || "",
-                  position:
-                    config.watermark?.position === "top" ||
-                    config.watermark?.position === "header"
-                      ? "header"
-                      : "center",
+                  position: "center",
                   fontFamily:
                     config.watermark?.font ||
                     config.fonts?.family ||
@@ -3169,11 +3616,15 @@ export default function App({
           setCurrentTheme(name);
           if (r.config)
             setConfig(
-              mergeThemeIntoConfig(r.config, name, themes[name])
+              normalizeAppConfig(
+                mergeThemeIntoConfig(r.config, name, themes[name])
+              )
             );
           else
             setConfig((prev) =>
-              mergeThemeIntoConfig(prev, name, themes[name])
+              normalizeAppConfig(
+                mergeThemeIntoConfig(prev, name, themes[name])
+              )
             );
           setDirty(false);
           setSuccess(
@@ -3183,12 +3634,16 @@ export default function App({
       } catch {
         setCurrentTheme(name);
         setConfig((prev) =>
-          mergeThemeIntoConfig(prev, name, themes[name])
+          normalizeAppConfig(
+            mergeThemeIntoConfig(prev, name, themes[name])
+          )
         );
         localStorage.setItem(
           "nf_local_config",
           JSON.stringify(
-            mergeThemeIntoConfig(config, name, themes[name])
+            normalizeAppConfig(
+              mergeThemeIntoConfig(config, name, themes[name])
+            )
           )
         );
         setDirty(false);
@@ -3209,6 +3664,7 @@ export default function App({
   const saveSettings = useCallback(async () => {
     try {
       const sections: (keyof AppConfigState)[] = [
+        "app_ui",
         "fonts",
         "colors",
         "spacing",
@@ -3300,12 +3756,16 @@ export default function App({
       });
       setCurrentTheme(savedKey);
       setConfig((prev) =>
-        mergeThemeIntoConfig(prev, savedKey, localThemePayload)
+        normalizeAppConfig(
+          mergeThemeIntoConfig(prev, savedKey, localThemePayload)
+        )
       );
       localStorage.setItem(
         "nf_local_config",
         JSON.stringify(
-          mergeThemeIntoConfig(config, savedKey, localThemePayload)
+          normalizeAppConfig(
+            mergeThemeIntoConfig(config, savedKey, localThemePayload)
+          )
         )
       );
       setDirty(false);
@@ -3380,43 +3840,54 @@ export default function App({
     (
       base: AppConfigState,
       incoming: Partial<AppConfigState>
-    ): AppConfigState => ({
-      ...base,
-      app: { ...(base.app || {}), ...(incoming.app || {}) },
-      fonts: { ...(base.fonts || {}), ...(incoming.fonts || {}) },
-      header: {
-        ...(base.header || {}),
-        ...(incoming.header || {}),
-      },
-      footer: {
-        ...(base.footer || {}),
-        ...(incoming.footer || {}),
-      },
-      page: {
-        ...(base.page || {}),
-        ...(incoming.page || {}),
-        margins: {
-          ...(base.page?.margins || {}),
-          ...(incoming.page?.margins || {}),
+    ): AppConfigState =>
+      normalizeAppConfig({
+        ...base,
+        app: { ...(base.app || {}), ...(incoming.app || {}) },
+        app_ui: {
+          ...(base.app_ui || {}),
+          ...(incoming.app_ui || {}),
+          music: {
+            ...(base.app_ui?.music || {}),
+            ...(incoming.app_ui?.music || {}),
+            autoplay: false,
+          },
         },
-        border: {
-          ...(base.page?.border || {}),
-          ...(incoming.page?.border || {}),
+        fonts: { ...(base.fonts || {}), ...(incoming.fonts || {}) },
+        header: {
+          ...(base.header || {}),
+          ...(incoming.header || {}),
         },
-      },
-      colors: {
-        ...(base.colors || {}),
-        ...(incoming.colors || {}),
-      },
-      spacing: {
-        ...(base.spacing || {}),
-        ...(incoming.spacing || {}),
-      },
-      watermark: {
-        ...(base.watermark || {}),
-        ...(incoming.watermark || {}),
-      },
-    }),
+        footer: {
+          ...(base.footer || {}),
+          ...(incoming.footer || {}),
+        },
+        page: {
+          ...(base.page || {}),
+          ...(incoming.page || {}),
+          margins: {
+            ...(base.page?.margins || {}),
+            ...(incoming.page?.margins || {}),
+          },
+          border: {
+            ...(base.page?.border || {}),
+            ...(incoming.page?.border || {}),
+          },
+        },
+        colors: {
+          ...(base.colors || {}),
+          ...(incoming.colors || {}),
+        },
+        spacing: {
+          ...(base.spacing || {}),
+          ...(incoming.spacing || {}),
+        },
+        watermark: {
+          ...(base.watermark || {}),
+          ...(incoming.watermark || {}),
+          position: "center",
+        },
+      }),
     []
   );
 
@@ -3867,10 +4338,7 @@ export default function App({
           watermarkSource.rotation,
           watermarkSource.angle
         ),
-        position: pickString(
-          watermarkSource.position,
-          watermarkSource.placement
-        ),
+        position: "center",
         scale: pickNumber(watermarkSource.scale),
         font: pickString(
           watermarkSource.font,
@@ -4291,10 +4759,14 @@ export default function App({
         }
         if (path === "spacing.line_spacing" && typeof value === "number") {
           cur[keys[keys.length - 1]] = normalizeLineSpacing(value);
+        } else if (path === "spacing.tab_width") {
+          cur[keys[keys.length - 1]] = normalizeTabWidth(value);
+        } else if (path === "watermark.position") {
+          cur[keys[keys.length - 1]] = "center";
         } else {
           cur[keys[keys.length - 1]] = value;
         }
-        return next;
+        return normalizeAppConfig(next);
       });
       setDirty(true);
     },
@@ -4311,12 +4783,12 @@ export default function App({
         setMarkerSuggestions([]);
         return;
       }
-      const next = MARKER_AUTOCOMPLETE.filter((m) =>
-        m.startsWith(prefix)
+      const next = markerAutocomplete.filter((m) =>
+        m.toUpperCase().startsWith(prefix)
       ).slice(0, 6);
       setMarkerSuggestions(next);
     },
-    []
+    [markerAutocomplete]
   );
 
   const applyMarkerSuggestion = useCallback(
@@ -4342,6 +4814,42 @@ export default function App({
     },
     [text, handleText]
   );
+
+  const copyMarkerSnippet = useCallback(
+    async (snippet: string) => {
+      try {
+        await navigator.clipboard.writeText(snippet);
+        setSuccess("Marker snippet copied.");
+      } catch {
+        setWarn("Could not copy marker snippet.");
+      }
+    },
+    []
+  );
+
+  const toggleMusicPlayback = useCallback(() => {
+    if (!config.app_ui?.music?.enabled) {
+      cfgLocal("app_ui.music.enabled", true);
+      return;
+    }
+    if (!activeTrack) {
+      setWarn("No track mapped for this mode. Add files in /public/music.");
+      return;
+    }
+    setMusicPlaying((prev) => !prev);
+  }, [activeTrack, config.app_ui?.music?.enabled, cfgLocal]);
+
+  const nextTrack = useCallback(() => {
+    if (activeTracks.length === 0) return;
+    setMusicIndex((prev) => (prev + 1) % activeTracks.length);
+  }, [activeTracks.length]);
+
+  const prevTrack = useCallback(() => {
+    if (activeTracks.length === 0) return;
+    setMusicIndex((prev) =>
+      (prev - 1 + activeTracks.length) % activeTracks.length
+    );
+  }, [activeTracks.length]);
 
   // ═════════════════════════════════════════════════════════════
   // SEARCH
@@ -4505,8 +5013,10 @@ export default function App({
     checkHealth();
     loadThemes();
     loadTemplateCatalog();
+    loadMarkerCatalog();
     loadConfig();
     loadPrompt();
+    loadMusicManifest();
 
     const iv = setInterval(checkHealth, HEALTH_INTERVAL_MS);
     return () => clearInterval(iv);
@@ -4528,9 +5038,17 @@ export default function App({
     if (online !== "online") return;
     loadThemes();
     loadTemplateCatalog();
+    loadMarkerCatalog();
     loadConfig();
     loadPrompt();
-  }, [online, loadThemes, loadTemplateCatalog, loadConfig, loadPrompt]);
+  }, [
+    online,
+    loadThemes,
+    loadTemplateCatalog,
+    loadMarkerCatalog,
+    loadConfig,
+    loadPrompt,
+  ]);
 
   useEffect(() => {
     if (!showOnboarding || !text.trim()) return;
@@ -4550,6 +5068,108 @@ export default function App({
   useEffect(() => {
     localStorage.setItem("nf_last_template", selectedTemplateId);
   }, [selectedTemplateId]);
+
+  useEffect(() => {
+    if (!config.app_ui?.mode) return;
+    const normalized = normalizeMode(config.app_ui.mode);
+    if (normalized !== config.app_ui.mode) {
+      setConfig((prev) =>
+        normalizeAppConfig({
+          ...prev,
+          app_ui: {
+            ...(prev.app_ui || {}),
+            mode: normalized,
+          },
+        })
+      );
+      return;
+    }
+    setConfig((prev) => ({
+      ...prev,
+      app_ui: {
+        ...(prev.app_ui || {}),
+        mode: normalized,
+        music: {
+          ...(prev.app_ui?.music || {}),
+          playlist_mode: normalized,
+          autoplay: false,
+        },
+      },
+    }));
+  }, [config.app_ui?.mode]);
+
+  useEffect(() => {
+    setMusicIndex(0);
+    setMusicPlaying(false);
+  }, [currentMode]);
+
+  useEffect(() => {
+    const audio = musicAudioRef.current;
+    if (!audio) return;
+    const volume = Math.min(
+      1,
+      Math.max(0, Number(config.app_ui?.music?.volume ?? 0.35))
+    );
+    audio.volume = volume;
+  }, [config.app_ui?.music?.volume]);
+
+  useEffect(() => {
+    const audio = musicAudioRef.current;
+    if (!audio) return;
+
+    const enabled = Boolean(config.app_ui?.music?.enabled);
+    if (!enabled || !activeTrack?.file) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      setMusicPlaying(false);
+      return;
+    }
+
+    const src = /^https?:\/\//i.test(activeTrack.file)
+      ? activeTrack.file
+      : activeTrack.file.startsWith("/")
+        ? activeTrack.file
+        : `/music/${activeTrack.file.replace(/^\/+/, "")}`;
+    if (audio.src !== src) {
+      audio.src = src;
+      audio.load();
+    }
+    if (musicPlaying) {
+      audio.play().catch(() => {
+        setMusicPlaying(false);
+        setWarn(
+          "Music playback needs manual interaction. Click Play again to start."
+        );
+      });
+    }
+  }, [config.app_ui?.music?.enabled, activeTrack, musicPlaying]);
+
+  useEffect(() => {
+    const audio = musicAudioRef.current;
+    if (!audio) return;
+    const onEnded = () => {
+      if (activeTracks.length <= 1) {
+        setMusicPlaying(false);
+        return;
+      }
+      setMusicIndex((prev) => (prev + 1) % activeTracks.length);
+    };
+    const onError = () => {
+      setMusicPlaying(false);
+      setMusicLoadError(
+        activeTrack?.file
+          ? `Could not load track: ${activeTrack.file}`
+          : "Could not load selected track."
+      );
+    };
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onError);
+    return () => {
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onError);
+    };
+  }, [activeTracks, activeTrack?.file]);
 
   useEffect(() => {
     if (
@@ -4725,6 +5345,7 @@ export default function App({
           },
           margins,
           styles: {
+            tab_width: normalizeTabWidth(config.spacing?.tab_width || 4),
             paragraph_spacing_before:
               config.spacing?.paragraph_spacing_before ?? 0,
             paragraph_spacing_after:
@@ -4856,11 +5477,7 @@ export default function App({
                       config.watermark?.type === "image"
                         ? config.watermark?.image_path || ""
                         : config.watermark?.text || "",
-                    position:
-                      config.watermark?.position === "top" ||
-                      config.watermark?.position === "header"
-                        ? "header"
-                        : "center",
+                    position: "center",
                     fontFamily:
                       config.watermark?.font ||
                       config.fonts?.family ||
@@ -5046,10 +5663,10 @@ export default function App({
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-300 ${
+      className={`min-h-screen transition-colors duration-300 ring-1 ${modeShellRing} ${
         dark
-          ? "bg-gray-900 text-gray-100"
-          : "bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 text-gray-900"
+          ? `${activeUiTheme.rootDark} text-gray-100`
+          : `${activeUiTheme.rootLight} text-gray-900`
       }`}
     >
       {/* ────────────────────────────────────────────────────────
@@ -5057,9 +5674,7 @@ export default function App({
       ──────────────────────────────────────────────────────── */}
       <header
         className={`shadow-2xl ${
-          dark
-            ? "bg-gradient-to-r from-gray-900 via-gray-800 to-black"
-            : "bg-gradient-to-r from-blue-700 via-purple-700 to-pink-600"
+          dark ? activeUiTheme.headerDark : activeUiTheme.headerLight
         } text-white`}
       >
         <div className="max-w-screen-xl mx-auto px-6 py-4">
@@ -5078,65 +5693,181 @@ export default function App({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5 bg-white/10">
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <span className="px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5 bg-white/10">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      online === "online"
+                        ? "bg-green-400 animate-pulse"
+                        : online === "error"
+                          ? "bg-orange-400"
+                          : "bg-yellow-400"
+                    }`}
+                  />
+                  {online === "online"
+                    ? "Connected"
+                    : online === "error"
+                      ? "Connection issue"
+                      : loadingHealth
+                        ? "Checking backend"
+                        : "Waking backend"}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg text-xs bg-white/10">
+                  API v{backendVersion}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg text-xs bg-white/10">
+                  UI {activeUiTheme.name}
+                </span>
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    online === "online"
-                      ? "bg-green-400 animate-pulse"
-                      : online === "error"
-                        ? "bg-orange-400"
-                        : "bg-yellow-400"
+                  className={`px-2.5 py-1 rounded-lg text-xs bg-gradient-to-r ${activeMode.pill}`}
+                >
+                  {activeMode.label}
+                </span>
+
+                {savedAt && (
+                  <span className="px-2.5 py-1 rounded-lg text-xs bg-white/10 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Saved
+                  </span>
+                )}
+
+                {dirty && (
+                  <span className="px-2.5 py-1 rounded-lg text-xs bg-yellow-500/30 text-yellow-200">
+                    <AlertCircle className="w-3 h-3 inline mr-1" />
+                    Unsaved
+                  </span>
+                )}
+
+                <button
+                  onClick={() => setDark(!dark)}
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg"
+                  title="Toggle dark mode"
+                >
+                  {dark ? (
+                    <Sun className="w-4 h-4" />
+                  ) : (
+                    <Moon className="w-4 h-4" />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setFullscreen(!fullscreen)}
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg"
+                  title="Toggle fullscreen"
+                >
+                  {fullscreen ? (
+                    <Minimize2 className="w-4 h-4" />
+                  ) : (
+                    <Maximize2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <label className="text-[11px] text-white/80">
+                  Theme
+                </label>
+                <select
+                  value={currentUiThemeKey}
+                  onChange={(e) =>
+                    cfgLocal("app_ui.theme", e.target.value)
+                  }
+                  className="text-xs rounded-lg bg-black/20 border border-white/20 px-2 py-1"
+                >
+                  {Object.entries(APP_UI_THEMES).map(([key, info]) => (
+                    <option key={key} value={key} className="text-black">
+                      {info.name}
+                    </option>
+                  ))}
+                </select>
+
+                <label className="text-[11px] text-white/80">
+                  Mode
+                </label>
+                <select
+                  value={currentMode}
+                  onChange={(e) =>
+                    cfgLocal("app_ui.mode", normalizeMode(e.target.value))
+                  }
+                  className="text-xs rounded-lg bg-black/20 border border-white/20 px-2 py-1"
+                >
+                  {MODE_ORDER.map((mode) => (
+                    <option key={mode} value={mode} className="text-black">
+                      {MODE_PROFILES[mode].label}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() =>
+                    cfgLocal(
+                      "app_ui.music.enabled",
+                      !config.app_ui?.music?.enabled
+                    )
+                  }
+                  className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 border ${
+                    config.app_ui?.music?.enabled
+                      ? "bg-emerald-500/20 border-emerald-300/40"
+                      : "bg-white/10 border-white/20"
                   }`}
-                />
-                {online === "online"
-                  ? "Connected"
-                  : online === "error"
-                    ? "Connection issue"
-                    : loadingHealth
-                      ? "Checking backend"
-                      : "Waking backend"}
-              </span>
-              <span className="px-2.5 py-1 rounded-lg text-xs bg-white/10">
-                API v{backendVersion}
-              </span>
+                  title="Enable or disable mode music"
+                >
+                  <Music2 className="w-3 h-3" />
+                  {config.app_ui?.music?.enabled ? "Music On" : "Music Off"}
+                </button>
 
-              {savedAt && (
-                <span className="px-2.5 py-1 rounded-lg text-xs bg-white/10 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Saved
-                </span>
-              )}
+                <div className="flex items-center gap-1 rounded-lg bg-black/20 border border-white/20 px-1 py-1">
+                  <button
+                    onClick={prevTrack}
+                    className="p-1 rounded hover:bg-white/10"
+                    title="Previous track"
+                    disabled={!config.app_ui?.music?.enabled || activeTracks.length === 0}
+                  >
+                    <SkipBack className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={toggleMusicPlayback}
+                    className="p-1 rounded hover:bg-white/10"
+                    title="Play/Pause music"
+                    disabled={!config.app_ui?.music?.enabled || activeTracks.length === 0}
+                  >
+                    {musicPlaying ? (
+                      <Pause className="w-3.5 h-3.5" />
+                    ) : (
+                      <Play className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <button
+                    onClick={nextTrack}
+                    className="p-1 rounded hover:bg-white/10"
+                    title="Next track"
+                    disabled={!config.app_ui?.music?.enabled || activeTracks.length === 0}
+                  >
+                    <SkipForward className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
-              {dirty && (
-                <span className="px-2.5 py-1 rounded-lg text-xs bg-yellow-500/30 text-yellow-200">
-                  <AlertCircle className="w-3 h-3 inline mr-1" />
-                  Unsaved
-                </span>
-              )}
-
-              <button
-                onClick={() => setDark(!dark)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg"
-                title="Toggle dark mode"
-              >
-                {dark ? (
-                  <Sun className="w-4 h-4" />
-                ) : (
-                  <Moon className="w-4 h-4" />
-                )}
-              </button>
-
-              <button
-                onClick={() => setFullscreen(!fullscreen)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg"
-              >
-                {fullscreen ? (
-                  <Minimize2 className="w-4 h-4" />
-                ) : (
-                  <Maximize2 className="w-4 h-4" />
-                )}
-              </button>
+                <div className="flex items-center gap-1 bg-black/20 border border-white/20 rounded-lg px-2 py-1">
+                  {Number(config.app_ui?.music?.volume || 0) <= 0 ? (
+                    <VolumeX className="w-3.5 h-3.5 text-white/70" />
+                  ) : (
+                    <Volume2 className="w-3.5 h-3.5 text-white/70" />
+                  )}
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={Number(config.app_ui?.music?.volume ?? 0.35)}
+                    onChange={(e) =>
+                      cfgLocal("app_ui.music.volume", Number(e.target.value))
+                    }
+                    disabled={!config.app_ui?.music?.enabled}
+                    className="w-20 accent-white"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -5746,13 +6477,20 @@ export default function App({
                             onClick={() =>
                               applyMarkerSuggestion(marker)
                             }
-                            className={`px-2 py-1 rounded-md text-xs font-mono border ${
+                            className={`px-2 py-1 rounded-md text-left text-xs border ${
                               dark
                                 ? "border-gray-600 hover:bg-gray-700"
                                 : "border-gray-300 hover:bg-white"
                             }`}
                           >
-                            {marker}
+                            <div className="font-mono font-semibold">
+                              {marker}
+                            </div>
+                            <div className="text-[10px] opacity-70">
+                              {markerMap
+                                .get(marker.replace(":", "").toUpperCase())
+                                ?.description || "Marker"}
+                            </div>
                           </button>
                         ))}
                       </div>
@@ -5844,8 +6582,7 @@ export default function App({
                 </div>
                 {format === "pdf" && (
                   <p className="text-xs mt-2 text-gray-400">
-                    PDF keeps DOCX fidelity via LibreOffice/docx2pdf.
-                    If converters are unavailable, export falls back to DOCX.
+                    PDF export always returns a PDF. If primary converters fail, NotesForge uses fallback engines and keeps the response format as PDF.
                   </p>
                 )}
               </div>
@@ -6673,6 +7410,47 @@ backend: Render (Root: backend)`}
                   </div>
                 </div>
               </div>
+
+              <div className="px-6 pb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div
+                  className={`rounded-xl border p-4 ${
+                    dark
+                      ? "border-gray-700 bg-gray-800"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <h3 className="font-semibold text-sm mb-3">
+                    Start Here in 60 Seconds
+                  </h3>
+                  <ol className="list-decimal pl-4 text-xs text-gray-500 space-y-1">
+                    <li>Open Templates and load any starter.</li>
+                    <li>Edit content in Editor using markers.</li>
+                    <li>Use Shortcuts → Marker Lab for syntax/payload help.</li>
+                    <li>Use Settings → Themes for document style.</li>
+                    <li>Use Settings → Experience for app theme/mode/music only.</li>
+                    <li>Generate DOCX/PDF/HTML/MD/TXT.</li>
+                  </ol>
+                </div>
+
+                <div
+                  className={`rounded-xl border p-4 ${
+                    dark
+                      ? "border-gray-700 bg-gray-800"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <h3 className="font-semibold text-sm mb-3">
+                    Troubleshooting
+                  </h3>
+                  <div className="space-y-2 text-xs text-gray-500">
+                    <p><strong>Unknown marker warning:</strong> open Marker Lab and copy exact syntax.</p>
+                    <p><strong>Nested bullets look wrong:</strong> adjust <code>Spacing → Tab Width</code> and keep consistent indentation.</p>
+                    <p><strong>Watermark not centered:</strong> center-only behavior is enforced for all preview/export formats.</p>
+                    <p><strong>PDF conversion warnings:</strong> PDF still returns as PDF; warnings indicate fallback renderer used.</p>
+                    <p><strong>Music not playing:</strong> verify <code>/public/music/manifest.json</code> and local track paths.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -6744,6 +7522,7 @@ backend: Render (Root: backend)`}
                     "colors",
                     "spacing",
                     "page",
+                    "experience",
                   ] as const
                 ).map((st) => (
                   <button
@@ -6772,6 +7551,9 @@ backend: Render (Root: backend)`}
                     {st === "page" && (
                       <Layout className="w-4 h-4" />
                     )}
+                    {st === "experience" && (
+                      <Music2 className="w-4 h-4" />
+                    )}
                     {st.charAt(0).toUpperCase() + st.slice(1)}
                   </button>
                 ))}
@@ -6781,7 +7563,7 @@ backend: Render (Root: backend)`}
               <div className={`${card} p-6 lg:col-span-3`}>
                   {settingsTab === "themes" && (
                     <div className="space-y-6">
-                      <div>
+                      <div data-tour="watermark-panel">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
                           Visual Themes
                         </h3>
@@ -7490,7 +8272,7 @@ backend: Render (Root: backend)`}
                             "spacing.line_spacing",
                             "Line Spacing (multiplier)",
                             1.0,
-                            2.0,
+                            3.0,
                             0.05,
                           ],
                           [
@@ -7600,6 +8382,217 @@ backend: Render (Root: backend)`}
                           );
                         }
                       )}
+
+                      <div>
+                        <label className={lbl}>
+                          Line Spacing Presets
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {LINE_SPACING_PRESETS.map((preset) => (
+                            <button
+                              key={preset}
+                              onClick={() =>
+                                cfgLocal("spacing.line_spacing", preset)
+                              }
+                              className={`px-2.5 py-1.5 rounded-lg text-xs border ${
+                                Math.abs(
+                                  Number(config.spacing?.line_spacing || 1.5) - Number(preset)
+                                ) < 0.01
+                                  ? "bg-purple-600 text-white border-purple-600"
+                                  : dark
+                                    ? "border-gray-600 hover:bg-gray-700"
+                                    : "border-gray-300 hover:bg-gray-100"
+                              }`}
+                            >
+                              {preset.toFixed(2)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className={lbl}>
+                          Tab Width:{" "}
+                          <strong className="text-purple-500">
+                            {normalizeTabWidth(config.spacing?.tab_width || 4)}
+                          </strong>{" "}
+                          spaces
+                        </label>
+                        <input
+                          type="range"
+                          min="1"
+                          max="12"
+                          step="1"
+                          value={normalizeTabWidth(config.spacing?.tab_width || 4)}
+                          onChange={(e) =>
+                            cfgLocal("spacing.tab_width", Number(e.target.value))
+                          }
+                          className="w-full accent-purple-600"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Used for list/code indent detection in parser, analyzer, and preview.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── EXPERIENCE ─────────────────── */}
+                {settingsTab === "experience" && (
+                  <div data-tour="app-experience" className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-bold mb-2">
+                        App Experience
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        App Theme and Mode change the editor UI only. Document preview/export styling still comes from document theme settings.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={lbl}>App UI Theme</label>
+                        <select
+                          value={currentUiThemeKey}
+                          onChange={(e) =>
+                            cfgLocal("app_ui.theme", e.target.value)
+                          }
+                          className={inp}
+                        >
+                          {Object.entries(APP_UI_THEMES).map(([key, theme]) => (
+                            <option key={key} value={key}>
+                              {theme.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className={lbl}>Mode</label>
+                        <select
+                          value={currentMode}
+                          onChange={(e) =>
+                            cfgLocal("app_ui.mode", normalizeMode(e.target.value))
+                          }
+                          className={inp}
+                        >
+                          {MODE_ORDER.map((mode) => (
+                            <option key={mode} value={mode}>
+                              {MODE_PROFILES[mode].label}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {activeMode.hint}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+                      {MODE_ORDER.map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => cfgLocal("app_ui.mode", mode)}
+                          className={`rounded-lg px-2 py-2 text-xs font-medium border transition ${
+                            currentMode === mode
+                              ? "border-purple-500 bg-purple-100 dark:bg-purple-900/30"
+                              : dark
+                                ? "border-gray-600 hover:bg-gray-700"
+                                : "border-gray-300 hover:bg-gray-100"
+                          }`}
+                        >
+                          {MODE_PROFILES[mode].label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className={`rounded-xl border p-4 ${dark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"}`}>
+                      <h4 className="font-semibold mb-2 flex items-center gap-2">
+                        <Music2 className="w-4 h-4 text-purple-500" />
+                        Mode Music (Copyright-Free Local Assets)
+                      </h4>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Manual play only. Drop tracks in <code>frontend/public/music</code> and map them in <code>manifest.json</code> by mode.
+                      </p>
+
+                      <label className="flex items-center gap-2 text-sm mb-3">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(config.app_ui?.music?.enabled)}
+                          onChange={(e) =>
+                            cfgLocal("app_ui.music.enabled", e.target.checked)
+                          }
+                          className="w-4 h-4 accent-purple-600"
+                        />
+                        Enable music for this workspace
+                      </label>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className={lbl}>
+                            Volume: {Math.round(Number(config.app_ui?.music?.volume ?? 0.35) * 100)}%
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={Number(config.app_ui?.music?.volume ?? 0.35)}
+                            onChange={(e) =>
+                              cfgLocal("app_ui.music.volume", Number(e.target.value))
+                            }
+                            disabled={!config.app_ui?.music?.enabled}
+                            className="w-full accent-purple-600"
+                          />
+                        </div>
+                        <div>
+                          <label className={lbl}>Active Track</label>
+                          <div className={`rounded-lg border px-3 py-2 text-xs ${dark ? "border-gray-600 bg-gray-900 text-gray-200" : "border-gray-300 bg-white text-gray-700"}`}>
+                            {activeTrack ? (
+                              <>
+                                <div className="font-semibold">{activeTrack.title}</div>
+                                <div className="opacity-70">
+                                  {activeTrack.artist || "Unknown artist"}{activeTrack.duration ? ` · ${activeTrack.duration}` : ""}
+                                </div>
+                              </>
+                            ) : (
+                              "No track mapped for this mode."
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          onClick={prevTrack}
+                          disabled={!config.app_ui?.music?.enabled || activeTracks.length === 0}
+                          className="px-3 py-2 rounded-lg border text-xs font-medium disabled:opacity-40"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          onClick={toggleMusicPlayback}
+                          disabled={!config.app_ui?.music?.enabled || activeTracks.length === 0}
+                          className="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium disabled:opacity-40"
+                        >
+                          {musicPlaying ? "Pause" : "Play"}
+                        </button>
+                        <button
+                          onClick={nextTrack}
+                          disabled={!config.app_ui?.music?.enabled || activeTracks.length === 0}
+                          className="px-3 py-2 rounded-lg border text-xs font-medium disabled:opacity-40"
+                        >
+                          Next
+                        </button>
+                        <span className="text-xs text-gray-500">
+                          {activeTracks.length} track(s) in {MODE_PROFILES[currentMode].label} mode
+                        </span>
+                      </div>
+
+                      {musicLoadError && (
+                        <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+                          {musicLoadError}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -7611,6 +8604,82 @@ backend: Render (Root: backend)`}
                       Page Setup
                     </h3>
                     <div className="space-y-6">
+                      <div className={`rounded-xl border p-3 ${dark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"}`}>
+                        <p className="text-xs font-semibold mb-2">
+                          Quick Header/Footer Actions
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => {
+                              setDirty(true);
+                              setConfig((prev) =>
+                                normalizeAppConfig({
+                                  ...prev,
+                                  header: { enabled: true, text: "", alignment: "center", show_page_numbers: false, separator: false },
+                                })
+                              );
+                            }}
+                            className="px-3 py-1.5 rounded-lg text-xs border"
+                          >
+                            Reset Header
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDirty(true);
+                              setConfig((prev) =>
+                                normalizeAppConfig({
+                                  ...prev,
+                                  footer: { enabled: true, text: "", alignment: "center", show_page_numbers: true, separator: false },
+                                })
+                              );
+                            }}
+                            className="px-3 py-1.5 rounded-lg text-xs border"
+                          >
+                            Reset Footer
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDirty(true);
+                              setConfig((prev) =>
+                                normalizeAppConfig({
+                                  ...prev,
+                                  footer: {
+                                    ...(prev.footer || {}),
+                                    color: prev.header?.color,
+                                    size: prev.header?.size,
+                                    font_family: prev.header?.font_family,
+                                    alignment: prev.header?.alignment,
+                                  },
+                                })
+                              );
+                            }}
+                            className="px-3 py-1.5 rounded-lg text-xs border"
+                          >
+                            Copy Header Style to Footer
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDirty(true);
+                              setConfig((prev) =>
+                                normalizeAppConfig({
+                                  ...prev,
+                                  header: {
+                                    ...(prev.header || {}),
+                                    color: prev.footer?.color,
+                                    size: prev.footer?.size,
+                                    font_family: prev.footer?.font_family,
+                                    alignment: prev.footer?.alignment,
+                                  },
+                                })
+                              );
+                            }}
+                            className="px-3 py-1.5 rounded-lg text-xs border"
+                          >
+                            Copy Footer Style to Header
+                          </button>
+                        </div>
+                      </div>
+
                       {/* HEADER */}
                       <div>
                         <h4 className="font-semibold mb-3 text-sm border-b pb-2 dark:border-gray-700">
@@ -8416,67 +9485,6 @@ backend: Render (Root: backend)`}
                                     </div>
                                   </div>
 
-                                  <div>
-                                    <label className={lbl}>
-                                      Opacity:{" "}
-                                      {(
-                                        (config
-                                          .watermark
-                                          ?.opacity || 0.15) *
-                                        100
-                                      ).toFixed(0)}
-                                      %
-                                    </label>
-                                    <input
-                                      type="range"
-                                      min="0.05"
-                                      max="0.5"
-                                      step="0.05"
-                                      value={
-                                        config.watermark
-                                          ?.opacity || 0.15
-                                      }
-                                      onChange={(e) =>
-                                        cfgLocal(
-                                          "watermark.opacity",
-                                          parseFloat(
-                                            e.target.value
-                                          )
-                                        )
-                                      }
-                                      className="w-full accent-purple-600"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className={lbl}>
-                                      Rotation:{" "}
-                                      {config.watermark
-                                        ?.rotation ||
-                                        315}
-                                      °
-                                    </label>
-                                    <input
-                                      type="range"
-                                      min="0"
-                                      max="360"
-                                      step="5"
-                                      value={
-                                        config.watermark
-                                          ?.rotation ||
-                                        315
-                                      }
-                                      onChange={(e) =>
-                                        cfgLocal(
-                                          "watermark.rotation",
-                                          parseInt(
-                                            e.target.value
-                                          )
-                                        )
-                                      }
-                                      className="w-full accent-purple-600"
-                                    />
-                                  </div>
                                 </>
                               )}
 
@@ -8552,43 +9560,59 @@ backend: Render (Root: backend)`}
                                     />
                                   </div>
 
-                                  <div>
-                                    <label className={lbl}>
-                                      Placement
-                                    </label>
-                                    <select
-                                      value={
-                                        config.watermark
-                                          ?.position ||
-                                        "center"
-                                      }
-                                      onChange={(e) =>
-                                        cfgLocal(
-                                          "watermark.position",
-                                          e.target.value
-                                        )
-                                      }
-                                      className={inp}
-                                    >
-                                      <option value="center">
-                                        Center
-                                      </option>
-                                      <option value="top">
-                                        Top
-                                      </option>
-                                      <option value="bottom">
-                                        Bottom
-                                      </option>
-                                      <option value="left">
-                                        Left
-                                      </option>
-                                      <option value="right">
-                                        Right
-                                      </option>
-                                    </select>
-                                  </div>
+                                  <p className="text-xs text-gray-500">
+                                    Placement is center-only in preview and exports for consistent behavior.
+                                  </p>
                                 </>
                               )}
+
+                              <div>
+                                <label className={lbl}>
+                                  Opacity:{" "}
+                                  {(
+                                    (config.watermark?.opacity || 0.15) * 100
+                                  ).toFixed(0)}
+                                  %
+                                </label>
+                                <input
+                                  type="range"
+                                  min="0.05"
+                                  max="0.6"
+                                  step="0.01"
+                                  value={config.watermark?.opacity || 0.15}
+                                  onChange={(e) =>
+                                    cfgLocal("watermark.opacity", Number(e.target.value))
+                                  }
+                                  className="w-full accent-purple-600"
+                                />
+                              </div>
+
+                              <div>
+                                <label className={lbl}>
+                                  Rotation: {config.watermark?.rotation || 315}°
+                                </label>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="360"
+                                  step="1"
+                                  value={config.watermark?.rotation || 315}
+                                  onChange={(e) =>
+                                    cfgLocal("watermark.rotation", Number(e.target.value))
+                                  }
+                                  className="w-full accent-purple-600"
+                                />
+                              </div>
+
+                              <div>
+                                <label className={lbl}>Placement</label>
+                                <input
+                                  type="text"
+                                  value="center"
+                                  readOnly
+                                  className={`${inp} opacity-70`}
+                                />
+                              </div>
                             </div>
                           )}
                         </div>
@@ -8705,6 +9729,15 @@ backend: Render (Root: backend)`}
                                   </option>
                                   <option value="dotted">
                                     Dotted
+                                  </option>
+                                  <option value="inset">
+                                    Inset
+                                  </option>
+                                  <option value="outset">
+                                    Outset
+                                  </option>
+                                  <option value="triple">
+                                    Triple
                                   </option>
                                 </select>
                               </div>
@@ -9176,6 +10209,109 @@ backend: Render (Root: backend)`}
                 </p>
               </div>
               <div className="p-6 space-y-6">
+                <div
+                  data-tour="marker-lab"
+                  className={`rounded-xl border p-4 ${
+                    dark
+                      ? "border-gray-700 bg-gray-800"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <h3 className="font-bold text-sm flex items-center gap-2">
+                        <Code className="w-4 h-4 text-purple-500" />
+                        Marker Lab
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Search all supported markers, aliases, syntax, payload rules, and copy-ready examples.
+                      </p>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                      {filteredMarkerCatalog.length}/{markerCatalog.length} markers
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <input
+                      value={markerSearch}
+                      onChange={(e) => setMarkerSearch(e.target.value)}
+                      placeholder="Search marker, alias, category, syntax..."
+                      className={inp}
+                    />
+                    <div className={`text-xs rounded-lg px-3 py-2 border ${dark ? "border-gray-700 bg-gray-900 text-gray-300" : "border-gray-200 bg-white text-gray-600"}`}>
+                      Tab-aware indent examples: <code>BULLET: \"\tNested\"</code> and <code>BULLET: \"  Nested\"</code> are supported based on <strong>Spacing → Tab Width</strong>.
+                    </div>
+                  </div>
+
+                  <div className="max-h-[420px] overflow-y-auto space-y-2 pr-1">
+                    {filteredMarkerCatalog.map((entry) => (
+                      <div
+                        key={entry.key}
+                        className={`rounded-lg border p-3 ${
+                          dark
+                            ? "border-gray-700 bg-gray-900/60"
+                            : "border-gray-200 bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs font-semibold">
+                              {entry.key}:
+                            </code>
+                            {entry.category && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                                {entry.category}
+                              </span>
+                            )}
+                            {entry.aliases && entry.aliases.length > 0 && (
+                              <span className="text-[10px] text-gray-500">
+                                aliases: {entry.aliases.join(", ")}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() =>
+                              copyMarkerSnippet(
+                                entry.example && entry.example.trim().length > 0
+                                  ? entry.example
+                                  : `${entry.key}: "Sample"`
+                              )
+                            }
+                            className="px-2 py-1 rounded-md text-[11px] border"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-1">
+                          {entry.description || "No description"}
+                        </p>
+                        <pre className={`text-[11px] p-2 rounded ${dark ? "bg-gray-800 text-gray-200" : "bg-gray-50 text-gray-700"}`}>
+{entry.syntax || `${entry.key}: value`}
+                        </pre>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          Example: <code>{entry.example || `${entry.key}: "Sample"`}</code>
+                        </p>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          Payload: {entry.payloadRules || "Marker-prefixed line."}
+                        </p>
+                      </div>
+                    ))}
+                    {filteredMarkerCatalog.length === 0 && (
+                      <div className="text-xs text-gray-500">
+                        No markers match your search.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={`mt-3 rounded-lg border p-3 text-xs ${dark ? "border-gray-700 bg-gray-900 text-gray-300" : "border-gray-200 bg-white text-gray-600"}`}>
+                    Common fixes:
+                    <span className="ml-1">1) Use uppercase marker names.</span>
+                    <span className="ml-2">2) Keep <code>MARKER:</code> format.</span>
+                    <span className="ml-2">3) Use pipe payload where required (<code>IMAGE</code>, <code>FIGURE</code>, <code>LINK</code>, <code>HIGHLIGHT</code>).</span>
+                  </div>
+                </div>
+
                 {SHORTCUTS.map((group) => (
                   <div key={group.group}>
                     <h3
@@ -9358,6 +10494,8 @@ backend: Render (Root: backend)`}
           </div>
         )}
       </main>
+
+      <audio ref={musicAudioRef} preload="none" />
 
       <div className="fixed bottom-5 right-5 z-40 flex flex-col gap-2">
         <button

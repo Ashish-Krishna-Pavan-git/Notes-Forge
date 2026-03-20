@@ -5,11 +5,10 @@ from html import escape
 import re
 from typing import List, Sequence, Tuple
 
+from .markers import MARKER_REGEX, normalize_marker
 
-MARKER_RE = re.compile(
-    r"^\s*(HEADING|SUBHEADING|SUB-SUBHEADING|H[1-6]|PARAGRAPH|PARA|CENTER|RIGHT|JUSTIFY|BULLET|NUMBERED|CODE|ASCII|TABLE|TABLE_CAPTION|FIGURE|FIGURE_CAPTION|PAGEBREAK|PAGE_BREAK|QUOTE|NOTE|IMPORTANT|TOC|LIST_OF_TABLES|LIST_OF_FIGURES|IMAGE|LINK|HIGHLIGHT|FOOTNOTE|COVER_PAGE|CERTIFICATE_PAGE|DECLARATION_PAGE|ACKNOWLEDGEMENT_PAGE|ABSTRACT_PAGE|CHAPTER|REFERENCES|REFERENCE|APPENDIX)\s*:(.*)$",
-    re.IGNORECASE,
-)
+
+MARKER_RE = MARKER_REGEX
 
 
 FRONT_MATTER_MARKERS = {
@@ -60,6 +59,12 @@ class _CaptionState:
     table_chapter: int = 0
 
 
+@dataclass
+class ParseOptions:
+    tab_width: int = 4
+    list_indent_unit: int = 2
+
+
 def _is_marker_line(line: str) -> bool:
     return bool(MARKER_RE.match(line))
 
@@ -69,20 +74,31 @@ def _split_table_row(row: str) -> List[str]:
     return [col.strip() for col in cleaned.split("|")] if cleaned else []
 
 
-def _list_level(raw: str, unit: int = 2) -> int:
-    expanded = raw.replace("\t", " " * unit)
+def _effective_tab_width(tab_width: int) -> int:
+    return max(1, min(12, int(tab_width or 4)))
+
+
+def _list_level(raw: str, *, tab_width: int = 4, unit: int = 2) -> int:
+    expanded = raw.replace("\t", " " * _effective_tab_width(tab_width))
     spaces = len(expanded) - len(expanded.lstrip(" "))
     return max(0, spaces // max(1, unit))
 
 
-def _parse_list_item(raw: str, numbered: bool) -> tuple[str, int]:
-    level = _list_level(raw)
+def _parse_list_item(raw: str, numbered: bool, *, options: ParseOptions) -> tuple[str, int]:
+    level = _list_level(raw, tab_width=options.tab_width, unit=options.list_indent_unit)
     stripped = raw.lstrip()
     if numbered:
         stripped = re.sub(r"^\d+[.)]\s*", "", stripped)
     else:
         stripped = re.sub(r"^[-*]\s*", "", stripped)
-    return stripped.strip(), level
+    return stripped.rstrip(), level
+
+
+def _payload_text(payload_raw: str) -> str:
+    # Keep user indentation intent while dropping a single delimiter space after ":".
+    if payload_raw.startswith(" "):
+        return payload_raw[1:]
+    return payload_raw
 
 
 def _strip_wrapping_quotes(value: str) -> str:
@@ -167,48 +183,54 @@ def _collect_caption_entries(nodes: Sequence[Node]) -> tuple[list[str], list[str
     return figures, tables
 
 
-def parse_notesforge(content: str) -> ParseResult:
+def _escape_with_breaks(value: str) -> str:
+    return escape(value).replace("\n", "<br/>")
+
+
+def parse_notesforge(content: str, *, tab_width: int = 4) -> ParseResult:
     lines = content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     nodes: List[Node] = []
     warnings: List[str] = []
     idx = 0
+    options = ParseOptions(tab_width=_effective_tab_width(tab_width), list_indent_unit=2)
 
     while idx < len(lines):
         raw_line = lines[idx]
-        line = raw_line.strip()
-
-        if not line:
+        if not raw_line.strip():
             idx += 1
             continue
 
         marker_match = MARKER_RE.match(raw_line)
         if not marker_match:
-            nodes.append(Node(type="paragraph", text=line))
+            fallback_text = raw_line.rstrip()
+            nodes.append(Node(type="paragraph", text=fallback_text))
             warnings.append(f"Line {idx + 1}: treated as PARAGRAPH (no marker found).")
             idx += 1
             continue
 
-        marker = marker_match.group(1).upper()
+        raw_marker = marker_match.group(1).upper()
+        marker = normalize_marker(raw_marker)
         payload_raw = marker_match.group(2)
-        payload = payload_raw.strip()
+        payload_text = _payload_text(payload_raw.rstrip())
+        payload = payload_text.strip()
 
-        if marker in {"HEADING", "H1"}:
-            nodes.append(Node(type="heading", level=1, text=payload, marker=marker))
+        if marker == "H1":
+            nodes.append(Node(type="heading", level=1, text=payload, marker=raw_marker))
             idx += 1
             continue
 
-        if marker in {"SUBHEADING", "H2"}:
-            nodes.append(Node(type="heading", level=2, text=payload, marker=marker))
+        if marker == "H2":
+            nodes.append(Node(type="heading", level=2, text=payload, marker=raw_marker))
             idx += 1
             continue
 
-        if marker in {"SUB-SUBHEADING", "H3"}:
-            nodes.append(Node(type="heading", level=3, text=payload, marker=marker))
+        if marker == "H3":
+            nodes.append(Node(type="heading", level=3, text=payload, marker=raw_marker))
             idx += 1
             continue
 
         if marker in {"H4", "H5", "H6"}:
-            nodes.append(Node(type="heading", level=int(marker[1:]), text=payload, marker=marker))
+            nodes.append(Node(type="heading", level=int(marker[1:]), text=payload, marker=raw_marker))
             idx += 1
             continue
 
@@ -218,59 +240,80 @@ def parse_notesforge(content: str) -> ParseResult:
                     type="section",
                     text=payload or FRONT_MATTER_MARKERS[marker],
                     role=marker.lower(),
-                    marker=marker,
+                    marker=raw_marker,
                 )
             )
             idx += 1
             continue
 
         if marker == "CHAPTER":
-            nodes.append(Node(type="chapter", text=payload or "Chapter", role="chapter", marker=marker))
+            nodes.append(Node(type="chapter", text=payload or "Chapter", role="chapter", marker=raw_marker))
             idx += 1
             continue
 
         if marker == "APPENDIX":
-            nodes.append(Node(type="appendix", text=payload or "Appendix", role="appendix", marker=marker))
+            nodes.append(Node(type="appendix", text=payload or "Appendix", role="appendix", marker=raw_marker))
             idx += 1
             continue
 
         if marker == "REFERENCES":
-            nodes.append(Node(type="references_heading", text=payload or "References", role="references", marker=marker))
+            nodes.append(
+                Node(
+                    type="references_heading",
+                    text=payload or "References",
+                    role="references",
+                    marker=raw_marker,
+                )
+            )
             idx += 1
             continue
 
         if marker == "REFERENCE":
-            nodes.append(Node(type="reference", text=payload, role="reference", marker=marker))
+            nodes.append(Node(type="reference", text=payload, role="reference", marker=raw_marker))
             idx += 1
             continue
 
         if marker == "TOC":
-            nodes.append(Node(type="toc", text=payload or "Table of Contents", role="toc", marker=marker))
+            nodes.append(Node(type="toc", text=payload or "Table of Contents", role="toc", marker=raw_marker))
             idx += 1
             continue
 
         if marker == "LIST_OF_TABLES":
-            nodes.append(Node(type="list_of_tables", text=payload or "List of Tables", role="list_of_tables", marker=marker))
+            nodes.append(
+                Node(
+                    type="list_of_tables",
+                    text=payload or "List of Tables",
+                    role="list_of_tables",
+                    marker=raw_marker,
+                )
+            )
             idx += 1
             continue
 
         if marker == "LIST_OF_FIGURES":
-            nodes.append(Node(type="list_of_figures", text=payload or "List of Figures", role="list_of_figures", marker=marker))
+            nodes.append(
+                Node(
+                    type="list_of_figures",
+                    text=payload or "List of Figures",
+                    role="list_of_figures",
+                    marker=raw_marker,
+                )
+            )
             idx += 1
             continue
 
         if marker == "TABLE_CAPTION":
-            nodes.append(Node(type="table_caption", text=payload, role="table_caption", marker=marker))
+            nodes.append(Node(type="table_caption", text=payload, role="table_caption", marker=raw_marker))
             idx += 1
             continue
 
         if marker == "FIGURE_CAPTION":
-            nodes.append(Node(type="figure_caption", text=payload, role="figure_caption", marker=marker))
+            nodes.append(Node(type="figure_caption", text=payload, role="figure_caption", marker=raw_marker))
             idx += 1
             continue
 
         if marker in {"IMAGE", "FIGURE"}:
-            source, caption, align, scale = _parse_media_payload(payload_raw)
+            source, caption, align, scale = _parse_media_payload(payload_text)
             if not source:
                 warnings.append(f"Line {idx + 1}: {marker} has no image source.")
             nodes.append(
@@ -282,7 +325,7 @@ def parse_notesforge(content: str) -> ParseResult:
                     align=align,
                     scale=scale,
                     role=marker.lower(),
-                    marker=marker,
+                    marker=raw_marker,
                 )
             )
             idx += 1
@@ -290,7 +333,6 @@ def parse_notesforge(content: str) -> ParseResult:
 
         if marker in {
             "PARAGRAPH",
-            "PARA",
             "CENTER",
             "RIGHT",
             "JUSTIFY",
@@ -300,19 +342,20 @@ def parse_notesforge(content: str) -> ParseResult:
             "LINK",
             "HIGHLIGHT",
             "FOOTNOTE",
+            "LABEL",
+            "WATERMARK",
         }:
-            paragraph_lines = [payload] if payload else []
+            paragraph_lines = [payload_text] if payload_text else []
             next_idx = idx + 1
             while next_idx < len(lines):
                 if _is_marker_line(lines[next_idx]):
                     break
                 if not lines[next_idx].strip():
                     break
-                paragraph_lines.append(lines[next_idx].strip())
+                paragraph_lines.append(lines[next_idx].rstrip())
                 next_idx += 1
             align = {
                 "PARAGRAPH": "left",
-                "PARA": "left",
                 "CENTER": "center",
                 "RIGHT": "right",
                 "JUSTIFY": "justify",
@@ -322,14 +365,17 @@ def parse_notesforge(content: str) -> ParseResult:
                 "LINK": "left",
                 "HIGHLIGHT": "left",
                 "FOOTNOTE": "left",
+                "LABEL": "left",
+                "WATERMARK": "left",
             }[marker]
+            role = marker.lower() if marker not in {"PARAGRAPH", "CENTER", "RIGHT", "JUSTIFY"} else "paragraph"
             nodes.append(
                 Node(
                     type="paragraph",
-                    text=" ".join(p for p in paragraph_lines if p).strip(),
+                    text="\n".join(paragraph_lines).rstrip(),
                     align=align,
-                    role=marker.lower() if marker not in {"PARAGRAPH", "PARA", "CENTER", "RIGHT", "JUSTIFY"} else "paragraph",
-                    marker=marker,
+                    role=role,
+                    marker=raw_marker,
                 )
             )
             idx = next_idx if next_idx > idx else idx + 1
@@ -338,9 +384,9 @@ def parse_notesforge(content: str) -> ParseResult:
         if marker == "BULLET":
             items: List[str] = []
             levels: List[int] = []
-            if payload:
-                cleaned, item_level = _parse_list_item(payload_raw, numbered=False)
-                if cleaned:
+            if payload_text:
+                cleaned, item_level = _parse_list_item(payload_text, numbered=False, options=options)
+                if cleaned.strip():
                     items.append(cleaned)
                     levels.append(item_level)
             next_idx = idx + 1
@@ -348,35 +394,39 @@ def parse_notesforge(content: str) -> ParseResult:
                 nraw = lines[next_idx]
                 marker_line = MARKER_RE.match(nraw)
                 if marker_line:
-                    if marker_line.group(1).upper() == "BULLET":
-                        cleaned, item_level = _parse_list_item(marker_line.group(2), numbered=False)
-                        if cleaned:
+                    next_name = normalize_marker(marker_line.group(1).upper())
+                    if next_name == "BULLET":
+                        cleaned, item_level = _parse_list_item(
+                            _payload_text(marker_line.group(2)),
+                            numbered=False,
+                            options=options,
+                        )
+                        if cleaned.strip():
                             items.append(cleaned)
                             levels.append(item_level)
                         next_idx += 1
                         continue
                     break
-                nline = nraw.strip()
-                if not nline:
+                if not nraw.strip():
                     next_idx += 1
                     continue
-                cleaned, item_level = _parse_list_item(nraw, numbered=False)
-                if cleaned:
+                cleaned, item_level = _parse_list_item(nraw, numbered=False, options=options)
+                if cleaned.strip():
                     items.append(cleaned)
                     levels.append(item_level)
                 next_idx += 1
             if not items:
                 warnings.append(f"Line {idx + 1}: BULLET block has no items.")
-            nodes.append(Node(type="bullet", items=items, levels=levels, marker=marker))
+            nodes.append(Node(type="bullet", items=items, levels=levels, marker=raw_marker))
             idx = next_idx
             continue
 
         if marker == "NUMBERED":
-            items = []
+            items: List[str] = []
             levels: List[int] = []
-            if payload:
-                cleaned, item_level = _parse_list_item(payload_raw, numbered=True)
-                if cleaned:
+            if payload_text:
+                cleaned, item_level = _parse_list_item(payload_text, numbered=True, options=options)
+                if cleaned.strip():
                     items.append(cleaned)
                     levels.append(item_level)
             next_idx = idx + 1
@@ -384,43 +434,47 @@ def parse_notesforge(content: str) -> ParseResult:
                 nraw = lines[next_idx]
                 marker_line = MARKER_RE.match(nraw)
                 if marker_line:
-                    if marker_line.group(1).upper() == "NUMBERED":
-                        cleaned, item_level = _parse_list_item(marker_line.group(2), numbered=True)
-                        if cleaned:
+                    next_name = normalize_marker(marker_line.group(1).upper())
+                    if next_name == "NUMBERED":
+                        cleaned, item_level = _parse_list_item(
+                            _payload_text(marker_line.group(2)),
+                            numbered=True,
+                            options=options,
+                        )
+                        if cleaned.strip():
                             items.append(cleaned)
                             levels.append(item_level)
                         next_idx += 1
                         continue
                     break
-                nline = nraw.strip()
-                if not nline:
+                if not nraw.strip():
                     next_idx += 1
                     continue
-                cleaned, item_level = _parse_list_item(nraw, numbered=True)
-                items.append(cleaned if cleaned else nline)
+                cleaned, item_level = _parse_list_item(nraw, numbered=True, options=options)
+                items.append(cleaned if cleaned.strip() else nraw.strip())
                 levels.append(item_level)
                 next_idx += 1
             if not items:
                 warnings.append(f"Line {idx + 1}: NUMBERED block has no items.")
-            nodes.append(Node(type="numbered", items=items, levels=levels, marker=marker))
+            nodes.append(Node(type="numbered", items=items, levels=levels, marker=raw_marker))
             idx = next_idx
             continue
 
         if marker == "CODE":
-            code_lines = [payload] if payload else []
+            code_lines = [payload_text] if payload_text else []
             next_idx = idx + 1
             while next_idx < len(lines):
                 if _is_marker_line(lines[next_idx]):
                     break
-                code_lines.append(lines[next_idx].rstrip())
+                code_lines.append(lines[next_idx])
                 next_idx += 1
             code_text = "\n".join(code_lines).strip("\n")
-            nodes.append(Node(type="code", text=code_text, marker=marker))
+            nodes.append(Node(type="code", text=code_text, marker=raw_marker))
             idx = next_idx
             continue
 
         if marker == "ASCII":
-            ascii_lines = [payload] if payload else []
+            ascii_lines = [payload_text] if payload_text else []
             next_idx = idx + 1
             while next_idx < len(lines):
                 candidate = lines[next_idx]
@@ -430,7 +484,7 @@ def parse_notesforge(content: str) -> ParseResult:
                     break
                 ascii_lines.append(candidate.rstrip())
                 next_idx += 1
-            nodes.append(Node(type="ascii", text="\n".join(ascii_lines).rstrip("\n"), marker=marker))
+            nodes.append(Node(type="ascii", text="\n".join(ascii_lines).rstrip("\n"), marker=raw_marker))
             idx = next_idx
             continue
 
@@ -447,9 +501,9 @@ def parse_notesforge(content: str) -> ParseResult:
                 nline = nraw.strip()
                 next_marker = MARKER_RE.match(nraw)
                 if next_marker:
-                    next_name = next_marker.group(1).upper()
+                    next_name = normalize_marker(next_marker.group(1).upper())
                     if next_name == "TABLE":
-                        next_payload = next_marker.group(2).strip()
+                        next_payload = _payload_text(next_marker.group(2)).strip()
                         next_row = _split_table_row(next_payload)
                         if next_row:
                             rows.append(next_row)
@@ -473,12 +527,12 @@ def parse_notesforge(content: str) -> ParseResult:
             else:
                 max_cols = max(len(row) for row in rows)
                 rows = [row + [""] * (max_cols - len(row)) for row in rows]
-            nodes.append(Node(type="table", rows=rows, marker=marker))
+            nodes.append(Node(type="table", rows=rows, marker=raw_marker))
             idx = next_idx
             continue
 
-        if marker in {"PAGEBREAK", "PAGE_BREAK"}:
-            nodes.append(Node(type="pagebreak", marker=marker))
+        if marker == "PAGEBREAK":
+            nodes.append(Node(type="pagebreak", marker=raw_marker))
             idx += 1
             continue
 
@@ -562,7 +616,7 @@ def render_preview_html(
                 fragments.append(f'<li class="nf-list-item">{escape(item)}</li>')
             fragments.append("</ul>")
         elif node.type == "reference":
-            fragments.append(f'<p class="nf-paragraph nf-reference">{escape(node.text)}</p>')
+            fragments.append(f'<p class="nf-paragraph nf-reference">{_escape_with_breaks(node.text)}</p>')
         elif node.type == "paragraph":
             classes = ["nf-paragraph"]
             if node.role and node.role != "paragraph":
@@ -571,7 +625,7 @@ def render_preview_html(
             if node.align and node.align != "left":
                 style_attr = f' style="text-align:{escape(node.align)}"'
             fragments.append(
-                f'<p class="{" ".join(classes)}"{style_attr}>{escape(node.text)}</p>'
+                f'<p class="{" ".join(classes)}"{style_attr}>{_escape_with_breaks(node.text)}</p>'
             )
         elif node.type == "bullet":
             items = node.items or []

@@ -15,6 +15,6 @@ services:
       - key: STORAGE_BACKEND
         value: local
       - key: NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK
-        value: "0"
+        value: "1"
       - key: NF_CORS_ORIGINS
         value: https://notes-forge-ruddy.vercel.app,https://notes-forge.onrender.com

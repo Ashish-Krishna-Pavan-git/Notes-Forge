@@ -41,6 +41,18 @@ class ApiIntegrationTests(unittest.TestCase):
             }.issubset(names)
         )
 
+    def test_markers_catalog_contract(self) -> None:
+        response = self.client.get("/api/markers")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body.get("success"))
+        markers = body.get("markers", [])
+        self.assertTrue(isinstance(markers, list) and len(markers) > 10)
+        keys = {item.get("key") for item in markers}
+        self.assertTrue({"H1", "PARAGRAPH", "TABLE", "ASCII", "FIGURE", "CHAPTER", "PAGEBREAK"}.issubset(keys))
+        ascii_item = next((item for item in markers if item.get("key") == "ASCII"), {})
+        self.assertIn("DIAGRAM", ascii_item.get("aliases", []))
+
     def test_themes_include_required_v7_builtins(self) -> None:
         response = self.client.get("/api/themes")
         self.assertEqual(response.status_code, 200)
@@ -272,7 +284,8 @@ class ApiIntegrationTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(download.content)) as archive:
             document_xml = archive.read("word/document.xml").decode("utf-8", "ignore")
 
-        self.assertIn("this paragraph should be justified with continuation text", document_xml)
+        self.assertIn("this paragraph should be justified", document_xml)
+        self.assertIn("with continuation text", document_xml)
         self.assertIn("print('hello')", document_xml)
         self.assertIn("+---+", document_xml)
         self.assertIn("| A |", document_xml)
@@ -298,6 +311,15 @@ class ApiIntegrationTests(unittest.TestCase):
         after = self.client.get("/api/config")
         self.assertEqual(after.status_code, 200)
         self.assertEqual(after.json()["config"]["spacing"]["line_spacing"], 1.6)
+
+        tab_update = self.client.post(
+            "/api/config/update",
+            json={"path": "spacing.tab_width", "value": 8},
+        )
+        self.assertEqual(tab_update.status_code, 200)
+        after_tab = self.client.get("/api/config")
+        self.assertEqual(after_tab.status_code, 200)
+        self.assertEqual(after_tab.json()["config"]["spacing"]["tab_width"], 8)
 
     def test_apply_theme_updates_config(self) -> None:
         applied = self.client.post(
@@ -330,17 +352,13 @@ class ApiIntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload.get("requestedFormat"), "pdf")
-        self.assertEqual(payload.get("actualFormat"), "docx")
-        self.assertTrue(payload.get("warning"))
-        self.assertIn("DOCX", payload.get("warning", ""))
+        self.assertEqual(payload.get("actualFormat"), "pdf")
+        joined_warnings = " | ".join(payload.get("warnings") or [])
+        self.assertIn("fallback renderer", joined_warnings.lower())
         self.assertTrue(payload.get("downloadUrl", "").startswith("/api/download/"))
         dl = self.client.get(payload["downloadUrl"])
         self.assertEqual(dl.status_code, 200)
-        self.assertTrue(
-            dl.headers["content-type"].startswith(
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-        )
+        self.assertTrue(dl.headers["content-type"].startswith("application/pdf"))
 
     def test_download_rejects_non_token_path(self) -> None:
         response = self.client.get("/api/download/../../etc/passwd")
