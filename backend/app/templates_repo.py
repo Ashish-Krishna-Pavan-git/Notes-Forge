@@ -7,7 +7,7 @@ from .models import RegenerateTemplateRequest, TemplateDefinition
 from .themes import PROFESSIONAL_THEME
 
 
-SAMPLE_EXAMPLE = """COVER_PAGE: NotesForge - Cybersecurity Incident Summary
+SAMPLE_EXAMPLE = """COVER_PAGE: Quick Doc Formatter - Cybersecurity Incident Summary
 ABSTRACT_PAGE: Concise incident abstract with impact and containment status.
 TOC:
 LIST_OF_TABLES:
@@ -39,10 +39,11 @@ DIAGRAM: +-----------------------+
 
 
 PROMPT_FORMAT = (
-    "Using strict NotesForge marker syntax (H1-H6, HEADING/SUBHEADING aliases, PARAGRAPH, CENTER, RIGHT, JUSTIFY, "
+    "Using strict Quick Doc Formatter marker syntax (H1-H6, HEADING/SUBHEADING aliases, PARAGRAPH, CENTER, RIGHT, JUSTIFY, "
     "BULLET, NUMBERED, TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, ASCII/DIAGRAM, PAGEBREAK, "
     "COVER_PAGE, CERTIFICATE_PAGE, DECLARATION_PAGE, ACKNOWLEDGEMENT_PAGE, ABSTRACT_PAGE, TOC, LIST_OF_TABLES, "
-    "LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE, APPENDIX), generate a structured document about '{topic}' "
+    "LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE, APPENDIX, TIP, WARNING, INFO, SUCCESS, CHECKLIST, CALLOUT, "
+    "SUMMARY, EQUATION, SEPARATOR), generate a structured document about '{topic}' "
     "for the '{templateName}' template. Every non-empty line must start with a marker and colon. Preserve meaningful "
     "indentation in list/code payloads. Keep sections concise, include TABLE + FIGURE + CODE where relevant, and output "
     "ONLY marker lines with no commentary."
@@ -424,8 +425,8 @@ class TemplateRepo:
             )
         if template_id == "assignment":
             return SAMPLE_EXAMPLE.replace(
-                "NotesForge — Cybersecurity Incident Summary",
-                f"NotesForge — {topic_clean} Assignment",
+                "Quick Doc Formatter — Cybersecurity Incident Summary",
+                f"Quick Doc Formatter — {topic_clean} Assignment",
             )
         if template_id == "resume":
             return (
@@ -444,8 +445,8 @@ class TemplateRepo:
             )
         if template_id == "cybersec":
             return SAMPLE_EXAMPLE.replace(
-                "NotesForge - Cybersecurity Incident Summary",
-                f"NotesForge - {topic_clean} Cybersecurity Report",
+                "Quick Doc Formatter - Cybersecurity Incident Summary",
+                f"Quick Doc Formatter - {topic_clean} Cybersecurity Report",
             )
         if template_id == "technical_notes":
             return (

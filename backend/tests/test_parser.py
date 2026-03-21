@@ -15,7 +15,7 @@ class ParserTests(unittest.TestCase):
     def test_markdown_conversion_contains_expected_sections(self) -> None:
         result = parse_notesforge(SAMPLE_EXAMPLE)
         md = to_markdown(result.nodes)
-        self.assertIn("# NotesForge", md)
+        self.assertIn("# Quick Doc Formatter", md)
         self.assertIn("- Initial detection via IDS alert.", md)
 
     def test_parser_supports_alignment_ascii_and_pagebreak(self) -> None:
@@ -186,6 +186,42 @@ class ParserTests(unittest.TestCase):
         self.assertIn("![Accuracy trend](https://example.com/fig.png)", md)
         self.assertIn("*Figure 1.1: Accuracy trend*", md)
         self.assertIn("*Table 1.1: Metrics table*", md)
+
+    def test_parser_supports_new_v8_markers(self) -> None:
+        content = (
+            "TIP: Keep docs concise.\n"
+            "WARNING: Validate all inputs.\n"
+            "INFO: Additional context.\n"
+            "SUCCESS: Done.\n"
+            "CALLOUT: Important behavior.\n"
+            "SUMMARY: Final notes.\n"
+            "CHECKLIST: [x] First task\n"
+            "CHECKLIST: [ ] Second task\n"
+            "EQUATION: E = mc^2\n"
+            "SEPARATOR:\n"
+            "PARAGRAPH: tail\n"
+        )
+        result = parse_notesforge(content)
+        roles = [n.role for n in result.nodes if n.type == "paragraph"]
+        self.assertIn("tip", roles)
+        self.assertIn("warning", roles)
+        self.assertIn("summary", roles)
+        checklist = [n for n in result.nodes if n.type == "checklist"]
+        self.assertEqual(len(checklist), 1)
+        self.assertEqual(checklist[0].checks, [True, False])
+        self.assertTrue(any(n.type == "equation" for n in result.nodes))
+        self.assertTrue(any(n.type == "separator" for n in result.nodes))
+
+    def test_parser_supports_v8_alias_markers(self) -> None:
+        content = (
+            "TASK: [x] Mapped task item\n"
+            "TODO: [ ] Open task item\n"
+            "HR:\n"
+            "HORIZONTAL_RULE:\n"
+        )
+        result = parse_notesforge(content)
+        self.assertTrue(any(n.type == "checklist" for n in result.nodes))
+        self.assertEqual(sum(1 for n in result.nodes if n.type == "separator"), 2)
 
 
 if __name__ == "__main__":

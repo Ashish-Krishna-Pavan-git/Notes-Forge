@@ -24,3 +24,4 @@
 - Code font: JetBrains Mono
 - Sizes: Title 20, H1 18, H2 16, H3 14, Body 12, Footnote 11
 - Line spacing options: 1, 1.15, 1.5, 2
+

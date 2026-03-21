@@ -132,7 +132,7 @@ class GenerateRequest(BaseModel):
     content: str = Field(..., min_length=1, max_length=MAX_CONTENT_LENGTH)
     theme: ThemePayload = Field(default_factory=ThemePayload)
     format: Literal["docx", "pdf", "html", "md", "txt"] = "docx"
-    filename: str = "notesforge_output"
+    filename: str = "quick_doc_formatter_output"
     security: GenerateSecurityPayload = Field(default_factory=GenerateSecurityPayload)
     templateId: Optional[str] = None
 
@@ -141,7 +141,7 @@ class GenerateRequest(BaseModel):
     def validate_filename(cls, value: str) -> str:
         cleaned = "".join(ch for ch in value if ch.isalnum() or ch in ("_", "-", " "))
         cleaned = cleaned.strip().replace(" ", "_")
-        return cleaned[:120] if cleaned else "notesforge_output"
+        return cleaned[:120] if cleaned else "quick_doc_formatter_output"
 
 
 class GenerateResponse(BaseModel):
@@ -151,8 +151,36 @@ class GenerateResponse(BaseModel):
     filename: Optional[str] = None
     requestedFormat: Optional[str] = None
     actualFormat: Optional[str] = None
+    conversionEngine: Optional[str] = None
+    externalFallbackUsed: bool = False
     warning: Optional[str] = None
     warnings: List[str] = Field(default_factory=list)
+
+
+class AsyncGenerateResponse(BaseModel):
+    success: bool = True
+    jobId: str
+    status: Literal["queued", "running", "completed", "failed"] = "queued"
+    progress: int = 0
+
+
+class GenerateJobStatusResponse(BaseModel):
+    success: bool = True
+    jobId: str
+    status: Literal["queued", "running", "completed", "failed"]
+    progress: int = 0
+    requestedFormat: Optional[str] = None
+    actualFormat: Optional[str] = None
+    conversionEngine: Optional[str] = None
+    externalFallbackUsed: bool = False
+    fileId: Optional[str] = None
+    filename: Optional[str] = None
+    downloadUrl: Optional[str] = None
+    warning: Optional[str] = None
+    warnings: List[str] = Field(default_factory=list)
+    error: Optional[str] = None
+    createdAt: int
+    updatedAt: int
 
 
 class TemplateDefinition(BaseModel):

@@ -1,109 +1,83 @@
-# NotesForge Core Engine v7.0.0
+﻿# Quick Doc Formatter v8
 
-NotesForge is a compatibility-first document generation system for:
-- academic notes
-- study materials
-- technical documentation
-- project reports
-- research papers
-- assignments
-- professional documentation
+Quick Doc Formatter is a marker-driven document formatting app with a split architecture:
+- `document theme` controls preview/export styling
+- `app UI theme + mode` controls workspace look and music behavior
 
-It preserves legacy marker syntax and extends the engine with v7 academic workflows.
+It preserves legacy marker syntax, adds v8 markers, and keeps backward compatibility for existing files.
 
-## What Is New In v7.0.0
-- Backward-compatible marker engine expansion (front matter, chapters, references, appendix, figure/table captions)
-- Chapter-aware figure/table numbering (`1.1`, `1.2`, ...)
-- First-class image parsing for `IMAGE:` / `FIGURE:` with URL and data URI sources
-- Extended DOCX rendering for academic sections and caption nodes
-- 10 required built-in themes + 5 required professional templates (additive, existing themes/templates preserved)
-- Dedicated `/guide` page plus existing in-app Guide tab
-- Prompt and docs refreshed to v7.0.0
+## v8 Highlights
+- Full rebrand from NotesForge to **Quick Doc Formatter**.
+- Theme display rename: **Frontlines Edu Tech** -> **Daily Notes Maker** (`frontlines_edutech_theme` key unchanged).
+- Canonical marker catalog API: `GET /api/markers`.
+- New markers: `TIP`, `WARNING`, `INFO`, `SUCCESS`, `CALLOUT`, `SUMMARY`, `CHECKLIST` (`TASK`/`TODO` aliases), `EQUATION`, `SEPARATOR` (`HR`, `HORIZONTAL_RULE` aliases).
+- Whitespace/tab-safe parsing with configurable `tab_width`.
+- PDF contract: PDF requests always return `actualFormat=pdf`.
+- PDF fallback chain: internal converters -> iLovePDF API fallback -> iLovePDF automation bridge -> low-fidelity internal fallbacks.
+- Async large-export APIs with job progress tracking.
+- Mode music upgrades: local files + direct media URLs; auto-next on track end; YouTube page links are blocked.
+- Security hardening: request size limits, fixed-window rate limiting, secure response headers, SSRF-safe remote media validation, expiring download tokens.
 
-## Compatibility Promise
-- Existing markers remain supported (`H1-H6`, `PARAGRAPH`, `BULLET`, `NUMBERED`, `TABLE`, `IMAGE`, `CODE`, `TOC`, `PAGEBREAK`, etc.)
-- Existing APIs and routes remain intact
-- Existing export formats remain intact (`docx`, `pdf`, `html`, `md`, `txt`)
-- Existing deployment shape remains intact (localhost, Vercel frontend, Render backend)
+## Architecture
+- Backend: FastAPI (`backend/app/main.py`)
+- Export engine: DOCX/PDF/HTML/MD/TXT (`backend/app/exporter.py`)
+- Parser + marker catalog (`backend/app/parser.py`, `backend/app/markers.py`)
+- Frontend: React + Vite (`frontend/src/pages/EditorWorkspacePage.tsx`)
 
-## v7 Marker Additions
-Additive markers (optional):
-- `COVER_PAGE:`
-- `CERTIFICATE_PAGE:`
-- `DECLARATION_PAGE:`
-- `ACKNOWLEDGEMENT_PAGE:`
-- `ABSTRACT_PAGE:`
-- `LIST_OF_TABLES:`
-- `LIST_OF_FIGURES:`
-- `CHAPTER:`
-- `REFERENCES:`
-- `REFERENCE:`
-- `APPENDIX:`
-- `FIGURE:`
-- `FIGURE_CAPTION:`
-- `TABLE_CAPTION:`
+## Installation
 
-## Project Layout
-```text
-backend/
-  app/                      # canonical runtime modules
-  core/                     # v7 modular compatibility wrappers (additive)
-    parser/
-    formatter/
-    document_engine/
-    renderer/
-    export/
-    themes/
-    templates/
-    guide/
-  services/                 # compatibility wrappers
-  routes/
-  server.py
-  backend_server.py
-frontend/
-  src/
-    pages/
-      EditorWorkspacePage.tsx
-      GuidePage.tsx
-  vercel.json               # SPA rewrite to support /guide direct route
-```
-
-## Quick Start
-### Windows helpers
-1. `SETUP.bat`
-2. `START.bat`
-3. `STOP.bat`
-
-### Manual backend
+### 1) Local (manual)
+#### Backend
 ```powershell
 cd backend
 python -m pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 10000
 ```
 
-### Manual frontend
+#### Frontend
 ```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-## Guide Access
-- In-app tab: `New User`
-- Dedicated page: `/guide`
+Open `http://localhost:5173`.
 
-## API Contract (unchanged routes)
+### 2) One-click helpers (Windows)
+1. `SETUP.bat`
+2. `START.bat`
+3. `STOP.bat`
+
+### 3) Docker
+```powershell
+docker compose up --build
+```
+
+Default ports:
+- frontend: `5173`
+- backend: `10000`
+
+### 4) Vercel + Render
+- Frontend (Vercel): project root `frontend`, build `npm run build`, output `dist`.
+- Backend (Render): root `backend`, start command:
+  - `uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}`
+- Set `VITE_API_URL` in frontend deployment.
+
+## Core APIs
 - `GET /api/health`
 - `GET /api/health/parser`
 - `GET /api/version`
+- `GET /api/markers`
 - `POST /api/analyze`
 - `POST /api/preview`
 - `POST /api/generate`
-- `GET /api/download/{file_id}`
+- `POST /api/generate/async`
+- `GET /api/generate/jobs/{jobId}`
+- `GET /api/generate/jobs/{jobId}/download`
+- `GET /api/download/{token}`
 - `GET /api/templates`
 - `POST /api/templates/regenerate`
 - `GET /api/themes`
-- `POST /api/themes`
 - `POST /api/themes/apply`
 - `POST /api/themes/save`
 - `POST /api/themes/delete`
@@ -112,29 +86,44 @@ npm run dev
 - `GET /api/prompt`
 - `POST /api/prompt`
 
-## Required v7 Built-in Themes
-- Academic Classic
-- University Blue
-- Engineering Report
-- Clean Research
-- Modern Minimal
-- Corporate White
-- Dark Technical
-- Elegant Thesis
-- Lecture Notes
-- Professional Docs
+## PDF Behavior
+- Requested format `pdf` always returns:
+  - response: `actualFormat = "pdf"`
+  - download content type: `application/pdf`
+- `conversionEngine` and `externalFallbackUsed` identify the path used.
 
-## Required v7 Professional Templates
-- Project Report Template
-- Research Paper Template
-- Study Notes Template
-- Technical Documentation Template
-- Assignment Template
+## Music Manifest Contract
+File: `frontend/public/music/manifest.json`
 
-## Extended Documentation
-- [Working Guide](./docs/WORKING_GUIDE.md)
-- [Marker Reference v7](./docs/MARKER_REFERENCE_V7.md)
-- [Themes and Templates v7](./docs/THEMES_TEMPLATES_V7.md)
-- [Deployment Guide](./docs/DEPLOYMENT_VERCEL_RENDER_LOCAL.md)
-- [Migration v6 to v7](./docs/MIGRATION_V6_TO_V7.md)
+```json
+{
+  "smooth": [
+    { "title": "Local Track", "file": "my-track.mp3" },
+    { "title": "CDN Track", "url": "https://cdn.example.com/track.mp3" }
+  ],
+  "focus": [
+    "focus-loop.mp3"
+  ]
+}
+```
 
+Rules:
+- `file`, `url`, or `link` source is accepted.
+- Direct media URLs are supported.
+- YouTube page links are rejected (`youtube.com/watch`, `youtu.be/...`).
+- Playback is manual (no autoplay).
+- Track auto-next is enabled.
+
+## Security Notes
+- Request body limit (`MAX_BODY_BYTES`).
+- Fixed-window rate limit on write APIs.
+- Secure headers on API responses.
+- Remote media URL validation blocks private/loopback hosts by default.
+- Download links use expiring, multi-use tokens.
+
+## Documentation
+- `docs/WORKING_GUIDE.md`
+- `docs/DEPLOYMENT_VERCEL_RENDER_LOCAL.md`
+- `docs/MARKER_REFERENCE_V7.md` (contains v8-compatible details)
+- `docs/THEMES_TEMPLATES_V7.md`
+- `docs/MIGRATION_V6_TO_V7.md`

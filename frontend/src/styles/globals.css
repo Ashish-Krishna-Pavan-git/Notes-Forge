@@ -7,9 +7,12 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'SF Pro Text', 'Google Sans', 'Segoe UI', 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  margin: 0;
+  min-height: 100vh;
 }
 
 /* Custom scrollbar */
@@ -70,7 +73,7 @@ body {
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -87,14 +90,29 @@ body {
 
 /* Focus styles */
 input:focus, textarea:focus, select:focus {
-  outline: none;
-  ring: 2px;
-  ring-color: #0ea5e9;
+  outline: 2px solid rgba(14, 165, 233, 0.32);
+  outline-offset: 1px;
 }
 
 /* Button hover effects */
 .btn-primary {
-  @apply bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold px-6 py-3 rounded-lg shadow-lg transition-all duration-300;
+  @apply bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold px-6 py-3 rounded-lg shadow-lg transition-all duration-300;
+}
+
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"] {
+  min-height: 40px;
+}
+
+@media (max-width: 640px) {
+  button,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+  }
 }
 
 .btn-primary:hover {

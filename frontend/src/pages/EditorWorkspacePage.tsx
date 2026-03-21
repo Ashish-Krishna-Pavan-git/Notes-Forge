@@ -1,4 +1,4 @@
-// App.tsx — NotesForge Professional v7.0.0
+﻿// App.tsx — Quick Doc Formatter v8.0.0
 // Fixes: Broken JSX nesting, XSS, dynamic Tailwind, missing types,
 //        performance (useMemo/useCallback), missing endpoints support
 
@@ -80,6 +80,9 @@ const MAX_HISTORY = 100;
 const MAX_DRAFTS = 10;
 const MAX_RECENT_EXPORTS = 5;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB
+const LARGE_DOC_ASYNC_LINE_THRESHOLD = 100_000;
+const ASYNC_POLL_INTERVAL_MS = 1000;
+const ASYNC_POLL_MAX_ATTEMPTS = 900;
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -285,6 +288,7 @@ interface MarkerCatalogEntry {
 interface MusicTrack {
   title: string;
   file: string;
+  sourceType?: "local" | "url";
   artist?: string;
   duration?: string;
 }
@@ -297,6 +301,8 @@ type MusicManifest = Partial<
       | {
           title?: string;
           file?: string;
+          url?: string;
+          link?: string;
           artist?: string;
           duration?: string;
         }
@@ -319,10 +325,12 @@ type ModeName =
 const FALLBACK_MARKERS = [
   "HEADING", "H1", "SUBHEADING", "H2", "SUB-SUBHEADING", "H3",
   "H4", "H5", "H6", "PARAGRAPH", "PARA", "BULLET", "NUMBERED",
-  "CODE", "TABLE", "TABLE_CAPTION", "QUOTE", "NOTE", "IMPORTANT",
+  "CHECKLIST", "TASK", "TODO",
+  "CODE", "EQUATION", "TABLE", "TABLE_CAPTION", "QUOTE", "NOTE", "IMPORTANT",
+  "TIP", "WARNING", "INFO", "SUCCESS", "CALLOUT", "SUMMARY",
   "IMAGE", "FIGURE", "FIGURE_CAPTION", "LINK", "HIGHLIGHT", "FOOTNOTE",
   "TOC", "LIST_OF_TABLES", "LIST_OF_FIGURES", "ASCII", "DIAGRAM", "LABEL",
-  "CENTER", "RIGHT", "JUSTIFY", "WATERMARK", "PAGEBREAK",
+  "CENTER", "RIGHT", "JUSTIFY", "WATERMARK", "PAGEBREAK", "PAGE_BREAK", "SEPARATOR", "HR", "HORIZONTAL_RULE",
   "COVER_PAGE", "CERTIFICATE_PAGE", "DECLARATION_PAGE", "ACKNOWLEDGEMENT_PAGE",
   "ABSTRACT_PAGE", "CHAPTER", "REFERENCES", "REFERENCE", "APPENDIX",
 ] as const;
@@ -347,10 +355,11 @@ const TYPE_COLOR: Record<string, string> = {
   h1: "bg-orange-500", h2: "bg-amber-500", h3: "bg-blue-600",
   h4: "bg-blue-500", h5: "bg-indigo-500", h6: "bg-purple-500",
   paragraph: "bg-gray-500", bullet: "bg-purple-600",
-  numbered: "bg-purple-500", code: "bg-slate-700", table: "bg-teal-600",
-  quote: "bg-yellow-600", note: "bg-green-600", image: "bg-pink-600",
+  numbered: "bg-purple-500", checklist: "bg-fuchsia-600",
+  code: "bg-slate-700", equation: "bg-slate-600", table: "bg-teal-600",
+  quote: "bg-yellow-600", note: "bg-green-600", warning: "bg-amber-600", info: "bg-blue-600", success: "bg-emerald-600", image: "bg-pink-600",
   link: "bg-sky-600", highlight: "bg-yellow-500", footnote: "bg-gray-600",
-  toc: "bg-orange-600", ascii: "bg-rose-600",
+  toc: "bg-orange-600", ascii: "bg-rose-600", separator: "bg-gray-400",
 };
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
@@ -359,7 +368,9 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   h3: <Hash className="w-3 h-3" />,
   paragraph: <AlignLeft className="w-3 h-3" />,
   bullet: <List className="w-3 h-3" />,
+  checklist: <CheckCircle className="w-3 h-3" />,
   code: <Code className="w-3 h-3" />,
+  equation: <Code className="w-3 h-3" />,
   table: <Table className="w-3 h-3" />,
   image: <Img className="w-3 h-3" />,
   link: <Link className="w-3 h-3" />,
@@ -549,7 +560,7 @@ const FALLBACK_THEME_CATALOG: Record<string, ThemeInfo> = {
     spacing: { line_spacing: 1.5 },
   },
   frontlines_edutech_theme: {
-    name: "Frontlines Edu Tech",
+    name: "Daily Notes Maker",
     description:
       "Times New Roman theme with purple-orange styling, headers, footer, border and watermark.",
     builtin: true,
@@ -823,6 +834,18 @@ function normalizeMode(value: unknown): ModeName {
   return MODE_ORDER.includes(raw) ? raw : "smooth";
 }
 
+function isYouTubePageUrl(value: string): boolean {
+  const raw = value.trim().toLowerCase();
+  if (!/^https?:\/\//.test(raw)) return false;
+  if (/\.(mp3|wav|ogg|m4a|aac|flac|mp4|webm)(\?.*)?$/.test(raw)) return false;
+  return (
+    raw.includes("youtube.com/watch") ||
+    raw.includes("youtu.be/") ||
+    raw.includes("youtube.com/shorts/") ||
+    raw.includes("youtube.com/live/")
+  );
+}
+
 function normalizeTabWidth(value: unknown): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 4;
@@ -1077,7 +1100,7 @@ function normalizeWatermarkType(value: unknown): string | undefined {
 
 const SAMPLE_THEME_IMPORT = {
   key: "frontlines_edutech_theme",
-  name: "Frontlines Edu Tech",
+  name: "Daily Notes Maker",
   description:
     "Full theme import with body font, per-heading fonts, bullet font, colors, spacing, header, footer, watermark and page setup.",
   config: {
@@ -1146,7 +1169,7 @@ const SAMPLE_THEME_IMPORT = {
     },
     header: {
       enabled: true,
-      text: "Frontlines Edu Tech",
+      text: "Daily Notes Maker",
       alignment: "center",
       color: "#F77F00",
       size: 10,
@@ -1218,7 +1241,7 @@ NUMBERED: Verify recovery and monitor.`,
 };
 
 const SAMPLE_PROMPT_IMPORT = {
-  prompt: `You are NotesForge Formatter vNext.
+  prompt: `You are Quick Doc Formatter AI v8.
 Return ONLY strict marker lines. No markdown fences, no commentary, no prose outside markers.
 
 Rules:
@@ -1228,7 +1251,7 @@ Rules:
 4. Keep language concise and professional.
 
 Required marker coverage when relevant:
-H1-H6, PARAGRAPH, CENTER, RIGHT, JUSTIFY, BULLET, NUMBERED, CODE, ASCII, DIAGRAM, TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, NOTE, IMPORTANT, LINK, HIGHLIGHT, FOOTNOTE, TOC, LIST_OF_TABLES, LIST_OF_FIGURES, COVER_PAGE, ABSTRACT_PAGE, CHAPTER, REFERENCES, REFERENCE, APPENDIX, PAGEBREAK.
+H1-H6, PARAGRAPH, CENTER, RIGHT, JUSTIFY, BULLET, NUMBERED, CHECKLIST, CODE, EQUATION, ASCII, DIAGRAM, TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, NOTE, IMPORTANT, TIP, WARNING, INFO, SUCCESS, CALLOUT, SUMMARY, LINK, HIGHLIGHT, FOOTNOTE, TOC, LIST_OF_TABLES, LIST_OF_FIGURES, COVER_PAGE, ABSTRACT_PAGE, CHAPTER, REFERENCES, REFERENCE, APPENDIX, PAGEBREAK, SEPARATOR.
 
 Example output:
 H1: Incident Summary
@@ -1294,10 +1317,10 @@ const DEFAULT_CODE_FONT_OPTIONS = [
 // FALLBACK AI PROMPT
 // ═══════════════════════════════════════════════════════════════════
 
-const FALLBACK_PROMPT = `You are NotesForge Formatter vNext.
+const FALLBACK_PROMPT = `You are Quick Doc Formatter AI v8.
 
 TASK:
-Convert user input into strict NotesForge marker syntax for direct export.
+Convert user input into strict Quick Doc Formatter marker syntax for direct export.
 
 NON-NEGOTIABLE RULES:
 1. Every non-empty line MUST be MARKER: payload.
@@ -1307,16 +1330,16 @@ NON-NEGOTIABLE RULES:
 
 SUPPORTED MARKERS:
 H1 H2 H3 H4 H5 H6
-PARAGRAPH PARA CENTER RIGHT JUSTIFY QUOTE NOTE IMPORTANT LABEL
-BULLET NUMBERED
-CODE ASCII DIAGRAM
+PARAGRAPH PARA CENTER RIGHT JUSTIFY QUOTE NOTE IMPORTANT TIP WARNING INFO SUCCESS CALLOUT SUMMARY LABEL
+BULLET NUMBERED CHECKLIST TASK TODO
+CODE EQUATION ASCII DIAGRAM
 TABLE TABLE_CAPTION
 IMAGE FIGURE FIGURE_CAPTION
 LINK HIGHLIGHT FOOTNOTE
 TOC LIST_OF_TABLES LIST_OF_FIGURES
 COVER_PAGE CERTIFICATE_PAGE DECLARATION_PAGE ACKNOWLEDGEMENT_PAGE ABSTRACT_PAGE
 CHAPTER REFERENCES REFERENCE APPENDIX
-PAGEBREAK PAGE_BREAK
+PAGEBREAK PAGE_BREAK SEPARATOR HR HORIZONTAL_RULE
 
 PAYLOAD GUIDELINES:
 - IMAGE/FIGURE: source | caption | align | scale
@@ -1342,7 +1365,7 @@ PAGEBREAK:
 REFERENCES:
 REFERENCE: [1] NIST guidance
 
-Return ONLY NotesForge markers output.`;
+Return ONLY Quick Doc Formatter markers output.`;
 
 // ═══════════════════════════════════════════════════════════════════
 // SHORTCUTS DATA
@@ -1407,7 +1430,7 @@ const SHORTCUTS = [
 // TEMPLATES
 // ═══════════════════════════════════════════════════════════════════
 
-const SAMPLE_EXAMPLE = `H1: NotesForge - Cybersecurity Incident Summary
+const SAMPLE_EXAMPLE = `H1: Quick Doc Formatter - Cybersecurity Incident Summary
 H2: Executive Summary
 PARAGRAPH: A brief summary of the incident, its impact, and immediate actions taken.
 H2: Details
@@ -1542,7 +1565,7 @@ REFERENCE: "[1] Course source"`,
     name: "Quick Start (New User)",
     category: "Academic",
     icon: "🚀",
-    content: `HEADING: "My First NotesForge Document"
+    content: `HEADING: "My First Quick Doc Formatter Document"
 PARAGRAPH: "Author: [Your name]  |  Date: [Date]"
 
 NOTE: "Delete this note after reading. Replace bracket text with your content."
@@ -1986,9 +2009,31 @@ function buildPreviewHTML(
         );
         break;
       }
+      case "CHECKLIST":
+      case "TASK":
+      case "TODO": {
+        const expanded = rawRest.replace(/\t/g, " ".repeat(safeTabWidth));
+        const leading = expanded.length - expanded.trimStart().length;
+        const cleaned = expanded
+          .trim()
+          .replace(/^["']|["']$/g, "")
+          .replace(/^[-*]\s*/, "");
+        const markMatch = cleaned.match(/^\[(x|X| )\]\s*(.*)$/);
+        const checked = (markMatch?.[1] || "").toLowerCase() === "x";
+        const label = escapeHtml(markMatch?.[2] || cleaned);
+        parts.push(
+          `<div class="text-sm mb-1" style="margin-left:${leading * 8 + 20}px;color:${cBody}">${checked ? "☑" : "☐"} ${label}</div>`
+        );
+        break;
+      }
       case "CODE":
         parts.push(
           `<pre class="text-xs p-2 rounded font-mono mb-1" style="background:${cCodeBg};color:${cCodeText}">${content}</pre>`
+        );
+        break;
+      case "EQUATION":
+        parts.push(
+          `<pre class="text-xs p-2 rounded font-mono mb-1 text-center italic" style="background:${cCodeBg};color:${cCodeText}">${content}</pre>`
         );
         break;
       case "TABLE": {
@@ -2025,6 +2070,16 @@ function buildPreviewHTML(
       case "IMPORTANT":
         parts.push(
           `<div class="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-600 p-2 text-sm mb-2" style="color:${cBody}">📝 ${content}</div>`
+        );
+        break;
+      case "TIP":
+      case "INFO":
+      case "SUCCESS":
+      case "WARNING":
+      case "CALLOUT":
+      case "SUMMARY":
+        parts.push(
+          `<div class="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600 p-2 text-sm mb-2" style="color:${cBody}">${content}</div>`
         );
         break;
       case "HIGHLIGHT": {
@@ -2101,9 +2156,15 @@ function buildPreviewHTML(
         );
         break;
       case "PAGEBREAK":
+      case "PAGE_BREAK":
         parts.push(
           `<div class="my-4 border-t-2 border-dashed border-gray-300 pt-2 text-[11px] uppercase tracking-wide text-gray-400">Page Break</div>`
         );
+        break;
+      case "SEPARATOR":
+      case "HR":
+      case "HORIZONTAL_RULE":
+        parts.push('<hr class="my-4 border-t border-gray-300" />');
         break;
       default:
         parts.push(
@@ -2137,7 +2198,11 @@ function analyzeTextLocally(text: string, tabWidth = 4): AnalysisResult {
     PARA: "paragraph",
     BULLET: "bullet",
     NUMBERED: "numbered",
+    CHECKLIST: "checklist",
+    TASK: "checklist",
+    TODO: "checklist",
     CODE: "code",
+    EQUATION: "equation",
     TABLE: "table",
     TABLE_CAPTION: "table_caption",
     ASCII: "ascii",
@@ -2147,6 +2212,12 @@ function analyzeTextLocally(text: string, tabWidth = 4): AnalysisResult {
     LIST_OF_FIGURES: "list_of_figures",
     NOTE: "note",
     IMPORTANT: "note",
+    TIP: "note",
+    WARNING: "warning",
+    INFO: "info",
+    SUCCESS: "success",
+    CALLOUT: "note",
+    SUMMARY: "note",
     QUOTE: "quote",
     IMAGE: "image",
     FIGURE: "figure",
@@ -2164,6 +2235,10 @@ function analyzeTextLocally(text: string, tabWidth = 4): AnalysisResult {
     REFERENCE: "reference",
     APPENDIX: "appendix",
     PAGEBREAK: "pagebreak",
+    PAGE_BREAK: "pagebreak",
+    SEPARATOR: "separator",
+    HR: "separator",
+    HORIZONTAL_RULE: "separator",
   };
 
   lines.forEach((line, idx) => {
@@ -2179,7 +2254,14 @@ function analyzeTextLocally(text: string, tabWidth = 4): AnalysisResult {
         marker = m[1].toUpperCase();
         type = markerTypeMap[marker] || marker.toLowerCase();
         content = m[2] || "";
-        if ((marker === "BULLET" || marker === "NUMBERED") && content) {
+        if (
+          (marker === "BULLET" ||
+            marker === "NUMBERED" ||
+            marker === "CHECKLIST" ||
+            marker === "TASK" ||
+            marker === "TODO") &&
+          content
+        ) {
           const expanded = content.replace(/\t/g, " ".repeat(safeTabWidth));
           const leading =
             expanded.length - expanded.trimStart().length;
@@ -2432,6 +2514,8 @@ export default function App({
 
   // ── Generation State ──────────────────────────────────────────
   const [generating, setGenerating] = useState(false);
+  const [generateProgress, setGenerateProgress] = useState<number | null>(null);
+  const [generateStatusLabel, setGenerateStatusLabel] = useState("");
   const [format, setFormat] = useState<ExportFormat>("docx");
   const [customName, setCustomName] = useState("");
 
@@ -2950,24 +3034,35 @@ export default function App({
         vibing: [],
         focus: [],
       };
+      let blockedYouTube = 0;
 
       MODE_ORDER.forEach((mode) => {
         const rows = Array.isArray(raw?.[mode]) ? raw?.[mode] : [];
         parsed[mode] = rows
           .map((item, index) => {
             if (typeof item === "string") {
-              const file = item.trim();
-              if (!file) return null;
+              const source = item.trim();
+              if (!source) return null;
+              if (isYouTubePageUrl(source)) {
+                blockedYouTube += 1;
+                return null;
+              }
               return {
                 title: `Track ${index + 1}`,
-                file,
+                file: source,
+                sourceType: /^https?:\/\//i.test(source) ? "url" : "local",
               } as MusicTrack;
             }
-            const file = String(item?.file || "").trim();
-            if (!file) return null;
+            const source = String(item?.file || item?.url || item?.link || "").trim();
+            if (!source) return null;
+            if (isYouTubePageUrl(source)) {
+              blockedYouTube += 1;
+              return null;
+            }
             return {
               title: String(item?.title || `Track ${index + 1}`),
-              file,
+              file: source,
+              sourceType: /^https?:\/\//i.test(source) ? "url" : "local",
               artist: item?.artist ? String(item.artist) : undefined,
               duration: item?.duration ? String(item.duration) : undefined,
             } as MusicTrack;
@@ -2985,6 +3080,11 @@ export default function App({
           ? null
           : "Music manifest loaded, but no tracks are mapped yet."
       );
+      if (blockedYouTube > 0) {
+        setWarn(
+          `${blockedYouTube} YouTube page link(s) were skipped. Add direct media URLs (.mp3/.m4a/.wav/.mp4) instead.`
+        );
+      }
     } catch {
       setMusicLibrary(EMPTY_MUSIC_LIBRARY);
       setMusicLoadError(
@@ -3135,6 +3235,8 @@ export default function App({
   const doGenerate = useCallback(async () => {
     if (!text.trim() || generating) return;
     setGenerating(true);
+    setGenerateProgress(4);
+    setGenerateStatusLabel("Preparing export...");
     setError(null);
     setSuccess(null);
     setWarn(null);
@@ -3405,20 +3507,7 @@ export default function App({
         },
       };
 
-      const r = await apiPost<{
-        success?: boolean;
-        downloadUrl?: string;
-        download_url?: string;
-        fileId?: string;
-        filename?: string;
-        requestedFormat?: string;
-        requested_format?: string;
-        actualFormat?: string;
-        actual_format?: string;
-        warning?: string;
-        warnings?: string[];
-        error?: string;
-      }>(API_ENDPOINTS.generate, {
+      const requestPayload = {
         content: text,
         text,
         format,
@@ -3484,7 +3573,108 @@ export default function App({
                 }
               : undefined,
         },
-      });
+      };
+
+      type GenerateApiPayload = {
+        success?: boolean;
+        downloadUrl?: string;
+        download_url?: string;
+        fileId?: string;
+        filename?: string;
+        requestedFormat?: string;
+        requested_format?: string;
+        actualFormat?: string;
+        actual_format?: string;
+        conversionEngine?: string;
+        conversion_engine?: string;
+        externalFallbackUsed?: boolean;
+        external_fallback_used?: boolean;
+        warning?: string;
+        warnings?: string[];
+        error?: string;
+      };
+
+      const lineCount = text.split("\n").length;
+      const useAsyncPath = lineCount >= LARGE_DOC_ASYNC_LINE_THRESHOLD;
+      let r: GenerateApiPayload | null = null;
+
+      if (useAsyncPath) {
+        setGenerateProgress(10);
+        setGenerateStatusLabel("Queued large export job...");
+        const start = await apiPost<{
+          success?: boolean;
+          jobId?: string;
+          status?: string;
+          progress?: number;
+        }>(API_ENDPOINTS.generateAsync, requestPayload);
+
+        const jobId = String(start?.jobId || "").trim();
+        if (!jobId) {
+          throw new Error("Async export did not return a job id.");
+        }
+
+        for (let attempt = 0; attempt < ASYNC_POLL_MAX_ATTEMPTS; attempt += 1) {
+          const job = await apiGet<{
+            success?: boolean;
+            status?: string;
+            progress?: number;
+            downloadUrl?: string;
+            fileId?: string;
+            filename?: string;
+            requestedFormat?: string;
+            actualFormat?: string;
+            conversionEngine?: string;
+            externalFallbackUsed?: boolean;
+            warning?: string;
+            warnings?: string[];
+            error?: string;
+          }>(API_ENDPOINTS.generateJob(jobId));
+
+          const progress = Math.max(0, Math.min(100, Number(job?.progress ?? 0)));
+          setGenerateProgress(progress);
+          setGenerateStatusLabel(`Large export job: ${progress}%`);
+
+          if (job?.status === "completed") {
+            r = {
+              success: true,
+              downloadUrl: job.downloadUrl,
+              fileId: job.fileId,
+              filename: job.filename,
+              requestedFormat: job.requestedFormat,
+              actualFormat: job.actualFormat,
+              conversionEngine: job.conversionEngine,
+              externalFallbackUsed: job.externalFallbackUsed,
+              warning: job.warning,
+              warnings: job.warnings,
+            };
+            break;
+          }
+
+          if (job?.status === "failed") {
+            throw new Error(job.error || "Async export job failed.");
+          }
+
+          await new Promise((resolve) =>
+            window.setTimeout(resolve, ASYNC_POLL_INTERVAL_MS)
+          );
+        }
+
+        if (!r) {
+          throw new Error("Async export timed out before completion.");
+        }
+      } else {
+        setGenerateProgress(20);
+        setGenerateStatusLabel("Generating document...");
+        r = await apiPost<GenerateApiPayload>(
+          API_ENDPOINTS.generate,
+          requestPayload
+        );
+        setGenerateProgress(82);
+      }
+      if (!r) {
+        throw new Error("Export response was empty.");
+      }
+
       const downloadUrl = r.downloadUrl || r.download_url;
       const actualFormatRaw =
         r.actualFormat || r.actual_format || format;
@@ -3495,19 +3685,25 @@ export default function App({
           ? String(actualFormatRaw).toLowerCase()
           : format
       ) as ExportFormat;
-      const normalizedBase = (customName || "notesforge_output")
+      const externalFallbackUsed = Boolean(
+        r.externalFallbackUsed || r.external_fallback_used
+      );
+      const normalizedBase = (customName || "quick_doc_formatter_output")
         .replace(/[^a-z0-9_\- ]/gi, "")
         .trim()
         .replace(/\s+/g, "_");
       const filename =
         r.filename ||
-        `${normalizedBase || "notesforge_output"}.${
+        `${normalizedBase || "quick_doc_formatter_output"}.${
           actualFormat === "txt" ? "txt" : actualFormat
         }`;
       const warningParts = [
         ...(r.warning ? [String(r.warning)] : []),
         ...(Array.isArray(r.warnings)
           ? r.warnings.map((item) => String(item))
+          : []),
+        ...(externalFallbackUsed
+          ? ["PDF generated via iLovePDF external fallback."]
           : []),
       ]
         .flatMap((msg) => msg.split("|"))
@@ -3522,6 +3718,8 @@ export default function App({
         );
       const warningMessage = [...new Set(warningParts)].join(" | ");
       if (r.success || downloadUrl) {
+        setGenerateProgress(90);
+        setGenerateStatusLabel("Downloading export...");
         const resolvedUrl = downloadUrl
           ? /^https?:\/\//i.test(downloadUrl)
             ? downloadUrl
@@ -3559,6 +3757,8 @@ export default function App({
             "Could not stream file directly; opened download link in a new tab."
           );
         }
+        setGenerateProgress(100);
+        setGenerateStatusLabel("Export complete.");
         setSuccess(`✅ ${filename} downloaded!`);
         if (warningMessage) setWarn(warningMessage);
         const entry: RecentExport = {
@@ -3587,6 +3787,10 @@ export default function App({
       setError(getErrorMessage(e));
     } finally {
       setGenerating(false);
+      window.setTimeout(() => {
+        setGenerateProgress(null);
+        setGenerateStatusLabel("");
+      }, 900);
     }
   }, [
     text,
@@ -3908,7 +4112,7 @@ export default function App({
 
   const downloadSampleThemeJson = useCallback(() => {
     downloadFile(
-      "notesforge-theme-sample.json",
+      "Quick Doc Formatter-theme-sample.json",
       JSON.stringify(SAMPLE_THEME_IMPORT, null, 2),
       "application/json"
     );
@@ -3916,7 +4120,7 @@ export default function App({
 
   const downloadSampleTemplateJson = useCallback(() => {
     downloadFile(
-      "notesforge-template-sample.json",
+      "Quick Doc Formatter-template-sample.json",
       JSON.stringify(SAMPLE_TEMPLATE_IMPORT, null, 2),
       "application/json"
     );
@@ -3924,7 +4128,7 @@ export default function App({
 
   const downloadSamplePromptJson = useCallback(() => {
     downloadFile(
-      "notesforge-prompt-sample.json",
+      "Quick Doc Formatter-prompt-sample.json",
       JSON.stringify(SAMPLE_PROMPT_IMPORT, null, 2),
       "application/json"
     );
@@ -3932,15 +4136,15 @@ export default function App({
 
   const buildCurrentThemeExport = useCallback(() => {
     const key = slugifyIdentifier(
-      currentTheme || themes[currentTheme]?.name || "notesforge_theme",
-      "notesforge_theme"
+      currentTheme || themes[currentTheme]?.name || "Quick Doc Formatter_theme",
+      "Quick Doc Formatter_theme"
     );
     return {
       key,
       name: themes[currentTheme]?.name || "Custom Theme",
       description:
         themes[currentTheme]?.description ||
-        "Exported NotesForge theme",
+        "Exported Quick Doc Formatter theme",
       config: {
         app: { ...(config.app || {}), theme: key },
         fonts: {
@@ -3964,7 +4168,7 @@ export default function App({
   const exportCurrentThemeJson = useCallback(() => {
     const payload = buildCurrentThemeExport();
     downloadFile(
-      `${payload.key || "notesforge_theme"}.json`,
+      `${payload.key || "Quick Doc Formatter_theme"}.json`,
       JSON.stringify(payload, null, 2),
       "application/json"
     );
@@ -4673,7 +4877,7 @@ export default function App({
           "{topic}",
           topic
         ) ||
-        `Using NotesForge marker syntax (H1-H6, PARAGRAPH, BULLET, NUMBERED, TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, TOC, LIST_OF_TABLES, LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE), generate structured content about '${topic}' for '${selectedTemplateId}' template. Output only markers.`;
+        `Using Quick Doc Formatter marker syntax (H1-H6, PARAGRAPH, BULLET, NUMBERED, CHECKLIST, TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, EQUATION, TIP, WARNING, INFO, SUCCESS, TOC, LIST_OF_TABLES, LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE), generate structured content about '${topic}' for '${selectedTemplateId}' template. Output only markers.`;
       setPromptText(fallback);
       setWarn(
         "Template regenerate API unavailable. Prompt prepared locally."
@@ -5123,6 +5327,15 @@ export default function App({
       audio.removeAttribute("src");
       audio.load();
       setMusicPlaying(false);
+      return;
+    }
+
+    if (isYouTubePageUrl(activeTrack.file)) {
+      audio.pause();
+      setMusicPlaying(false);
+      setMusicLoadError(
+        "YouTube page links are not supported. Use a direct media URL or local file in /public/music."
+      );
       return;
     }
 
@@ -5685,10 +5898,10 @@ export default function App({
               </div>
               <div>
                 <h1 className="text-xl font-bold tracking-tight">
-                  NotesForge Professional
+                  Quick Doc Formatter
                 </h1>
                 <p className="text-xs text-white/60">
-                  v7.0.0 · Full Featured
+                  v8.0.0 · Full Featured
                 </p>
               </div>
             </div>
@@ -6126,7 +6339,7 @@ export default function App({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-semibold text-sm mb-1">
-                        How NotesForge Works
+                        How Quick Doc Formatter Works
                       </h3>
                       <p className="text-xs text-gray-500 mb-3">
                         Write simple markers, then export
@@ -6521,7 +6734,7 @@ export default function App({
               </div>
 
               {/* Generate Bar */}
-              <div data-tour="generate-bar" className={`${card} p-4`}>
+              <div data-tour="generate-bar" className={`${card} p-4 sticky bottom-2 z-20 md:static`}>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="flex items-center gap-2">
                     <Pencil className="w-4 h-4 text-gray-400 shrink-0" />
@@ -6580,9 +6793,23 @@ export default function App({
                     )}
                   </button>
                 </div>
+                {generating && generateProgress !== null && (
+                  <div className="mt-3 space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-gray-500">
+                      <span>{generateStatusLabel || "Processing..."}</span>
+                      <span>{Math.round(generateProgress)}%</span>
+                    </div>
+                    <div className={`h-2 rounded-full ${dark ? "bg-gray-800" : "bg-gray-200"}`}>
+                      <div
+                        className="h-2 rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 transition-all duration-300"
+                        style={{ width: `${Math.max(0, Math.min(100, generateProgress))}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 {format === "pdf" && (
                   <p className="text-xs mt-2 text-gray-400">
-                    PDF export always returns a PDF. If primary converters fail, NotesForge uses fallback engines and keeps the response format as PDF.
+                    PDF export always returns a PDF. If primary converters fail, Quick Doc Formatter uses fallback engines and keeps the response format as PDF.
                   </p>
                 )}
               </div>
@@ -7063,7 +7290,7 @@ export default function App({
                   New User Guide
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  First time using NotesForge? Follow these 5 steps.
+                  First time using Quick Doc Formatter? Follow these 5 steps.
                 </p>
               </div>
 
@@ -8040,7 +8267,7 @@ backend: Render (Root: backend)`}
                               }}
                             >
                               def hello_world(): return
-                              "Hello, NotesForge!" #
+                              "Hello, Quick Doc Formatter!" #
                               0O1lIi
                             </div>
                           )}
@@ -8511,7 +8738,7 @@ backend: Render (Root: backend)`}
                         Mode Music (Copyright-Free Local Assets)
                       </h4>
                       <p className="text-xs text-gray-500 mb-3">
-                        Manual play only. Drop tracks in <code>frontend/public/music</code> and map them in <code>manifest.json</code> by mode.
+                        Manual play only. Use local files or direct media URLs in <code>frontend/public/music/manifest.json</code>. YouTube page links are intentionally blocked.
                       </p>
 
                       <label className="flex items-center gap-2 text-sm mb-3">
@@ -9035,7 +9262,7 @@ backend: Render (Root: backend)`}
                                     )
                                   }
                                   className={inp}
-                                  placeholder={`e.g. © ${new Date().getFullYear()} NotesForge`}
+                                  placeholder={`e.g. © ${new Date().getFullYear()} Quick Doc Formatter`}
                                 />
                               </div>
 
@@ -10930,10 +11157,12 @@ backend: Render (Root: backend)`}
             : "border-gray-200 text-gray-400"
         }`}
       >
-        NotesForge Professional v7.0.0 · {stats.words} words ·{" "}
+        Quick Doc Formatter v8.0.0 · {stats.words} words ·{" "}
         {stats.mins} min read · Theme:{" "}
         {themes[currentTheme]?.name || currentTheme}
       </footer>
     </div>
   );
 }
+
+

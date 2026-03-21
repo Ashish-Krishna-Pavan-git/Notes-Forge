@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 import io
+import json
 import os
 from pathlib import Path
 import re
@@ -11,9 +12,10 @@ import subprocess
 import sys
 import tempfile
 import time
+import zipfile
 from html import escape
 from typing import List, Sequence, Tuple
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 from uuid import uuid4
 from xml.sax.saxutils import escape as xml_escape
 
@@ -26,7 +28,13 @@ from docx.shared import Inches, Mm, Pt, RGBColor
 
 from .models import FormattingOptions, GenerateSecurityPayload, ThemePayload
 from .parser import Node, render_preview_html, to_markdown, to_plain_text
-from .security import disable_docx_editing, remove_docx_metadata, secure_pdf
+from .security import (
+    disable_docx_editing,
+    mask_sensitive_url,
+    remove_docx_metadata,
+    secure_pdf,
+    validate_remote_media_url,
+)
 from .themes import css_from_theme, watermark_html
 
 
@@ -37,6 +45,8 @@ class ExportResult:
     warnings: List[str]
     requested_format: str
     actual_format: str
+    conversion_engine: str = "native"
+    external_fallback_used: bool = False
     warning: str | None = None
 
 
@@ -224,7 +234,19 @@ def _resolve_image_stream(source: str, warnings: List[str]) -> io.BytesIO | None
             return io.BytesIO(decoded)
 
         if value.lower().startswith(("http://", "https://")):
-            with urlopen(value, timeout=12) as response:  # nosec B310
+            ok, reason = validate_remote_media_url(
+                value,
+                allow_private=_env_flag("NF_ALLOW_PRIVATE_MEDIA_URLS", default=False),
+            )
+            if not ok:
+                warnings.append(f"Blocked image URL '{mask_sensitive_url(value)}': {reason}")
+                return None
+            request = Request(
+                value,
+                method="GET",
+                headers={"User-Agent": "quick-doc-formatter/8.0"},
+            )
+            with urlopen(request, timeout=12) as response:  # nosec B310
                 payload = response.read()
                 return io.BytesIO(payload)
 
@@ -260,7 +282,7 @@ def _apply_docx_background_watermark(section, security: GenerateSecurityPayload,
 
         shape_xml = (
             f'<w:pict {nsdecls("w", "v", "o")}>'
-            '<v:shape id="NotesForgeWatermark" type="#_x0000_t136"'
+            '<v:shape id="QuickDocFormatterWatermark" type="#_x0000_t136"'
             ' style="position:absolute;'
             "mso-position-horizontal:center;"
             "mso-position-vertical:center;"
@@ -621,6 +643,185 @@ def _convert_docx_to_pdf(docx_path: Path, pdf_path: Path) -> Tuple[bool, str]:
     return False, "; ".join(err for err in errors if err)
 
 
+def _http_json(
+    method: str,
+    url: str,
+    *,
+    token: str | None = None,
+    payload: dict | None = None,
+    timeout: int = 60,
+) -> dict:
+    headers = {"Accept": "application/json", "User-Agent": "quick-doc-formatter/8.0"}
+    body = None
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    if payload is not None:
+        headers["Content-Type"] = "application/json"
+        body = json.dumps(payload).encode("utf-8")
+    req = Request(url=url, data=body, method=method.upper(), headers=headers)
+    with urlopen(req, timeout=timeout) as resp:  # nosec B310
+        raw = resp.read()
+    return json.loads(raw.decode("utf-8"))
+
+
+def _encode_multipart_form(fields: dict[str, str], file_field: str, file_name: str, file_bytes: bytes) -> tuple[bytes, str]:
+    boundary = f"----QuickDocFormatterBoundary{uuid4().hex}"
+    chunks: list[bytes] = []
+    for key, value in fields.items():
+        chunks.extend(
+            [
+                f"--{boundary}\r\n".encode("utf-8"),
+                f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode("utf-8"),
+                str(value).encode("utf-8"),
+                b"\r\n",
+            ]
+        )
+    chunks.extend(
+        [
+            f"--{boundary}\r\n".encode("utf-8"),
+            (
+                f'Content-Disposition: form-data; name="{file_field}"; filename="{file_name}"\r\n'
+                "Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n"
+            ).encode("utf-8"),
+            file_bytes,
+            b"\r\n",
+            f"--{boundary}--\r\n".encode("utf-8"),
+        ]
+    )
+    return b"".join(chunks), f"multipart/form-data; boundary={boundary}"
+
+
+def _convert_docx_to_pdf_ilovepdf_api(docx_path: Path, pdf_path: Path) -> Tuple[bool, str]:
+    public_key = (os.environ.get("NF_ILOVEPDF_PUBLIC_KEY") or "").strip()
+    if not public_key:
+        return False, "ilovepdf api not configured"
+
+    auth_url = os.environ.get("NF_ILOVEPDF_AUTH_URL", "https://api.ilovepdf.com/v1/auth").strip()
+    start_base = os.environ.get("NF_ILOVEPDF_START_URL", "https://api.ilovepdf.com/v1/start").strip().rstrip("/")
+    region = (os.environ.get("NF_ILOVEPDF_REGION") or "us").strip().lower() or "us"
+    if region not in {"eu", "us", "fr", "de", "pl"}:
+        region = "us"
+
+    try:
+        token_payload = _http_json("POST", auth_url, payload={"public_key": public_key}, timeout=30)
+        token = str(token_payload.get("token") or "").strip()
+        if not token:
+            return False, "ilovepdf auth returned no token"
+
+        start_payload = _http_json("GET", f"{start_base}/officepdf/{region}", token=token, timeout=30)
+        server = str(start_payload.get("server") or "").strip()
+        task = str(start_payload.get("task") or "").strip()
+        if not server or not task:
+            return False, "ilovepdf start did not return server/task"
+
+        upload_url = f"https://{server}/v1/upload"
+        body, content_type = _encode_multipart_form(
+            {"task": task},
+            "file",
+            docx_path.name,
+            docx_path.read_bytes(),
+        )
+        upload_headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": content_type,
+            "Accept": "application/json",
+            "User-Agent": "quick-doc-formatter/8.0",
+        }
+        upload_req = Request(upload_url, data=body, method="POST", headers=upload_headers)
+        with urlopen(upload_req, timeout=90) as upload_resp:  # nosec B310
+            upload_payload = json.loads(upload_resp.read().decode("utf-8"))
+        server_filename = str(upload_payload.get("server_filename") or "").strip()
+        if not server_filename:
+            return False, "ilovepdf upload did not return server_filename"
+
+        process_url = f"https://{server}/v1/process"
+        process_payload = {
+            "task": task,
+            "tool": "officepdf",
+            "output_filename": docx_path.stem,
+            "ignore_errors": True,
+            "files": [
+                {
+                    "server_filename": server_filename,
+                    "filename": docx_path.name,
+                }
+            ],
+        }
+        _http_json("POST", process_url, token=token, payload=process_payload, timeout=180)
+
+        download_url = f"https://{server}/v1/download/{task}"
+        dl_req = Request(
+            url=download_url,
+            method="GET",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/pdf,application/zip,application/octet-stream",
+                "User-Agent": "quick-doc-formatter/8.0",
+            },
+        )
+        with urlopen(dl_req, timeout=180) as dl_resp:  # nosec B310
+            pdf_bytes = dl_resp.read()
+
+        if not pdf_bytes:
+            return False, "ilovepdf download returned empty payload"
+        if pdf_bytes.startswith(b"PK"):
+            try:
+                with zipfile.ZipFile(io.BytesIO(pdf_bytes)) as archive:
+                    pdf_members = [name for name in archive.namelist() if name.lower().endswith(".pdf")]
+                    if not pdf_members:
+                        return False, "ilovepdf zip download did not contain a pdf file"
+                    pdf_bytes = archive.read(pdf_members[0])
+            except Exception as exc:
+                return False, f"ilovepdf zip extraction failed: {exc}"
+        pdf_path.write_bytes(pdf_bytes)
+        if not pdf_path.exists() or pdf_path.stat().st_size == 0:
+            return False, "ilovepdf produced empty output file"
+        return True, "ilovepdf_api"
+    except Exception as exc:
+        return False, f"ilovepdf api failed: {exc}"
+
+
+def _convert_docx_to_pdf_ilovepdf_automation(docx_path: Path, pdf_path: Path) -> Tuple[bool, str]:
+    automation_url = (os.environ.get("NF_ILOVEPDF_AUTOMATION_URL") or "").strip()
+    if not automation_url:
+        return False, "ilovepdf automation bridge not configured"
+
+    ok, reason = validate_remote_media_url(
+        automation_url,
+        allow_private=_env_flag("NF_ALLOW_PRIVATE_MEDIA_URLS", default=False),
+    )
+    if not ok:
+        return False, f"ilovepdf automation url blocked: {reason}"
+
+    try:
+        body, content_type = _encode_multipart_form(
+            {"filename": docx_path.name},
+            "file",
+            docx_path.name,
+            docx_path.read_bytes(),
+        )
+        req = Request(
+            url=automation_url,
+            data=body,
+            method="POST",
+            headers={
+                "Content-Type": content_type,
+                "Accept": "application/pdf,application/octet-stream",
+                "User-Agent": "quick-doc-formatter/8.0",
+            },
+        )
+        with urlopen(req, timeout=240) as resp:  # nosec B310
+            payload = resp.read()
+        if not payload:
+            return False, "ilovepdf automation returned empty payload"
+        pdf_path.write_bytes(payload)
+        if not pdf_path.exists() or pdf_path.stat().st_size == 0:
+            return False, "ilovepdf automation produced empty output file"
+        return True, "ilovepdf_automation"
+    except Exception as exc:
+        return False, f"ilovepdf automation failed: {exc}"
+
+
 def _convert_html_to_pdf_weasyprint(html: str, pdf_path: Path) -> Tuple[bool, str]:
     try:
         from weasyprint import HTML  # type: ignore
@@ -659,8 +860,19 @@ def _nodes_to_plain_lines(nodes: Sequence[Node]) -> list[str]:
             for idx, item in enumerate(node.items or [], start=1):
                 lines.append(f"{idx}. {item}".strip())
             lines.append("")
+        elif node.type == "checklist":
+            checks = node.checks or []
+            for idx, item in enumerate(node.items or []):
+                checked = checks[idx] if idx < len(checks) else False
+                lines.append(f"[{'x' if checked else ' '}] {item}".strip())
+            lines.append("")
         elif node.type == "code":
             lines.append("CODE:")
+            for ln in node.text.splitlines() or [""]:
+                lines.append(f"  {ln}")
+            lines.append("")
+        elif node.type == "equation":
+            lines.append("EQUATION:")
             for ln in node.text.splitlines() or [""]:
                 lines.append(f"  {ln}")
             lines.append("")
@@ -677,6 +889,9 @@ def _nodes_to_plain_lines(nodes: Sequence[Node]) -> list[str]:
             lines.append("")
         elif node.type in {"table_caption", "figure_caption"}:
             lines.append(node.text.strip())
+            lines.append("")
+        elif node.type == "separator":
+            lines.append("--------------------")
             lines.append("")
         elif node.type == "pagebreak":
             lines.append("__NF_PAGE_BREAK__")
@@ -725,10 +940,10 @@ def _convert_nodes_to_pdf_reportlab(
             pages.append(cur)
 
         c = canvas.Canvas(str(pdf_path), pagesize=A4)
-        c.setAuthor("NotesForge")
-        c.setTitle("NotesForge Export")
+        c.setAuthor("Quick Doc Formatter")
+        c.setTitle("Quick Doc Formatter Export")
         try:
-            c.setSubject(theme.name or "NotesForge Document")
+            c.setSubject(theme.name or "Quick Doc Formatter Document")
         except Exception:
             pass
 
@@ -780,7 +995,7 @@ def _pdf_escape_text(value: str) -> str:
 
 def _write_emergency_pdf(pdf_path: Path, message: str) -> Tuple[bool, str]:
     try:
-        line = _pdf_escape_text("NotesForge PDF fallback: " + (message or "Content generated."))
+        line = _pdf_escape_text("Quick Doc Formatter PDF fallback: " + (message or "Content generated."))
         stream = f"BT /F1 11 Tf 50 780 Td ({line}) Tj ET".encode("latin-1", "replace")
 
         objects: list[bytes] = []
@@ -825,7 +1040,7 @@ def _write_emergency_pdf(pdf_path: Path, message: str) -> Tuple[bool, str]:
 
 class FileStore:
     def __init__(self, base_dir: str, ttl_seconds: int = 60 * 60 * 6) -> None:
-        root = Path(base_dir) if base_dir else Path(tempfile.gettempdir()) / "notesforge_exports"
+        root = Path(base_dir) if base_dir else Path(tempfile.gettempdir()) / "quick_doc_formatter_exports"
         root.mkdir(parents=True, exist_ok=True)
         self.base_dir = root
         self.ttl_seconds = ttl_seconds
@@ -1321,11 +1536,43 @@ class DocumentExporter:
                     size_pt=float(theme.bodyStyle.size or 12),
                     color_hex=body_color,
                 )
+                role = getattr(node, "role", "paragraph")
+                role_fill_map = {
+                    "tip": "E0F2FE",
+                    "warning": "FEF3C7",
+                    "info": "DBEAFE",
+                    "success": "DCFCE7",
+                    "callout": "EEF2FF",
+                    "summary": "F1F5F9",
+                }
+                if role in role_fill_map:
+                    _set_paragraph_shading(p, role_fill_map[role])
             elif node.type == "bullet":
                 levels = node.levels or []
                 for idx, item in enumerate(node.items or []):
                     item_level = levels[idx] if idx < len(levels) else 0
                     p = document.add_paragraph(item, style="List Bullet")
+                    p.alignment = _docx_alignment(paragraph_alignment)
+                    p.paragraph_format.left_indent = Inches(
+                        max(0.0, bullet_base_indent_in + (bullet_indent_per_level_in * item_level))
+                    )
+                    p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
+                    p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
+                    p.paragraph_format.line_spacing = line_spacing
+                    _style_paragraph_runs(
+                        p,
+                        font_name=bullet_font_name,
+                        size_pt=float(theme.bodyStyle.size or 12),
+                        color_hex=body_color,
+                    )
+            elif node.type == "checklist":
+                levels = node.levels or []
+                checks = node.checks or []
+                for idx, item in enumerate(node.items or []):
+                    item_level = levels[idx] if idx < len(levels) else 0
+                    checked = checks[idx] if idx < len(checks) else False
+                    label = f"[{'x' if checked else ' '}] {item}"
+                    p = document.add_paragraph(label, style="List Bullet")
                     p.alignment = _docx_alignment(paragraph_alignment)
                     p.paragraph_format.left_indent = Inches(
                         max(0.0, bullet_base_indent_in + (bullet_indent_per_level_in * item_level))
@@ -1372,6 +1619,24 @@ class DocumentExporter:
                     font_name=code_font_name,
                     size_pt=code_font_size,
                     color_hex=_style_str(styles, "code_text", "codeText", default="#1f2937"),
+                )
+            elif node.type == "equation":
+                p = document.add_paragraph(node.text)
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p.paragraph_format.left_indent = Inches(max(0.0, code_indent_in))
+                p.paragraph_format.space_before = Pt(max(0.0, paragraph_before_pt))
+                p.paragraph_format.space_after = Pt(max(0.0, paragraph_after_pt))
+                p.paragraph_format.line_spacing = line_spacing
+                _set_paragraph_shading(
+                    p,
+                    _style_str(styles, "code_background", "codeBackground", default="#0f172a"),
+                )
+                _style_paragraph_runs(
+                    p,
+                    font_name=code_font_name,
+                    size_pt=code_font_size,
+                    color_hex=_style_str(styles, "code_text", "codeText", default="#1f2937"),
+                    italic=True,
                 )
             elif node.type == "ascii":
                 p = document.add_paragraph(node.text)
@@ -1505,6 +1770,17 @@ class DocumentExporter:
                                 color_hex=table_header_text if r_idx == 0 else body_color,
                                 bold=True if r_idx == 0 else None,
                             )
+            elif node.type == "separator":
+                p = document.add_paragraph("")
+                _apply_paragraph_separator(
+                    p,
+                    "top",
+                    _style_str(styles, "table_border", "tableBorder", default="#D1D5DB"),
+                    0.75,
+                    "single",
+                )
+                p.paragraph_format.space_before = Pt(6)
+                p.paragraph_format.space_after = Pt(6)
             elif node.type == "pagebreak":
                 document.add_page_break()
 
@@ -1541,6 +1817,7 @@ class DocumentExporter:
                 warnings=[],
                 requested_format="html",
                 actual_format="html",
+                conversion_engine="native_html",
             )
 
         if requested == "md":
@@ -1552,6 +1829,7 @@ class DocumentExporter:
                 warnings=[],
                 requested_format="md",
                 actual_format="md",
+                conversion_engine="native_markdown",
             )
 
         if requested == "txt":
@@ -1563,6 +1841,7 @@ class DocumentExporter:
                 warnings=[],
                 requested_format="txt",
                 actual_format="txt",
+                conversion_engine="native_text",
             )
 
         docx_id, docx_path, warnings = self.create_docx(nodes, theme, formatting, security)
@@ -1574,35 +1853,49 @@ class DocumentExporter:
                 warnings=warnings,
                 requested_format="docx",
                 actual_format="docx",
+                conversion_engine="python_docx",
             )
 
         if requested == "pdf":
             file_id, pdf_path = self.store.reserve_path("pdf")
             attempts: list[str] = []
+            external_methods = {"ilovepdf_api", "ilovepdf_automation"}
             ok, method = _convert_docx_to_pdf(docx_path, pdf_path)
             attempts.append(method)
+
             if not ok:
-                html_preview = self.create_preview_html(
-                    nodes,
-                    theme,
-                    formatting,
-                    security,
-                    include_running_blocks=False,
-                )
-                ok, method = _convert_html_to_pdf_weasyprint(
-                    html_preview,
-                    pdf_path,
-                )
+                ok, method = _convert_docx_to_pdf_ilovepdf_api(docx_path, pdf_path)
                 attempts.append(method)
+
             if not ok:
-                ok, method = _convert_nodes_to_pdf_reportlab(
-                    nodes,
-                    theme,
-                    formatting,
-                    security,
-                    pdf_path,
-                )
+                ok, method = _convert_docx_to_pdf_ilovepdf_automation(docx_path, pdf_path)
                 attempts.append(method)
+
+            if not ok:
+                if _allow_low_fidelity_pdf_fallback():
+                    html_preview = self.create_preview_html(
+                        nodes,
+                        theme,
+                        formatting,
+                        security,
+                        include_running_blocks=False,
+                    )
+                    ok, method = _convert_html_to_pdf_weasyprint(
+                        html_preview,
+                        pdf_path,
+                    )
+                    attempts.append(method)
+
+                if not ok:
+                    ok, method = _convert_nodes_to_pdf_reportlab(
+                        nodes,
+                        theme,
+                        formatting,
+                        security,
+                        pdf_path,
+                    )
+                    attempts.append(method)
+
             if not ok:
                 ok, method = _write_emergency_pdf(
                     pdf_path,
@@ -1615,12 +1908,16 @@ class DocumentExporter:
                     warnings.append(
                         f"PDF generated via fallback renderer ({method}); install LibreOffice for closer DOCX-to-PDF fidelity."
                     )
+                if method in external_methods:
+                    warnings.append(f"PDF generated via iLovePDF external fallback ({method}).")
                 return ExportResult(
                     file_id=file_id,
                     output_path=pdf_path,
                     warnings=warnings,
                     requested_format="pdf",
                     actual_format="pdf",
+                    conversion_engine=method,
+                    external_fallback_used=method in external_methods,
                 )
 
             if pdf_path.exists():
@@ -1642,4 +1939,5 @@ class DocumentExporter:
             warnings=[],
             requested_format=requested,
             actual_format="txt",
+            conversion_engine="native_text_fallback",
         )

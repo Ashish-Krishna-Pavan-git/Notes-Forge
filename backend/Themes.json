@@ -1,63 +1,63 @@
 {
   "themes": {
     "professional": {
-      "name": "Professional Blue",
-      "description": "Clean, corporate theme with blue accents",
-      "builtin": false,
-      "user_created": true,
+      "name": "Professional",
+      "description": "Professional theme",
+      "builtin": true,
+      "user_created": false,
       "fonts": {
-        "family": "Calibri",
-        "family_code": "Courier New",
-        "h1_family": "Calibri",
-        "h2_family": "Calibri",
-        "h3_family": "Calibri",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "family": "Times New Roman",
+        "family_code": "JetBrains Mono",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 22,
-          "h2": 18,
-          "h3": 15,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
           "body": 12,
-          "code": 10,
+          "code": 12,
           "header": 10,
-          "footer": 10,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
       },
       "colors": {
-        "h1": "#003366",
-        "h2": "#004080",
-        "h3": "#0052A3",
-        "h4": "#1E5A96",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#000000",
-        "code_background": "#F5F5F5",
-        "code_text": "#D32F2F",
-        "table_header_bg": "#003366",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#E3F2FD",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#90CAF9",
-        "link": "#0563C1"
+        "h1": "#1F3A5F",
+        "h2": "#2B6CB0",
+        "h3": "#2B6CB0",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
+        "table_header_bg": "#f3f4f6",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#d1d5db",
+        "link": "#2563eb"
       },
       "spacing": {
         "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 6.0,
-        "heading_spacing_before": 12.0,
-        "heading_spacing_after": 6.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -72,236 +72,54 @@
         },
         "border": {
           "enabled": false,
-          "width": 4,
-          "color": "#003366",
+          "width": 1,
+          "color": "#000000",
           "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "PROFESSIONAL DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Calibri",
+        "font_family": "Times New Roman",
         "size": 10,
-        "color": "#003366",
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
         "text": "",
         "alignment": "center",
-        "font_family": "Calibri",
-        "size": 10,
-        "color": "#666666",
-        "bold": false,
-        "italic": false,
-        "separator": true,
-        "separator_color": "#CCCCCC",
-        "show_page_numbers": true,
-        "page_number_position": "footer",
-        "page_number_alignment": "center",
-        "page_number_style": "arabic",
-        "page_format": "X | Page"
-      },
-      "watermark": {
-        "enabled": false,
-        "type": "text",
-        "text": "DRAFT",
-        "image_path": "",
-        "font": "Calibri",
-        "size": 48,
-        "color": "#CCCCCC",
-        "opacity": 0.15,
-        "rotation": 315,
-        "position": "center",
-        "scale": 100
-      },
-      "heading": {
-        "h1": {
-          "size": 20,
-          "weight": "700",
-          "color": "#B91C1C"
-        },
-        "h2": {
-          "size": 18,
-          "weight": "600",
-          "color": "#DC2626"
-        },
-        "h3": {
-          "size": 16,
-          "weight": "600",
-          "color": "#EF4444"
-        },
-        "h4": {
-          "size": 14,
-          "weight": "600",
-          "color": "#B388FF"
-        },
-        "h5": {
-          "size": 13,
-          "weight": "600",
-          "color": "#333333"
-        },
-        "h6": {
-          "size": 12,
-          "weight": "600",
-          "color": "#555555"
-        }
-      },
-      "table": {
-        "border_color": "#D1C4E9",
-        "border_width": 1,
-        "border_style": "single",
-        "header_fill": "#FEE2E2",
-        "header_text": "#FFFFFF",
-        "odd_row": "#F3EDFF",
-        "even_row": "#FFFFFF",
-        "text_alignment": "left"
-      },
-      "code": {
-        "font_family": "Tahoma",
-        "font_size": 11,
-        "background": "#1E1E2E",
-        "text": "#D4D4D4"
-      },
-      "borders": {
-        "enabled": true,
-        "width": 1,
-        "color": "#000000",
-        "style": "single",
-        "offset": 24
-      },
-      "styles": {}
-    },
-    "modern": {
-      "name": "Modern Tech",
-      "description": "Vibrant purple and modern aesthetic",
-      "builtin": false,
-      "user_created": true,
-      "fonts": {
-        "family": "Segoe UI",
-        "family_code": "Fira Code",
-        "h1_family": "Segoe UI",
-        "h2_family": "Segoe UI",
-        "h3_family": "Segoe UI",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
-        "sizes": {
-          "h1": 24,
-          "h2": 20,
-          "h3": 16,
-          "h4": 14,
-          "h5": 13,
-          "h6": 12,
-          "body": 12,
-          "code": 11,
-          "header": 10,
-          "footer": 10,
-          "title": 20,
-          "footnote": 11
-        }
-      },
-      "colors": {
-        "h1": "#6200EA",
-        "h2": "#651FFF",
-        "h3": "#7C4DFF",
-        "h4": "#B388FF",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#1E1E2E",
-        "code_text": "#D4D4D4",
-        "table_header_bg": "#6200EA",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#F3EDFF",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#D1C4E9",
-        "link": "#6200EA"
-      },
-      "spacing": {
-        "line_spacing": 1.6,
-        "tab_width": 4,
-        "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 8.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
-        "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
-        "quote_indent": 0.5,
-        "paragraph_alignment": "left"
-      },
-      "page": {
-        "size": "A4",
-        "orientation": "portrait",
-        "margins": {
-          "top": 1.0,
-          "bottom": 1.0,
-          "left": 1.25,
-          "right": 1.25
-        },
-        "border": {
-          "enabled": true,
-          "width": 2,
-          "color": "#6200EA",
-          "style": "single",
-          "offset": 24
-        }
-      },
-      "header": {
-        "enabled": true,
-        "text": "NotesForge Professional",
-        "alignment": "center",
-        "font_family": "Segoe UI",
+        "font_family": "Times New Roman",
         "size": 11,
-        "color": "#6200EA",
-        "bold": true,
-        "italic": false,
-        "separator": true,
-        "separator_color": "#CCCCCC",
-        "show_page_numbers": false,
-        "page_number_position": "header",
-        "page_number_alignment": "center",
-        "page_number_style": "arabic",
-        "page_format": "X | Page"
-      },
-      "footer": {
-        "enabled": true,
-        "text": "© 2026 NotesForge",
-        "alignment": "right",
-        "font_family": "Segoe UI",
-        "size": 9,
-        "color": "#6200EA",
+        "color": "#1F3A5F",
         "bold": false,
-        "italic": true,
-        "separator": true,
+        "italic": false,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
-        "page_number_alignment": "right",
+        "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
         "enabled": false,
         "type": "text",
-        "text": "CONFIDENTIAL",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#6200EA",
+        "color": "#1F3A5F",
         "opacity": 0.1,
         "rotation": 315,
         "position": "center",
@@ -309,418 +127,54 @@
       },
       "heading": {
         "h1": {
-          "size": 20,
+          "size": 18,
           "weight": "700",
-          "color": "#B91C1C"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 18,
-          "weight": "600",
-          "color": "#DC2626"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#EF4444"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#B388FF"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#D1C4E9",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#FEE2E2",
-        "header_text": "#FFFFFF",
-        "odd_row": "#F3EDFF",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Tahoma",
-        "font_size": 11,
-        "background": "#1E1E2E",
-        "text": "#D4D4D4"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 1,
-        "color": "#000000",
-        "style": "single",
-        "offset": 24
-      },
-      "styles": {}
-    },
-    "minimal": {
-      "name": "Minimal Clean",
-      "description": "Simple, distraction-free design",
-      "builtin": false,
-      "user_created": true,
-      "fonts": {
-        "family": "Georgia",
-        "family_code": "Courier New",
-        "h1_family": "Georgia",
-        "h2_family": "Georgia",
-        "h3_family": "Georgia",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
-        "sizes": {
-          "h1": 20,
-          "h2": 16,
-          "h3": 13,
-          "h4": 12,
-          "h5": 11,
-          "h6": 10,
-          "body": 11,
-          "code": 9,
-          "header": 9,
-          "footer": 9,
-          "title": 20,
-          "footnote": 11
-        }
-      },
-      "colors": {
-        "h1": "#000000",
-        "h2": "#1A1A1A",
-        "h3": "#333333",
-        "h4": "#555555",
-        "h5": "#666666",
-        "h6": "#777777",
-        "body": "#000000",
-        "code_background": "#EFEFEF",
-        "code_text": "#000000",
-        "table_header_bg": "#000000",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#F9F9F9",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#CCCCCC",
-        "link": "#0000EE"
-      },
-      "spacing": {
-        "line_spacing": 1.5,
-        "tab_width": 4,
-        "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 8.0,
-        "heading_spacing_before": 10.0,
-        "heading_spacing_after": 4.0,
-        "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
-        "quote_indent": 0.5,
-        "paragraph_alignment": "left"
-      },
-      "page": {
-        "size": "A4",
-        "orientation": "portrait",
-        "margins": {
-          "top": 0.75,
-          "bottom": 0.75,
-          "left": 0.75,
-          "right": 0.75
-        },
-        "border": {
-          "enabled": false,
-          "width": 0,
-          "color": "#000000",
-          "style": "single",
-          "offset": 24
-        }
-      },
-      "header": {
         "enabled": false,
-        "text": "",
-        "alignment": "center",
-        "font_family": "Georgia",
-        "size": 9,
-        "color": "#000000",
-        "bold": false,
-        "italic": false,
-        "separator": true,
-        "separator_color": "#CCCCCC",
-        "show_page_numbers": false,
-        "page_number_position": "header",
-        "page_number_alignment": "center",
-        "page_number_style": "arabic",
-        "page_format": "X | Page"
-      },
-      "footer": {
-        "enabled": true,
-        "text": "",
-        "alignment": "center",
-        "font_family": "Georgia",
-        "size": 9,
-        "color": "#666666",
-        "bold": false,
-        "italic": false,
-        "separator": false,
-        "separator_color": "#CCCCCC",
-        "show_page_numbers": true,
-        "page_number_position": "footer",
-        "page_number_alignment": "center",
-        "page_number_style": "arabic",
-        "page_format": "X | Page"
-      },
-      "watermark": {
-        "enabled": false,
-        "type": "text",
-        "text": "",
-        "image_path": "",
-        "font": "Calibri",
-        "size": 48,
-        "color": "#000000",
-        "opacity": 0.0,
-        "rotation": 315,
-        "position": "center",
-        "scale": 100
-      },
-      "heading": {
-        "h1": {
-          "size": 20,
-          "weight": "700",
-          "color": "#B91C1C"
-        },
-        "h2": {
-          "size": 18,
-          "weight": "600",
-          "color": "#DC2626"
-        },
-        "h3": {
-          "size": 16,
-          "weight": "600",
-          "color": "#EF4444"
-        },
-        "h4": {
-          "size": 14,
-          "weight": "600",
-          "color": "#B388FF"
-        },
-        "h5": {
-          "size": 13,
-          "weight": "600",
-          "color": "#333333"
-        },
-        "h6": {
-          "size": 12,
-          "weight": "600",
-          "color": "#555555"
-        }
-      },
-      "table": {
-        "border_color": "#D1C4E9",
-        "border_width": 1,
-        "border_style": "single",
-        "header_fill": "#FEE2E2",
-        "header_text": "#FFFFFF",
-        "odd_row": "#F3EDFF",
-        "even_row": "#FFFFFF",
-        "text_alignment": "left"
-      },
-      "code": {
-        "font_family": "Tahoma",
-        "font_size": 11,
-        "background": "#1E1E2E",
-        "text": "#D4D4D4"
-      },
-      "borders": {
-        "enabled": true,
-        "width": 1,
-        "color": "#000000",
-        "style": "single",
-        "offset": 24
-      },
-      "styles": {}
-    },
-    "academic": {
-      "name": "Academic Formal",
-      "description": "APA-style academic formatting",
-      "builtin": false,
-      "user_created": true,
-      "fonts": {
-        "family": "Times New Roman",
-        "family_code": "Courier New",
-        "h1_family": "Times New Roman",
-        "h2_family": "Times New Roman",
-        "h3_family": "Times New Roman",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
-        "sizes": {
-          "h1": 12,
-          "h2": 12,
-          "h3": 12,
-          "h4": 12,
-          "h5": 12,
-          "h6": 12,
-          "body": 12,
-          "code": 10,
-          "header": 10,
-          "footer": 10,
-          "title": 20,
-          "footnote": 11
-        }
-      },
-      "colors": {
-        "h1": "#000000",
-        "h2": "#1C1C1C",
-        "h3": "#2E2E2E",
-        "h4": "#404040",
-        "h5": "#525252",
-        "h6": "#646464",
-        "body": "#000000",
-        "code_background": "#F0F0F0",
-        "code_text": "#333333",
-        "table_header_bg": "#CCCCCC",
-        "table_header_text": "#000000",
-        "table_odd_row": "#FFFFFF",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#999999",
-        "link": "#0066CC"
-      },
-      "spacing": {
-        "line_spacing": 2.0,
-        "tab_width": 4,
-        "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 0.0,
-        "heading_spacing_before": 0.0,
-        "heading_spacing_after": 0.0,
-        "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
-        "quote_indent": 0.5,
-        "paragraph_alignment": "left"
-      },
-      "page": {
-        "size": "A4",
-        "orientation": "portrait",
-        "margins": {
-          "top": 1.0,
-          "bottom": 1.0,
-          "left": 1.0,
-          "right": 1.0
-        },
-        "border": {
-          "enabled": false,
-          "width": 0,
-          "color": "#000000",
-          "style": "single",
-          "offset": 24
-        }
-      },
-      "header": {
-        "enabled": true,
-        "text": "Running Head: TITLE",
-        "alignment": "right",
-        "font_family": "Times New Roman",
-        "size": 10,
-        "color": "#000000",
-        "bold": false,
-        "italic": false,
-        "separator": true,
-        "separator_color": "#CCCCCC",
-        "show_page_numbers": false,
-        "page_number_position": "header",
-        "page_number_alignment": "right",
-        "page_number_style": "arabic",
-        "page_format": "X | Page"
-      },
-      "footer": {
-        "enabled": true,
-        "text": "",
-        "alignment": "right",
-        "font_family": "Times New Roman",
-        "size": 10,
-        "color": "#000000",
-        "bold": false,
-        "italic": false,
-        "separator": false,
-        "separator_color": "#CCCCCC",
-        "show_page_numbers": true,
-        "page_number_position": "footer",
-        "page_number_alignment": "right",
-        "page_number_style": "arabic",
-        "page_format": "X | Page"
-      },
-      "watermark": {
-        "enabled": false,
-        "type": "text",
-        "text": "",
-        "image_path": "",
-        "font": "Calibri",
-        "size": 48,
-        "color": "#000000",
-        "opacity": 0.0,
-        "rotation": 315,
-        "position": "center",
-        "scale": 100
-      },
-      "heading": {
-        "h1": {
-          "size": 20,
-          "weight": "700",
-          "color": "#B91C1C"
-        },
-        "h2": {
-          "size": 18,
-          "weight": "600",
-          "color": "#DC2626"
-        },
-        "h3": {
-          "size": 16,
-          "weight": "600",
-          "color": "#EF4444"
-        },
-        "h4": {
-          "size": 14,
-          "weight": "600",
-          "color": "#B388FF"
-        },
-        "h5": {
-          "size": 13,
-          "weight": "600",
-          "color": "#333333"
-        },
-        "h6": {
-          "size": 12,
-          "weight": "600",
-          "color": "#555555"
-        }
-      },
-      "table": {
-        "border_color": "#D1C4E9",
-        "border_width": 1,
-        "border_style": "single",
-        "header_fill": "#FEE2E2",
-        "header_text": "#FFFFFF",
-        "odd_row": "#F3EDFF",
-        "even_row": "#FFFFFF",
-        "text_alignment": "left"
-      },
-      "code": {
-        "font_family": "Tahoma",
-        "font_size": 11,
-        "background": "#1E1E2E",
-        "text": "#D4D4D4"
-      },
-      "borders": {
-        "enabled": true,
         "width": 1,
         "color": "#000000",
         "style": "single",
@@ -729,427 +183,63 @@
       "styles": {}
     },
     "corporate": {
-      "name": "Corporate Red",
-      "description": "Executive corporate with red branding",
-      "builtin": false,
-      "user_created": true,
+      "name": "Corporate",
+      "description": "Corporate red accent",
+      "builtin": true,
+      "user_created": false,
       "fonts": {
         "family": "Arial",
         "family_code": "Consolas",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
           "h1": 26,
           "h2": 20,
-          "h3": 16,
-          "h4": 14,
-          "h5": 13,
-          "h6": 12,
-          "body": 11,
-          "code": 10,
-          "header": 10,
-          "footer": 9,
-          "title": 20,
-          "footnote": 11
-        }
-      },
-      "colors": {
-        "h1": "#C41E3A",
-        "h2": "#DC143C",
-        "h3": "#E63946",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
-        "table_header_bg": "#C41E3A",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#DC143C",
-        "link": "#C41E3A"
-      },
-      "spacing": {
-        "line_spacing": 1.4,
-        "tab_width": 4,
-        "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
-        "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
-        "quote_indent": 0.5,
-        "paragraph_alignment": "left"
-      },
-      "page": {
-        "size": "A4",
-        "orientation": "portrait",
-        "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
-        },
-        "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
-          "offset": 24
-        }
-      },
-      "header": {
-        "enabled": true,
-        "text": "CORPORATE DOCUMENT",
-        "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
-        "italic": false,
-        "separator": true,
-        "separator_color": "#CCCCCC",
-        "show_page_numbers": false,
-        "page_number_position": "header",
-        "page_number_alignment": "center",
-        "page_number_style": "arabic",
-        "page_format": "X | Page"
-      },
-      "footer": {
-        "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
-        "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
-        "bold": false,
-        "italic": false,
-        "separator": true,
-        "separator_color": "#CCCCCC",
-        "show_page_numbers": true,
-        "page_number_position": "footer",
-        "page_number_alignment": "center",
-        "page_number_style": "arabic",
-        "page_format": "X | Page"
-      },
-      "watermark": {
-        "enabled": true,
-        "type": "text",
-        "text": "INTERNAL USE ONLY",
-        "image_path": "",
-        "font": "Calibri",
-        "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
-        "rotation": 315,
-        "position": "center",
-        "scale": 100
-      },
-      "heading": {
-        "h1": {
-          "size": 20,
-          "weight": "700",
-          "color": "#B91C1C"
-        },
-        "h2": {
-          "size": 18,
-          "weight": "600",
-          "color": "#DC2626"
-        },
-        "h3": {
-          "size": 16,
-          "weight": "600",
-          "color": "#EF4444"
-        },
-        "h4": {
-          "size": 14,
-          "weight": "600",
-          "color": "#B388FF"
-        },
-        "h5": {
-          "size": 13,
-          "weight": "600",
-          "color": "#333333"
-        },
-        "h6": {
-          "size": 12,
-          "weight": "600",
-          "color": "#555555"
-        }
-      },
-      "table": {
-        "border_color": "#D1C4E9",
-        "border_width": 1,
-        "border_style": "single",
-        "header_fill": "#FEE2E2",
-        "header_text": "#FFFFFF",
-        "odd_row": "#F3EDFF",
-        "even_row": "#FFFFFF",
-        "text_alignment": "left"
-      },
-      "code": {
-        "font_family": "Tahoma",
-        "font_size": 11,
-        "background": "#1E1E2E",
-        "text": "#D4D4D4"
-      },
-      "borders": {
-        "enabled": true,
-        "width": 1,
-        "color": "#000000",
-        "style": "single",
-        "offset": 24
-      },
-      "styles": {}
-    },
-    "creative": {
-      "name": "Creative Vibrant",
-      "description": "Colorful design for creative projects",
-      "builtin": false,
-      "user_created": true,
-      "fonts": {
-        "family": "Trebuchet MS",
-        "family_code": "Monaco",
-        "h1_family": "Trebuchet MS",
-        "h2_family": "Trebuchet MS",
-        "h3_family": "Trebuchet MS",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
-        "sizes": {
-          "h1": 28,
-          "h2": 22,
-          "h3": 18,
-          "h4": 16,
-          "h5": 14,
-          "h6": 12,
-          "body": 12,
-          "code": 11,
-          "header": 11,
-          "footer": 10,
-          "title": 20,
-          "footnote": 11
-        }
-      },
-      "colors": {
-        "h1": "#FF6B6B",
-        "h2": "#FF8C42",
-        "h3": "#FFB627",
-        "h4": "#4ECDC4",
-        "h5": "#45B7D1",
-        "h6": "#96CEB4",
-        "body": "#2C3E50",
-        "code_background": "#F7DC6F",
-        "code_text": "#2C3E50",
-        "table_header_bg": "#FF6B6B",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FFF5E1",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#FF8C42",
-        "link": "#4ECDC4"
-      },
-      "spacing": {
-        "line_spacing": 1.7,
-        "tab_width": 4,
-        "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 12.0,
-        "heading_spacing_before": 16.0,
-        "heading_spacing_after": 10.0,
-        "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
-        "quote_indent": 0.5,
-        "paragraph_alignment": "left"
-      },
-      "page": {
-        "size": "A4",
-        "orientation": "portrait",
-        "margins": {
-          "top": 1.0,
-          "bottom": 1.0,
-          "left": 1.0,
-          "right": 1.0
-        },
-        "border": {
-          "enabled": true,
-          "width": 6,
-          "color": "#FF6B6B",
-          "style": "single",
-          "offset": 24
-        }
-      },
-      "header": {
-        "enabled": true,
-        "text": "✨ NotesForge Creative ✨",
-        "alignment": "center",
-        "font_family": "Trebuchet MS",
-        "size": 12,
-        "color": "#FF6B6B",
-        "bold": true,
-        "italic": true,
-        "separator": true,
-        "separator_color": "#CCCCCC",
-        "show_page_numbers": false,
-        "page_number_position": "header",
-        "page_number_alignment": "center",
-        "page_number_style": "arabic",
-        "page_format": "X | Page"
-      },
-      "footer": {
-        "enabled": true,
-        "text": "Created with NotesForge Professional",
-        "alignment": "center",
-        "font_family": "Trebuchet MS",
-        "size": 10,
-        "color": "#4ECDC4",
-        "bold": false,
-        "italic": true,
-        "separator": true,
-        "separator_color": "#CCCCCC",
-        "show_page_numbers": true,
-        "page_number_position": "footer",
-        "page_number_alignment": "center",
-        "page_number_style": "arabic",
-        "page_format": "X | Page"
-      },
-      "watermark": {
-        "enabled": false,
-        "type": "text",
-        "text": "",
-        "image_path": "",
-        "font": "Calibri",
-        "size": 48,
-        "color": "#FF6B6B",
-        "opacity": 0.1,
-        "rotation": 315,
-        "position": "center",
-        "scale": 100
-      },
-      "heading": {
-        "h1": {
-          "size": 20,
-          "weight": "700",
-          "color": "#B91C1C"
-        },
-        "h2": {
-          "size": 18,
-          "weight": "600",
-          "color": "#DC2626"
-        },
-        "h3": {
-          "size": 16,
-          "weight": "600",
-          "color": "#EF4444"
-        },
-        "h4": {
-          "size": 14,
-          "weight": "600",
-          "color": "#B388FF"
-        },
-        "h5": {
-          "size": 13,
-          "weight": "600",
-          "color": "#333333"
-        },
-        "h6": {
-          "size": 12,
-          "weight": "600",
-          "color": "#555555"
-        }
-      },
-      "table": {
-        "border_color": "#D1C4E9",
-        "border_width": 1,
-        "border_style": "single",
-        "header_fill": "#FEE2E2",
-        "header_text": "#FFFFFF",
-        "odd_row": "#F3EDFF",
-        "even_row": "#FFFFFF",
-        "text_alignment": "left"
-      },
-      "code": {
-        "font_family": "Tahoma",
-        "font_size": 11,
-        "background": "#1E1E2E",
-        "text": "#D4D4D4"
-      },
-      "borders": {
-        "enabled": true,
-        "width": 1,
-        "color": "#000000",
-        "style": "single",
-        "offset": 24
-      },
-      "styles": {}
-    },
-    "startup": {
-      "name": "Startup Pitch",
-      "description": "Modern startup presentation theme",
-      "builtin": false,
-      "user_created": true,
-      "fonts": {
-        "family": "Verdana",
-        "family_code": "Source Code Pro",
-        "h1_family": "Verdana",
-        "h2_family": "Verdana",
-        "h3_family": "Verdana",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
-        "sizes": {
-          "h1": 28,
-          "h2": 20,
-          "h3": 16,
+          "h3": 14,
           "h4": 14,
           "h5": 12,
-          "h6": 11,
+          "h6": 12,
           "body": 11,
-          "code": 10,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
       },
       "colors": {
-        "h1": "#00D4FF",
-        "h2": "#00B8D4",
-        "h3": "#0099CC",
-        "h4": "#0073B2",
-        "h5": "#333333",
-        "h6": "#666666",
-        "body": "#1A1A1A",
-        "code_background": "#0F2027",
-        "code_text": "#00D4FF",
-        "table_header_bg": "#00699E",
-        "table_header_text": "#00D4FF",
-        "table_odd_row": "#E8F8FF",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#00B8D4",
-        "link": "#00D4FF"
+        "h1": "#B91C1C",
+        "h2": "#DC2626",
+        "h3": "#EF4444",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
+        "table_header_bg": "#B91C1C",
+        "table_header_text": "#111827",
+        "table_odd_row": "#FEE2E2",
+        "table_even_row": "#f8fafc",
+        "table_border": "#DC2626",
+        "link": "#2563eb"
       },
       "spacing": {
         "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 8.0,
-        "heading_spacing_before": 12.0,
-        "heading_spacing_after": 6.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -1164,109 +254,109 @@
         },
         "border": {
           "enabled": false,
-          "width": 2,
-          "color": "#00D4FF",
+          "width": 1,
+          "color": "#000000",
           "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "STARTUP PITCH DECK",
-        "alignment": "left",
-        "font_family": "Verdana",
-        "size": 11,
-        "color": "#00D4FF",
+        "text": "CORPORATE DOCUMENT",
+        "alignment": "center",
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#B91C1C",
         "bold": true,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
-        "page_number_alignment": "left",
+        "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "🚀 Innovation Driven",
-        "alignment": "right",
-        "font_family": "Verdana",
-        "size": 9,
-        "color": "#00B8D4",
+        "text": "",
+        "alignment": "center",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#DC2626",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
-        "page_number_alignment": "right",
+        "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
         "enabled": false,
         "type": "text",
-        "text": "CONFIDENTIAL",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#00D4FF",
-        "opacity": 0.12,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 20,
+          "size": 18,
           "weight": "700",
-          "color": "#B91C1C"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 18,
-          "weight": "600",
-          "color": "#DC2626"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#EF4444"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#B388FF"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#D1C4E9",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#FEE2E2",
-        "header_text": "#FFFFFF",
-        "odd_row": "#F3EDFF",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Tahoma",
-        "font_size": 11,
-        "background": "#1E1E2E",
-        "text": "#D4D4D4"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
+        "enabled": false,
         "width": 1,
         "color": "#000000",
         "style": "single",
@@ -1274,64 +364,64 @@
       },
       "styles": {}
     },
-    "flm": {
-      "name": "Frontlines Edu Tech",
-      "description": "Daily Notes Generator",
-      "builtin": false,
-      "user_created": true,
+    "modern": {
+      "name": "Modern",
+      "description": "Clean modern styling with blue accents",
+      "builtin": true,
+      "user_created": false,
       "fonts": {
         "family": "Segoe UI",
-        "family_code": "Fira Code",
-        "h1_family": "Segoe UI",
-        "h2_family": "Segoe UI",
-        "h3_family": "Segoe UI",
-        "h4_family": "Calibri",
-        "h5_family": "Calibri",
-        "h6_family": "Calibri",
-        "bullet_family": "Tahoma",
+        "family_code": "Consolas",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 24,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
           "body": 12,
-          "code": 11,
+          "code": 12,
           "header": 10,
-          "footer": 10,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
       },
       "colors": {
-        "h1": "#6200EA",
-        "h2": "#651FFF",
-        "h3": "#7C4DFF",
-        "h4": "#B388FF",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#1E1E2E",
-        "code_text": "#D4D4D4",
-        "table_header_bg": "#6200EA",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#F3EDFF",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#D1C4E9",
-        "link": "#6200EA"
+        "h1": "#0F172A",
+        "h2": "#1D4ED8",
+        "h3": "#0284C7",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
+        "table_header_bg": "#DBEAFE",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#93C5FD",
+        "link": "#2563eb"
       },
       "spacing": {
-        "line_spacing": 1.6,
+        "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 8.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
         "bullet_base_indent": 0.25,
         "bullet_indent_per_level": 0.45,
-        "code_indent": 0.35,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -1341,59 +431,59 @@
         "margins": {
           "top": 1.0,
           "bottom": 1.0,
-          "left": 1.25,
-          "right": 1.25
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 2,
-          "color": "#6200EA",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
           "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "NotesForge Professional",
+        "text": "",
         "alignment": "center",
-        "font_family": "Segoe UI",
-        "size": 11,
-        "color": "#6200EA",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 NotesForge",
-        "alignment": "right",
-        "font_family": "Segoe UI",
-        "size": 9,
-        "color": "#6200EA",
+        "text": "",
+        "alignment": "center",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
-        "italic": true,
-        "separator": true,
+        "italic": false,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
-        "page_number_alignment": "right",
+        "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
         "enabled": false,
         "type": "text",
-        "text": "CONFIDENTIAL",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#6200EA",
+        "color": "#1F3A5F",
         "opacity": 0.1,
         "rotation": 315,
         "position": "center",
@@ -1401,54 +491,236 @@
       },
       "heading": {
         "h1": {
-          "size": 20,
+          "size": 18,
           "weight": "700",
-          "color": "#B91C1C"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 18,
-          "weight": "600",
-          "color": "#DC2626"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#EF4444"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#B388FF"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#D1C4E9",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#FEE2E2",
-        "header_text": "#FFFFFF",
-        "odd_row": "#F3EDFF",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Tahoma",
-        "font_size": 11,
-        "background": "#1E1E2E",
-        "text": "#D4D4D4"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "academic": {
+      "name": "Academic",
+      "description": "Conservative typography for reports and papers",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Times New Roman",
+        "family_code": "Consolas",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
+        "sizes": {
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
+          "h4": 14,
+          "h5": 12,
+          "h6": 12,
+          "body": 12,
+          "code": 12,
+          "header": 10,
+          "footer": 11,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#111827",
+        "h2": "#374151",
+        "h3": "#4B5563",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
+        "table_header_bg": "#E5E7EB",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#D1D5DB",
+        "link": "#2563eb"
+      },
+      "spacing": {
+        "line_spacing": 1.6,
+        "tab_width": 4,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
+        },
+        "border": {
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "header": {
         "enabled": true,
+        "text": "",
+        "alignment": "center",
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
+        "italic": false,
+        "separator": false,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "Page X"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "",
+        "alignment": "center",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
+        "bold": false,
+        "italic": false,
+        "separator": false,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "Page X"
+      },
+      "watermark": {
+        "enabled": false,
+        "type": "text",
+        "text": "",
+        "image_path": "",
+        "font": "Times New Roman",
+        "size": 48,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 18,
+          "weight": "700",
+          "color": "#1F3A5F"
+        },
+        "h2": {
+          "size": 16,
+          "weight": "600",
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#334155"
+        },
+        "h5": {
+          "size": 12,
+          "weight": "600",
+          "color": "#475569"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#64748B"
+        }
+      },
+      "table": {
+        "border_color": "#d1d5db",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
+      },
+      "borders": {
+        "enabled": false,
         "width": 1,
         "color": "#000000",
         "style": "single",
@@ -1464,24 +736,24 @@
       "fonts": {
         "family": "Georgia",
         "family_code": "Consolas",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -1490,30 +762,30 @@
         "h1": "#0F172A",
         "h2": "#1E293B",
         "h3": "#334155",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
         "table_header_bg": "#E2E8F0",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
         "table_border": "#94A3B8",
-        "link": "#C41E3A"
+        "link": "#2563eb"
       },
       "spacing": {
         "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -1521,119 +793,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -1646,24 +918,24 @@
       "fonts": {
         "family": "Segoe UI",
         "family_code": "Consolas",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -1672,30 +944,30 @@
         "h1": "#0F766E",
         "h2": "#0D9488",
         "h3": "#14B8A6",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
         "table_header_bg": "#CCFBF1",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
         "table_border": "#5EEAD4",
-        "link": "#C41E3A"
+        "link": "#2563eb"
       },
       "spacing": {
-        "line_spacing": 1.6,
+        "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -1703,119 +975,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -1828,24 +1100,24 @@
       "fonts": {
         "family": "Arial",
         "family_code": "Consolas",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -1854,30 +1126,30 @@
         "h1": "#111827",
         "h2": "#1F2937",
         "h3": "#374151",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
         "table_header_bg": "#E5E7EB",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
         "table_border": "#9CA3AF",
-        "link": "#C41E3A"
+        "link": "#2563eb"
       },
       "spacing": {
-        "line_spacing": 1.6,
+        "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -1885,125 +1157,307 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
+        "offset": 24
+      },
+      "styles": {}
+    },
+    "startup": {
+      "name": "Startup Pitch",
+      "description": "Pitch-deck oriented theme",
+      "builtin": true,
+      "user_created": false,
+      "fonts": {
+        "family": "Calibri",
+        "family_code": "Consolas",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
+        "sizes": {
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
+          "h4": 14,
+          "h5": 12,
+          "h6": 12,
+          "body": 12,
+          "code": 12,
+          "header": 10,
+          "footer": 11,
+          "title": 20,
+          "footnote": 11
+        }
+      },
+      "colors": {
+        "h1": "#0E7490",
+        "h2": "#0284C7",
+        "h3": "#0369A1",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
+        "table_header_bg": "#CFFAFE",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#67E8F9",
+        "link": "#2563eb"
+      },
+      "spacing": {
+        "line_spacing": 1.3,
+        "tab_width": 4,
+        "paragraph_spacing_before": 0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
+        "paragraph_first_line_indent": 0,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
+        "quote_indent": 0.5,
+        "paragraph_alignment": "left"
+      },
+      "page": {
+        "size": "A4",
+        "orientation": "portrait",
+        "margins": {
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
+        },
+        "border": {
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
+          "offset": 24
+        }
+      },
+      "header": {
         "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "text": "",
+        "alignment": "center",
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
+        "italic": false,
+        "separator": false,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": false,
+        "page_number_position": "header",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "Page X"
+      },
+      "footer": {
+        "enabled": true,
+        "text": "",
+        "alignment": "center",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
+        "bold": false,
+        "italic": false,
+        "separator": false,
+        "separator_color": "#CCCCCC",
+        "show_page_numbers": true,
+        "page_number_position": "footer",
+        "page_number_alignment": "center",
+        "page_number_style": "arabic",
+        "page_format": "Page X"
+      },
+      "watermark": {
+        "enabled": false,
+        "type": "text",
+        "text": "",
+        "image_path": "",
+        "font": "Times New Roman",
+        "size": 48,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
+        "rotation": 315,
+        "position": "center",
+        "scale": 100
+      },
+      "heading": {
+        "h1": {
+          "size": 18,
+          "weight": "700",
+          "color": "#1F3A5F"
+        },
+        "h2": {
+          "size": 16,
+          "weight": "600",
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
+        },
+        "h4": {
+          "size": 14,
+          "weight": "600",
+          "color": "#334155"
+        },
+        "h5": {
+          "size": 12,
+          "weight": "600",
+          "color": "#475569"
+        },
+        "h6": {
+          "size": 12,
+          "weight": "600",
+          "color": "#64748B"
+        }
+      },
+      "table": {
+        "border_color": "#d1d5db",
+        "border_width": 1,
+        "border_style": "single",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
+        "text_alignment": "left"
+      },
+      "code": {
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
+      },
+      "borders": {
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
     },
     "frontlines_edutech_theme": {
-      "name": "Frontlines Edu Tech",
+      "name": "Daily Notes Maker",
       "description": "Times New Roman theme with purple-orange academic styling.",
       "builtin": true,
       "user_created": false,
@@ -2027,7 +1481,7 @@
           "body": 12,
           "code": 11,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -2039,14 +1493,14 @@
         "h4": "#B5179E",
         "h5": "#7209B7",
         "h6": "#560BAD",
-        "body": "#1F1F1F",
+        "body": "#17202a",
         "code_background": "#1E1B2E",
         "code_text": "#FFFFFF",
         "table_header_bg": "#F77F00",
         "table_header_text": "#FFFFFF",
         "table_odd_row": "#FFF4E6",
         "table_even_row": "#FFE5B4",
-        "table_border": "#DC143C",
+        "table_border": "#d1d5db",
         "link": "#6A00F4"
       },
       "spacing": {
@@ -2082,12 +1536,12 @@
       },
       "header": {
         "enabled": true,
-        "text": "Frontlines Edu Tech",
+        "text": "Daily Notes Maker",
         "alignment": "center",
         "font_family": "Segoe UI",
         "size": 10,
         "color": "#F77F00",
-        "bold": true,
+        "bold": false,
         "italic": false,
         "separator": true,
         "separator_color": "#CCCCCC",
@@ -2119,7 +1573,7 @@
         "type": "text",
         "text": "CONFIDENTIAL",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
         "color": "#6200EA",
         "opacity": 0.1,
@@ -2129,57 +1583,57 @@
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -2192,24 +1646,24 @@
       "fonts": {
         "family": "Times New Roman",
         "family_code": "JetBrains Mono",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -2218,30 +1672,30 @@
         "h1": "#1F3A5F",
         "h2": "#2F4F7F",
         "h3": "#3D5A80",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
-        "table_header_bg": "#C41E3A",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#DC143C",
-        "link": "#C41E3A"
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
+        "table_header_bg": "#f3f4f6",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#d1d5db",
+        "link": "#2563eb"
       },
       "spacing": {
         "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -2249,119 +1703,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -2374,24 +1828,24 @@
       "fonts": {
         "family": "Times New Roman",
         "family_code": "JetBrains Mono",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -2400,30 +1854,30 @@
         "h1": "#0B3D91",
         "h2": "#1E5AA8",
         "h3": "#2F6BC5",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
         "table_header_bg": "#DCEBFF",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
         "table_border": "#9DC1F2",
-        "link": "#C41E3A"
+        "link": "#2563eb"
       },
       "spacing": {
-        "line_spacing": 1.6,
+        "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -2431,119 +1885,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -2556,24 +2010,24 @@
       "fonts": {
         "family": "Inter",
         "family_code": "JetBrains Mono",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -2582,30 +2036,30 @@
         "h1": "#0F172A",
         "h2": "#1F2937",
         "h3": "#334155",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
         "table_header_bg": "#E2E8F0",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
         "table_border": "#94A3B8",
-        "link": "#C41E3A"
+        "link": "#2563eb"
       },
       "spacing": {
-        "line_spacing": 1.6,
+        "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -2613,119 +2067,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -2738,24 +2192,24 @@
       "fonts": {
         "family": "Times New Roman",
         "family_code": "JetBrains Mono",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -2764,30 +2218,30 @@
         "h1": "#111827",
         "h2": "#1F2937",
         "h3": "#374151",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
         "table_header_bg": "#F3F4F6",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#DC143C",
-        "link": "#C41E3A"
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#d1d5db",
+        "link": "#2563eb"
       },
       "spacing": {
         "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
         "paragraph_spacing_after": 8,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -2795,119 +2249,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -2920,24 +2374,24 @@
       "fonts": {
         "family": "Inter",
         "family_code": "JetBrains Mono",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -2946,30 +2400,30 @@
         "h1": "#111827",
         "h2": "#2563EB",
         "h3": "#3B82F6",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
-        "table_header_bg": "#C41E3A",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#DC143C",
-        "link": "#C41E3A"
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
+        "table_header_bg": "#f3f4f6",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#d1d5db",
+        "link": "#2563eb"
       },
       "spacing": {
         "line_spacing": 1.15,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -2977,119 +2431,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -3102,24 +2556,24 @@
       "fonts": {
         "family": "Georgia",
         "family_code": "JetBrains Mono",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -3128,30 +2582,30 @@
         "h1": "#0F172A",
         "h2": "#1E293B",
         "h3": "#334155",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
         "table_header_bg": "#F8FAFC",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#DC143C",
-        "link": "#C41E3A"
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#d1d5db",
+        "link": "#2563eb"
       },
       "spacing": {
-        "line_spacing": 1.6,
+        "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -3159,119 +2613,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -3284,24 +2738,24 @@
       "fonts": {
         "family": "Roboto",
         "family_code": "JetBrains Mono",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -3310,9 +2764,9 @@
         "h1": "#0EA5E9",
         "h2": "#38BDF8",
         "h3": "#7DD3FC",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
         "body": "#E2E8F0",
         "code_background": "#0B1220",
         "code_text": "#E2E8F0",
@@ -3320,20 +2774,20 @@
         "table_header_text": "#E2E8F0",
         "table_odd_row": "#111827",
         "table_even_row": "#0F172A",
-        "table_border": "#DC143C",
-        "link": "#C41E3A"
+        "table_border": "#d1d5db",
+        "link": "#2563eb"
       },
       "spacing": {
-        "line_spacing": 1.6,
+        "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -3341,10 +2795,10 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
           "enabled": true,
@@ -3356,104 +2810,104 @@
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -3466,24 +2920,24 @@
       "fonts": {
         "family": "Georgia",
         "family_code": "JetBrains Mono",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -3492,30 +2946,30 @@
         "h1": "#4A2C2A",
         "h2": "#6B3F3A",
         "h3": "#8A5148",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
-        "table_header_bg": "#C41E3A",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#DC143C",
-        "link": "#C41E3A"
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
+        "table_header_bg": "#f3f4f6",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#d1d5db",
+        "link": "#2563eb"
       },
       "spacing": {
         "line_spacing": 2.0,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -3523,119 +2977,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -3648,24 +3102,24 @@
       "fonts": {
         "family": "Roboto",
         "family_code": "JetBrains Mono",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -3674,30 +3128,30 @@
         "h1": "#1D4ED8",
         "h2": "#2563EB",
         "h3": "#3B82F6",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
-        "table_header_bg": "#C41E3A",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#DC143C",
-        "link": "#C41E3A"
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
+        "table_header_bg": "#f3f4f6",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#d1d5db",
+        "link": "#2563eb"
       },
       "spacing": {
         "line_spacing": 1.15,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -3705,119 +3159,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}
@@ -3830,24 +3284,24 @@
       "fonts": {
         "family": "Times New Roman",
         "family_code": "JetBrains Mono",
-        "h1_family": "Arial",
-        "h2_family": "Arial",
-        "h3_family": "Arial",
-        "h4_family": "Trebuchet MS",
-        "h5_family": "Trebuchet MS",
-        "h6_family": "Trebuchet MS",
-        "bullet_family": "Tahoma",
+        "h1_family": "Times New Roman",
+        "h2_family": "Times New Roman",
+        "h3_family": "Times New Roman",
+        "h4_family": "Times New Roman",
+        "h5_family": "Times New Roman",
+        "h6_family": "Times New Roman",
+        "bullet_family": "Times New Roman",
         "sizes": {
-          "h1": 26,
-          "h2": 20,
-          "h3": 16,
+          "h1": 18,
+          "h2": 16,
+          "h3": 14,
           "h4": 14,
-          "h5": 13,
+          "h5": 12,
           "h6": 12,
-          "body": 11,
-          "code": 10,
+          "body": 12,
+          "code": 12,
           "header": 10,
-          "footer": 9,
+          "footer": 11,
           "title": 20,
           "footnote": 11
         }
@@ -3856,30 +3310,30 @@
         "h1": "#1F3A5F",
         "h2": "#345995",
         "h3": "#4A6FA5",
-        "h4": "#CC5500",
-        "h5": "#333333",
-        "h6": "#555555",
-        "body": "#1F1F1F",
-        "code_background": "#2C3E50",
-        "code_text": "#ECF0F1",
-        "table_header_bg": "#C41E3A",
-        "table_header_text": "#FFFFFF",
-        "table_odd_row": "#FCE8E8",
-        "table_even_row": "#FFFFFF",
-        "table_border": "#DC143C",
-        "link": "#C41E3A"
+        "h4": "#334155",
+        "h5": "#475569",
+        "h6": "#64748B",
+        "body": "#17202a",
+        "code_background": "#0f172a",
+        "code_text": "#e2e8f0",
+        "table_header_bg": "#f3f4f6",
+        "table_header_text": "#111827",
+        "table_odd_row": "#ffffff",
+        "table_even_row": "#f8fafc",
+        "table_border": "#d1d5db",
+        "link": "#2563eb"
       },
       "spacing": {
         "line_spacing": 1.5,
         "tab_width": 4,
         "paragraph_spacing_before": 0,
-        "paragraph_spacing_after": 10.0,
-        "heading_spacing_before": 14.0,
-        "heading_spacing_after": 8.0,
+        "paragraph_spacing_after": 6,
+        "heading_spacing_before": 10,
+        "heading_spacing_after": 6,
         "paragraph_first_line_indent": 0,
-        "bullet_base_indent": 0.5,
-        "bullet_indent_per_level": 0.75,
-        "code_indent": 0.35,
+        "bullet_base_indent": 0.25,
+        "bullet_indent_per_level": 0.45,
+        "code_indent": 0,
         "quote_indent": 0.5,
         "paragraph_alignment": "left"
       },
@@ -3887,119 +3341,119 @@
         "size": "A4",
         "orientation": "portrait",
         "margins": {
-          "top": 1.25,
-          "bottom": 1.25,
-          "left": 1.25,
-          "right": 1.25
+          "top": 1.0,
+          "bottom": 1.0,
+          "left": 1.0,
+          "right": 1.0
         },
         "border": {
-          "enabled": true,
-          "width": 3,
-          "color": "#C41E3A",
-          "style": "double",
+          "enabled": false,
+          "width": 1,
+          "color": "#000000",
+          "style": "single",
           "offset": 24
         }
       },
       "header": {
         "enabled": true,
-        "text": "CORPORATE DOCUMENT",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 12,
-        "color": "#C41E3A",
-        "bold": true,
+        "font_family": "Times New Roman",
+        "size": 10,
+        "color": "#1F3A5F",
+        "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": false,
         "page_number_position": "header",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "footer": {
         "enabled": true,
-        "text": "© 2026 Corporation. All Rights Reserved.",
+        "text": "",
         "alignment": "center",
-        "font_family": "Arial",
-        "size": 9,
-        "color": "#666666",
+        "font_family": "Times New Roman",
+        "size": 11,
+        "color": "#1F3A5F",
         "bold": false,
         "italic": false,
-        "separator": true,
+        "separator": false,
         "separator_color": "#CCCCCC",
         "show_page_numbers": true,
         "page_number_position": "footer",
         "page_number_alignment": "center",
         "page_number_style": "arabic",
-        "page_format": "X | Page"
+        "page_format": "Page X"
       },
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "type": "text",
-        "text": "INTERNAL USE ONLY",
+        "text": "",
         "image_path": "",
-        "font": "Calibri",
+        "font": "Times New Roman",
         "size": 48,
-        "color": "#C41E3A",
-        "opacity": 0.08,
+        "color": "#1F3A5F",
+        "opacity": 0.1,
         "rotation": 315,
         "position": "center",
         "scale": 100
       },
       "heading": {
         "h1": {
-          "size": 26,
+          "size": 18,
           "weight": "700",
-          "color": "#C41E3A"
+          "color": "#1F3A5F"
         },
         "h2": {
-          "size": 20,
-          "weight": "600",
-          "color": "#DC143C"
-        },
-        "h3": {
           "size": 16,
           "weight": "600",
-          "color": "#E63946"
+          "color": "#2B6CB0"
+        },
+        "h3": {
+          "size": 14,
+          "weight": "600",
+          "color": "#2B6CB0"
         },
         "h4": {
           "size": 14,
           "weight": "600",
-          "color": "#CC5500"
+          "color": "#334155"
         },
         "h5": {
-          "size": 13,
+          "size": 12,
           "weight": "600",
-          "color": "#333333"
+          "color": "#475569"
         },
         "h6": {
           "size": 12,
           "weight": "600",
-          "color": "#555555"
+          "color": "#64748B"
         }
       },
       "table": {
-        "border_color": "#DC143C",
+        "border_color": "#d1d5db",
         "border_width": 1,
         "border_style": "single",
-        "header_fill": "#C41E3A",
-        "header_text": "#FFFFFF",
-        "odd_row": "#FCE8E8",
-        "even_row": "#FFFFFF",
+        "header_fill": "#f3f4f6",
+        "header_text": "#111827",
+        "odd_row": "#ffffff",
+        "even_row": "#f8fafc",
         "text_alignment": "left"
       },
       "code": {
-        "font_family": "Consolas",
-        "font_size": 10,
-        "background": "#2C3E50",
-        "text": "#ECF0F1"
+        "font_family": "JetBrains Mono",
+        "font_size": 12,
+        "background": "#0f172a",
+        "text": "#e2e8f0"
       },
       "borders": {
-        "enabled": true,
-        "width": 3,
-        "color": "#C41E3A",
-        "style": "double",
+        "enabled": false,
+        "width": 1,
+        "color": "#000000",
+        "style": "single",
         "offset": 24
       },
       "styles": {}

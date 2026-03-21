@@ -4,9 +4,12 @@ import json
 import logging
 import os
 import re
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
-from threading import RLock
+from threading import RLock, Thread
 from typing import Any, Dict, List, Mapping, MutableMapping
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,9 +18,11 @@ from pydantic import BaseModel, Field
 
 from .exporter import DocumentExporter, ExportResult, FileStore
 from .models import (
+    AsyncGenerateResponse,
     CreateThemeRequest,
     CreateThemeResponse,
     FormattingOptions,
+    GenerateJobStatusResponse,
     GenerateRequest,
     GenerateResponse,
     GenerateSecurityPayload,
@@ -36,17 +41,23 @@ from .parser import parse_notesforge
 from .templates_repo import TemplateRepo
 
 
-logger = logging.getLogger("notesforge.v7")
+logger = logging.getLogger("quick_doc_formatter.v8")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
-APP_VERSION = "7.0.0"
+APP_VERSION = "8.0.0"
 MAX_BODY_BYTES = 2_000_000
 MAX_PROMPT_BYTES = 200_000
+JOB_EXPIRY_SECONDS = 60 * 60
+JOB_LARGE_LINE_THRESHOLD = 100_000
+DOWNLOAD_TOKEN_TTL_SECONDS = 60 * 20
+RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get("QDF_RATE_LIMIT_WINDOW_SECONDS", "60"))
+RATE_LIMIT_REQUESTS_PER_WINDOW = int(os.environ.get("QDF_RATE_LIMIT_REQUESTS_PER_WINDOW", "120"))
 DEFAULT_PROMPT = (
-    "Using strict NotesForge marker syntax (H1-H6, PARAGRAPH, CENTER, RIGHT, JUSTIFY, BULLET, NUMBERED, "
+    "Using strict Quick Doc Formatter marker syntax (H1-H6, PARAGRAPH, CENTER, RIGHT, JUSTIFY, BULLET, NUMBERED, "
     "TABLE, TABLE_CAPTION, IMAGE, FIGURE, FIGURE_CAPTION, CODE, ASCII, PAGEBREAK, COVER_PAGE, "
     "CERTIFICATE_PAGE, DECLARATION_PAGE, ACKNOWLEDGEMENT_PAGE, ABSTRACT_PAGE, TOC, LIST_OF_TABLES, "
-    "LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE, APPENDIX), generate a professional academic document. "
+    "LIST_OF_FIGURES, CHAPTER, REFERENCES, REFERENCE, APPENDIX, TIP, WARNING, INFO, SUCCESS, CHECKLIST, "
+    "CALLOUT, SUMMARY, EQUATION, SEPARATOR), generate a professional academic document. "
     "Output only marker lines."
 )
 
@@ -185,7 +196,7 @@ def _deep_merge(base: Mapping[str, Any], incoming: Mapping[str, Any]) -> Dict[st
 def _default_config() -> Dict[str, Any]:
     return {
         "app": {
-            "name": "NotesForge Professional",
+            "name": "Quick Doc Formatter",
             "version": APP_VERSION,
             "theme": "professional",
         },
@@ -509,7 +520,7 @@ def _default_themes(config: Mapping[str, Any]) -> Dict[str, Any]:
     frontlines = _deep_merge(
         professional,
         {
-            "name": "Frontlines Edu Tech",
+            "name": "Daily Notes Maker",
             "description": "Times New Roman theme with purple-orange academic styling.",
             "colors": {
                 "h1": "#6A00F4",
@@ -550,7 +561,7 @@ def _default_themes(config: Mapping[str, Any]) -> Dict[str, Any]:
             },
             "header": {
                 "enabled": True,
-                "text": "Frontlines Edu Tech",
+                "text": "Daily Notes Maker",
                 "alignment": "center",
                 "color": "#F77F00",
                 "font_family": "Segoe UI",
@@ -1077,6 +1088,55 @@ def _compose_security_payload(
     )
 
 
+@dataclass
+class DownloadTokenRecord:
+    file_id: str
+    filename: str
+    expires_at: float
+    remaining_uses: int = 5
+
+
+@dataclass
+class ExportJobRecord:
+    job_id: str
+    requested_format: str
+    status: str = "queued"
+    progress: int = 0
+    created_at_ms: int = field(default_factory=lambda: int(time.time() * 1000))
+    updated_at_ms: int = field(default_factory=lambda: int(time.time() * 1000))
+    actual_format: str | None = None
+    conversion_engine: str | None = None
+    external_fallback_used: bool = False
+    file_id: str | None = None
+    filename: str | None = None
+    download_token: str | None = None
+    warnings: List[str] = field(default_factory=list)
+    warning: str | None = None
+    error: str | None = None
+
+
+class FixedWindowRateLimiter:
+    def __init__(self, *, limit: int, window_seconds: int) -> None:
+        self.limit = max(1, int(limit))
+        self.window_seconds = max(1, int(window_seconds))
+        self.lock = RLock()
+        self.buckets: Dict[str, tuple[int, int]] = {}
+
+    def allow(self, key: str) -> tuple[bool, int]:
+        now = int(time.time())
+        window_start = now - (now % self.window_seconds)
+        retry_after = self.window_seconds - (now - window_start)
+        with self.lock:
+            start, count = self.buckets.get(key, (window_start, 0))
+            if start != window_start:
+                start, count = window_start, 0
+            if count >= self.limit:
+                self.buckets[key] = (start, count)
+                return False, max(1, retry_after)
+            self.buckets[key] = (start, count + 1)
+            return True, 0
+
+
 class AppState:
     def __init__(self) -> None:
         self.lock = RLock()
@@ -1087,12 +1147,18 @@ class AppState:
         self.theme_catalog = self._bootstrap_themes()
         self._ensure_prompt_file()
         self.generated_filenames: Dict[str, str] = {}
+        self.download_tokens: Dict[str, DownloadTokenRecord] = {}
+        self.jobs: Dict[str, ExportJobRecord] = {}
+        self.rate_limiter = FixedWindowRateLimiter(
+            limit=RATE_LIMIT_REQUESTS_PER_WINDOW,
+            window_seconds=RATE_LIMIT_WINDOW_SECONDS,
+        )
 
         storage_backend = os.environ.get("STORAGE_BACKEND", "local")
         if storage_backend != "local":
             logger.warning("Only local storage backend is implemented. Falling back to local.")
 
-        temp_dir = os.environ.get("DOCX_TEMP_DIR", str(Path.cwd() / ".notesforge_tmp"))
+        temp_dir = os.environ.get("DOCX_TEMP_DIR", str(Path.cwd() / ".quick_doc_formatter_tmp"))
         self.store = FileStore(temp_dir)
         self.exporter = DocumentExporter(self.store)
         self.templates = TemplateRepo.build_default()
@@ -1183,6 +1249,104 @@ class AppState:
     def filename_for(self, file_id: str) -> str | None:
         return self.generated_filenames.get(file_id)
 
+    def issue_download_token(self, file_id: str, filename: str) -> str:
+        token = f"{uuid4().hex}{uuid4().hex}"
+        self.download_tokens[token] = DownloadTokenRecord(
+            file_id=file_id,
+            filename=filename,
+            expires_at=time.time() + DOWNLOAD_TOKEN_TTL_SECONDS,
+            remaining_uses=5,
+        )
+        return token
+
+    def resolve_download_token(self, token: str) -> tuple[str, str] | None:
+        item = self.download_tokens.get(token)
+        if not item:
+            return None
+        now = time.time()
+        if item.expires_at <= now or item.remaining_uses <= 0:
+            self.download_tokens.pop(token, None)
+            return None
+        item.remaining_uses -= 1
+        if item.remaining_uses <= 0:
+            self.download_tokens.pop(token, None)
+        return item.file_id, item.filename
+
+    def cleanup_tokens(self) -> None:
+        now = time.time()
+        expired = [key for key, record in self.download_tokens.items() if record.expires_at <= now]
+        for key in expired:
+            self.download_tokens.pop(key, None)
+
+    def create_job(self, requested_format: str) -> ExportJobRecord:
+        self.cleanup_jobs()
+        job_id = uuid4().hex
+        job = ExportJobRecord(
+            job_id=job_id,
+            requested_format=requested_format,
+            status="queued",
+            progress=3,
+        )
+        self.jobs[job_id] = job
+        return job
+
+    def get_job(self, job_id: str) -> ExportJobRecord | None:
+        return self.jobs.get(job_id)
+
+    def set_job_progress(self, job_id: str, *, status: str, progress: int) -> None:
+        job = self.jobs.get(job_id)
+        if not job:
+            return
+        job.status = status
+        job.progress = max(0, min(100, int(progress)))
+        job.updated_at_ms = int(time.time() * 1000)
+
+    def complete_job(
+        self,
+        job_id: str,
+        *,
+        file_id: str,
+        filename: str,
+        download_token: str,
+        requested_format: str,
+        actual_format: str,
+        conversion_engine: str,
+        external_fallback_used: bool,
+        warnings: List[str],
+        warning: str | None,
+    ) -> None:
+        job = self.jobs.get(job_id)
+        if not job:
+            return
+        job.status = "completed"
+        job.progress = 100
+        job.file_id = file_id
+        job.filename = filename
+        job.download_token = download_token
+        job.requested_format = requested_format
+        job.actual_format = actual_format
+        job.conversion_engine = conversion_engine
+        job.external_fallback_used = external_fallback_used
+        job.warnings = list(warnings)
+        job.warning = warning
+        job.error = None
+        job.updated_at_ms = int(time.time() * 1000)
+
+    def fail_job(self, job_id: str, error_message: str) -> None:
+        job = self.jobs.get(job_id)
+        if not job:
+            return
+        job.status = "failed"
+        job.progress = 100
+        job.error = error_message[:600]
+        job.updated_at_ms = int(time.time() * 1000)
+
+    def cleanup_jobs(self) -> None:
+        cutoff = int((time.time() - JOB_EXPIRY_SECONDS) * 1000)
+        stale = [key for key, value in self.jobs.items() if value.updated_at_ms < cutoff]
+        for key in stale:
+            self.jobs.pop(key, None)
+
 
 def _build_theme_and_security(
     state: AppState,
@@ -1257,6 +1421,15 @@ def _classify_line(line: str, *, tab_width: int = 4) -> Dict[str, Any]:
             "PAGEBREAK": "pagebreak",
             "LABEL": "paragraph",
             "WATERMARK": "paragraph",
+            "TIP": "paragraph",
+            "WARNING": "paragraph",
+            "INFO": "paragraph",
+            "SUCCESS": "paragraph",
+            "CALLOUT": "paragraph",
+            "SUMMARY": "paragraph",
+            "EQUATION": "code",
+            "CHECKLIST": "bullet",
+            "SEPARATOR": "separator",
         }
         return {
             "type": marker_type_map.get(marker, marker.lower()),
@@ -1278,8 +1451,85 @@ def _theme_tab_width(theme: ThemePayload) -> int:
     return _normalize_tab_width(styles.get("tab_width") or styles.get("tabWidth"), default=4)
 
 
+def _client_identity(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        first = forwarded.split(",")[0].strip()
+        if first:
+            return first
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _prepare_export(
+    state: AppState,
+    req: GenerateRequest,
+) -> tuple[ExportResult, str]:
+    target_format = req.format.lower()
+    if target_format not in SUPPORTED_EXPORT_FORMATS:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {target_format}")
+
+    merged_theme, merged_security, _ = _build_theme_and_security(state, req.theme, req.security)
+    parsed = parse_notesforge(req.content, tab_width=_theme_tab_width(merged_theme))
+    formatting = FormattingOptions(
+        margins=merged_theme.margins,
+        lineSpacing=_normalize_line_spacing(merged_theme.bodyStyle.lineHeight or 1.5, default=1.5),
+    )
+    try:
+        with state.lock:
+            export_result = state.exporter.create_export_file(
+                target_format=target_format,
+                nodes=parsed.nodes,
+                theme=merged_theme,
+                formatting=formatting,
+                security=merged_security,
+            )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    if not export_result.output_path.exists():
+        raise HTTPException(status_code=500, detail="Failed to generate output file")
+    filename_base = req.filename or "quick_doc_formatter_output"
+    filename = f"{filename_base}.{export_result.actual_format}"
+    return export_result, filename
+
+
+def _run_async_export_job(state: AppState, job_id: str, req: GenerateRequest) -> None:
+    with state.lock:
+        state.set_job_progress(job_id, status="running", progress=8)
+
+    try:
+        with state.lock:
+            state.set_job_progress(job_id, status="running", progress=22)
+        export_result, filename = _prepare_export(state, req)
+        all_warnings = list(export_result.warnings)
+        if export_result.warning and export_result.warning not in all_warnings:
+            all_warnings.append(export_result.warning)
+        with state.lock:
+            state.remember_file_name(export_result.file_id, filename)
+            token = state.issue_download_token(export_result.file_id, filename)
+            state.complete_job(
+                job_id,
+                file_id=export_result.file_id,
+                filename=filename,
+                download_token=token,
+                requested_format=export_result.requested_format,
+                actual_format=export_result.actual_format,
+                conversion_engine=export_result.conversion_engine,
+                external_fallback_used=export_result.external_fallback_used,
+                warnings=all_warnings,
+                warning=export_result.warning,
+            )
+    except HTTPException as exc:
+        with state.lock:
+            state.fail_job(job_id, str(exc.detail))
+    except Exception as exc:
+        with state.lock:
+            state.fail_job(job_id, f"Async export failed: {exc}")
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="NotesForge API", version=APP_VERSION)
+    app = FastAPI(title="Quick Doc Formatter API", version=APP_VERSION)
     state = AppState()
 
     app.add_middleware(
@@ -1301,7 +1551,28 @@ def create_app() -> FastAPI:
                 return JSONResponse(status_code=400, content={"detail": "Invalid content-length header"})
             if parsed_size > MAX_BODY_BYTES:
                 return JSONResponse(status_code=413, content={"detail": "Request too large"})
-        return await call_next(request)
+
+        if request.url.path.startswith("/api/") and request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"}:
+            client_key = _client_identity(request)
+            rate_key = f"{client_key}:{request.url.path}"
+            with state.lock:
+                allowed, retry_after = state.rate_limiter.allow(rate_key)
+            if not allowed:
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Rate limit exceeded. Retry later."},
+                    headers={"Retry-After": str(retry_after)},
+                )
+
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        response.headers.setdefault("Cache-Control", "no-store")
+        if request.url.path.startswith("/api/"):
+            response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none';")
+        return response
 
     @app.get("/api/health")
     async def health() -> Dict[str, str]:
@@ -1321,7 +1592,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/version")
     async def version() -> Dict[str, str]:
-        return {"name": "NotesForge API", "version": APP_VERSION}
+        return {"name": "Quick Doc Formatter API", "version": APP_VERSION}
 
     @app.get("/api/markers")
     async def markers_catalog() -> Dict[str, Any]:
@@ -1396,64 +1667,121 @@ def create_app() -> FastAPI:
 
     @app.post("/api/generate", response_model=GenerateResponse)
     async def generate(req: GenerateRequest) -> GenerateResponse:
-        target_format = req.format.lower()
-        if target_format not in SUPPORTED_EXPORT_FORMATS:
-            raise HTTPException(status_code=400, detail=f"Unsupported format: {target_format}")
-
-        merged_theme, merged_security, _ = _build_theme_and_security(state, req.theme, req.security)
-        parsed = parse_notesforge(req.content, tab_width=_theme_tab_width(merged_theme))
-        formatting = FormattingOptions(
-            margins=merged_theme.margins,
-            lineSpacing=_normalize_line_spacing(merged_theme.bodyStyle.lineHeight or 1.5, default=1.5),
-        )
-
-        try:
-            export_result: ExportResult = state.exporter.create_export_file(
-                target_format=target_format,
-                nodes=parsed.nodes,
-                theme=merged_theme,
-                formatting=formatting,
-                security=merged_security,
-            )
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc))
-
-        if not export_result.output_path.exists():
-            raise HTTPException(status_code=500, detail="Failed to generate output file")
-
-        ext = export_result.actual_format
-        filename_base = req.filename or "notesforge_output"
-        filename = f"{filename_base}.{ext}"
+        export_result, filename = _prepare_export(state, req)
         all_warnings = list(export_result.warnings)
         if export_result.warning and export_result.warning not in all_warnings:
             all_warnings.append(export_result.warning)
 
         with state.lock:
             state.remember_file_name(export_result.file_id, filename)
+            state.cleanup_tokens()
+            token = state.issue_download_token(export_result.file_id, filename)
 
         return GenerateResponse(
             success=True,
-            downloadUrl=f"/api/download/{export_result.file_id}",
+            downloadUrl=f"/api/download/{token}",
             fileId=export_result.file_id,
             filename=filename,
             requestedFormat=export_result.requested_format,
             actualFormat=export_result.actual_format,
+            conversionEngine=export_result.conversion_engine,
+            externalFallbackUsed=export_result.external_fallback_used,
             warning=export_result.warning,
             warnings=all_warnings,
         )
 
+    @app.post("/api/generate/async", response_model=AsyncGenerateResponse, status_code=status.HTTP_202_ACCEPTED)
+    async def generate_async(req: GenerateRequest) -> AsyncGenerateResponse:
+        target_format = req.format.lower()
+        if target_format not in SUPPORTED_EXPORT_FORMATS:
+            raise HTTPException(status_code=400, detail=f"Unsupported format: {target_format}")
+        line_count = req.content.count("\n") + 1
+        if line_count >= JOB_LARGE_LINE_THRESHOLD:
+            logger.info("Queued large async export job (%s lines, format=%s)", line_count, target_format)
+
+        with state.lock:
+            job = state.create_job(target_format)
+        worker = Thread(
+            target=_run_async_export_job,
+            args=(state, job.job_id, req.model_copy(deep=True)),
+            daemon=True,
+        )
+        worker.start()
+        return AsyncGenerateResponse(
+            success=True,
+            jobId=job.job_id,
+            status="queued",
+            progress=job.progress,
+        )
+
+    @app.get("/api/generate/jobs/{job_id}", response_model=GenerateJobStatusResponse)
+    async def generate_job_status(job_id: str) -> GenerateJobStatusResponse:
+        with state.lock:
+            state.cleanup_jobs()
+            job = state.get_job(job_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Job not found")
+            download_url = f"/api/download/{job.download_token}" if job.download_token else None
+            return GenerateJobStatusResponse(
+                success=True,
+                jobId=job.job_id,
+                status=job.status,  # type: ignore[arg-type]
+                progress=job.progress,
+                requestedFormat=job.requested_format,
+                actualFormat=job.actual_format,
+                conversionEngine=job.conversion_engine,
+                externalFallbackUsed=job.external_fallback_used,
+                fileId=job.file_id,
+                filename=job.filename,
+                downloadUrl=download_url,
+                warning=job.warning,
+                warnings=job.warnings,
+                error=job.error,
+                createdAt=job.created_at_ms,
+                updatedAt=job.updated_at_ms,
+            )
+
+    @app.get("/api/generate/jobs/{job_id}/download")
+    async def generate_job_download(job_id: str):
+        with state.lock:
+            state.cleanup_jobs()
+            job = state.get_job(job_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Job not found")
+            if job.status != "completed" or not job.download_token:
+                raise HTTPException(status_code=409, detail="Job output is not ready")
+            token = job.download_token
+        return await download(token)
+
     @app.get("/api/download/{file_id}")
     async def download(file_id: str):
-        if not re.fullmatch(r"[0-9a-fA-F]{32}", file_id or ""):
+        key = (file_id or "").strip()
+        if not key:
             raise HTTPException(status_code=404, detail="File not found")
 
-        path = state.store.resolve_path(file_id.lower())
+        token_target: tuple[str, str] | None = None
+        with state.lock:
+            state.cleanup_tokens()
+            token_target = state.resolve_download_token(key)
+
+        resolved_file_id = ""
+        resolved_name = ""
+        if token_target:
+            resolved_file_id, resolved_name = token_target
+        else:
+            if not re.fullmatch(r"[0-9a-fA-F]{32}", key):
+                raise HTTPException(status_code=404, detail="File not found")
+            resolved_file_id = key.lower()
+            with state.lock:
+                resolved_name = state.filename_for(resolved_file_id) or ""
+
+        path = state.store.resolve_path(resolved_file_id)
         if not path:
             raise HTTPException(status_code=404, detail="File not found")
 
         ext = path.suffix.lower().lstrip(".")
         media_type = MEDIA_TYPES.get(ext, "application/octet-stream")
-        filename = state.filename_for(file_id.lower()) or f"notesforge_output.{ext}"
+        filename = resolved_name or f"quick_doc_formatter_output.{ext}"
         return FileResponse(path, media_type=media_type, filename=filename)
 
     @app.get("/api/templates", response_model=List[TemplateDefinition])

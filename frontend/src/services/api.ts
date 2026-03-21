@@ -10,6 +10,10 @@ export const API_ENDPOINTS = {
   analyze: `${API}/api/analyze`,
   preview: `${API}/api/preview`,
   generate: `${API}/api/generate`,
+  generateAsync: `${API}/api/generate/async`,
+  generateJob: (jobId: string) => `${API}/api/generate/jobs/${jobId}`,
+  generateJobDownload: (jobId: string) =>
+    `${API}/api/generate/jobs/${jobId}/download`,
   download: (token: string) => `${API}/api/download/${token}`,
   config: `${API}/api/config`,
   configUpdate: `${API}/api/config/update`,

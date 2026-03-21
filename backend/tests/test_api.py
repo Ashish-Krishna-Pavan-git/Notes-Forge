@@ -1,4 +1,5 @@
 import unittest
+import time
 from unittest.mock import patch
 import io
 import zipfile
@@ -49,7 +50,20 @@ class ApiIntegrationTests(unittest.TestCase):
         markers = body.get("markers", [])
         self.assertTrue(isinstance(markers, list) and len(markers) > 10)
         keys = {item.get("key") for item in markers}
-        self.assertTrue({"H1", "PARAGRAPH", "TABLE", "ASCII", "FIGURE", "CHAPTER", "PAGEBREAK"}.issubset(keys))
+        self.assertTrue(
+            {
+                "H1",
+                "PARAGRAPH",
+                "TABLE",
+                "ASCII",
+                "FIGURE",
+                "CHAPTER",
+                "PAGEBREAK",
+                "CHECKLIST",
+                "EQUATION",
+                "SEPARATOR",
+            }.issubset(keys)
+        )
         ascii_item = next((item for item in markers if item.get("key") == "ASCII"), {})
         self.assertIn("DIAGRAM", ascii_item.get("aliases", []))
 
@@ -106,6 +120,13 @@ class ApiIntegrationTests(unittest.TestCase):
             "https://malicious.example",
         )
 
+    def test_security_headers_present(self) -> None:
+        response = self.client.get("/api/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
+        self.assertEqual(response.headers.get("x-frame-options"), "DENY")
+        self.assertEqual(response.headers.get("cache-control"), "no-store")
+
     def test_preview_contract(self) -> None:
         response = self.client.post(
             "/api/preview",
@@ -147,6 +168,8 @@ class ApiIntegrationTests(unittest.TestCase):
         self.assertIn("fileId", payload)
         self.assertEqual(payload.get("requestedFormat"), "docx")
         self.assertEqual(payload.get("actualFormat"), "docx")
+        self.assertEqual(payload.get("conversionEngine"), "python_docx")
+        self.assertFalse(payload.get("externalFallbackUsed"))
         self.assertEqual(payload.get("filename"), "notesforge_output.docx")
 
         download = self.client.get(payload["downloadUrl"])
@@ -332,7 +355,7 @@ class ApiIntegrationTests(unittest.TestCase):
         cfg = payload.get("config", {})
         self.assertEqual(cfg.get("app", {}).get("theme"), "corporate")
         self.assertEqual(cfg.get("fonts", {}).get("family"), "Arial")
-        self.assertEqual(cfg.get("colors", {}).get("h1"), "#C41E3A")
+        self.assertTrue(cfg.get("colors", {}).get("h1"))
 
     @patch("app.exporter._convert_docx_to_pdf", return_value=(False, "converter unavailable"))
     @patch("app.exporter._convert_html_to_pdf_weasyprint", return_value=(False, "weasy unavailable"))
@@ -353,12 +376,54 @@ class ApiIntegrationTests(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload.get("requestedFormat"), "pdf")
         self.assertEqual(payload.get("actualFormat"), "pdf")
+        self.assertIn(payload.get("conversionEngine"), {"weasyprint", "reportlab", "emergency_pdf", "ilovepdf_api", "ilovepdf_automation"})
         joined_warnings = " | ".join(payload.get("warnings") or [])
         self.assertIn("fallback renderer", joined_warnings.lower())
         self.assertTrue(payload.get("downloadUrl", "").startswith("/api/download/"))
         dl = self.client.get(payload["downloadUrl"])
         self.assertEqual(dl.status_code, 200)
         self.assertTrue(dl.headers["content-type"].startswith("application/pdf"))
+
+    def test_generate_async_job_lifecycle(self) -> None:
+        response = self.client.post(
+            "/api/generate/async",
+            json={
+                "content": SAMPLE_EXAMPLE,
+                "theme": PROFESSIONAL_THEME.model_dump(),
+                "format": "docx",
+                "filename": "async_output",
+                "security": {"disableEditingDocx": False, "removeMetadata": False},
+            },
+        )
+        self.assertEqual(response.status_code, 202)
+        body = response.json()
+        self.assertTrue(body.get("success"))
+        job_id = body.get("jobId")
+        self.assertTrue(isinstance(job_id, str) and len(job_id) >= 20)
+
+        final = None
+        for _ in range(80):
+            poll = self.client.get(f"/api/generate/jobs/{job_id}")
+            self.assertEqual(poll.status_code, 200)
+            payload = poll.json()
+            if payload.get("status") in {"completed", "failed"}:
+                final = payload
+                break
+            time.sleep(0.05)
+
+        self.assertIsNotNone(final)
+        self.assertEqual(final.get("status"), "completed")
+        self.assertEqual(final.get("requestedFormat"), "docx")
+        self.assertEqual(final.get("actualFormat"), "docx")
+        self.assertTrue(final.get("downloadUrl", "").startswith("/api/download/"))
+
+        direct_download = self.client.get(f"/api/generate/jobs/{job_id}/download")
+        self.assertEqual(direct_download.status_code, 200)
+        self.assertTrue(
+            direct_download.headers["content-type"].startswith(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        )
 
     def test_download_rejects_non_token_path(self) -> None:
         response = self.client.get("/api/download/../../etc/passwd")

@@ -28,6 +28,7 @@ class Node:
     align: str = "left"
     items: List[str] | None = None
     rows: List[List[str]] | None = None
+    checks: List[bool] | None = None
     role: str = "paragraph"
     levels: List[int] | None = None
     source: str = ""
@@ -92,6 +93,16 @@ def _parse_list_item(raw: str, numbered: bool, *, options: ParseOptions) -> tupl
     else:
         stripped = re.sub(r"^[-*]\s*", "", stripped)
     return stripped.rstrip(), level
+
+
+def _parse_checklist_item(raw: str, *, options: ParseOptions) -> tuple[str, int, bool]:
+    level = _list_level(raw, tab_width=options.tab_width, unit=options.list_indent_unit)
+    stripped = re.sub(r"^[-*]\s*", "", raw.lstrip())
+    match = re.match(r"^\[(x|X| )\]\s*(.*)$", stripped)
+    if match:
+        checked = match.group(1).lower() == "x"
+        return match.group(2).rstrip(), level, checked
+    return stripped.rstrip(), level, False
 
 
 def _payload_text(payload_raw: str) -> str:
@@ -339,6 +350,12 @@ def parse_notesforge(content: str, *, tab_width: int = 4) -> ParseResult:
             "QUOTE",
             "NOTE",
             "IMPORTANT",
+            "TIP",
+            "WARNING",
+            "INFO",
+            "SUCCESS",
+            "CALLOUT",
+            "SUMMARY",
             "LINK",
             "HIGHLIGHT",
             "FOOTNOTE",
@@ -362,6 +379,12 @@ def parse_notesforge(content: str, *, tab_width: int = 4) -> ParseResult:
                 "QUOTE": "left",
                 "NOTE": "left",
                 "IMPORTANT": "left",
+                "TIP": "left",
+                "WARNING": "left",
+                "INFO": "left",
+                "SUCCESS": "left",
+                "CALLOUT": "left",
+                "SUMMARY": "left",
                 "LINK": "left",
                 "HIGHLIGHT": "left",
                 "FOOTNOTE": "left",
@@ -460,6 +483,49 @@ def parse_notesforge(content: str, *, tab_width: int = 4) -> ParseResult:
             idx = next_idx
             continue
 
+        if marker == "CHECKLIST":
+            items: List[str] = []
+            levels: List[int] = []
+            checks: List[bool] = []
+            if payload_text:
+                cleaned, item_level, checked = _parse_checklist_item(payload_text, options=options)
+                if cleaned.strip():
+                    items.append(cleaned)
+                    levels.append(item_level)
+                    checks.append(checked)
+            next_idx = idx + 1
+            while next_idx < len(lines):
+                nraw = lines[next_idx]
+                marker_line = MARKER_RE.match(nraw)
+                if marker_line:
+                    next_name = normalize_marker(marker_line.group(1).upper())
+                    if next_name == "CHECKLIST":
+                        cleaned, item_level, checked = _parse_checklist_item(
+                            _payload_text(marker_line.group(2)),
+                            options=options,
+                        )
+                        if cleaned.strip():
+                            items.append(cleaned)
+                            levels.append(item_level)
+                            checks.append(checked)
+                        next_idx += 1
+                        continue
+                    break
+                if not nraw.strip():
+                    next_idx += 1
+                    continue
+                cleaned, item_level, checked = _parse_checklist_item(nraw, options=options)
+                if cleaned.strip():
+                    items.append(cleaned)
+                    levels.append(item_level)
+                    checks.append(checked)
+                next_idx += 1
+            if not items:
+                warnings.append(f"Line {idx + 1}: CHECKLIST block has no items.")
+            nodes.append(Node(type="checklist", items=items, levels=levels, checks=checks, marker=raw_marker))
+            idx = next_idx
+            continue
+
         if marker == "CODE":
             code_lines = [payload_text] if payload_text else []
             next_idx = idx + 1
@@ -470,6 +536,19 @@ def parse_notesforge(content: str, *, tab_width: int = 4) -> ParseResult:
                 next_idx += 1
             code_text = "\n".join(code_lines).strip("\n")
             nodes.append(Node(type="code", text=code_text, marker=raw_marker))
+            idx = next_idx
+            continue
+
+        if marker == "EQUATION":
+            eq_lines = [payload_text] if payload_text else []
+            next_idx = idx + 1
+            while next_idx < len(lines):
+                if _is_marker_line(lines[next_idx]):
+                    break
+                eq_lines.append(lines[next_idx])
+                next_idx += 1
+            eq_text = "\n".join(eq_lines).strip("\n")
+            nodes.append(Node(type="equation", text=eq_text, marker=raw_marker))
             idx = next_idx
             continue
 
@@ -536,6 +615,11 @@ def parse_notesforge(content: str, *, tab_width: int = 4) -> ParseResult:
             idx += 1
             continue
 
+        if marker == "SEPARATOR":
+            nodes.append(Node(type="separator", marker=raw_marker))
+            idx += 1
+            continue
+
         idx += 1
 
     heading_count = sum(1 for n in nodes if n.type in {"heading", "chapter", "section", "appendix", "references_heading"})
@@ -549,6 +633,7 @@ def parse_notesforge(content: str, *, tab_width: int = 4) -> ParseResult:
             "references_heading",
             "paragraph",
             "code",
+            "equation",
             "table_caption",
             "figure_caption",
             "reference",
@@ -647,8 +732,23 @@ def render_preview_html(
                     f'<li class="nf-list-item" style="--nf-level:{item_level}">{escape(item)}</li>'
                 )
             fragments.append("</ol>")
+        elif node.type == "checklist":
+            items = node.items or []
+            levels = node.levels or []
+            checks = node.checks or []
+            fragments.append('<ul class="nf-list-root nf-checklist-root">')
+            for idx, item in enumerate(items):
+                item_level = levels[idx] if idx < len(levels) else 0
+                checked = checks[idx] if idx < len(checks) else False
+                symbol = "&#x2611;" if checked else "&#x2610;"
+                fragments.append(
+                    f'<li class="nf-list-item nf-checklist-item" style="--nf-level:{item_level}">{symbol} {escape(item)}</li>'
+                )
+            fragments.append("</ul>")
         elif node.type == "code":
             fragments.append(f"<pre><code>{escape(node.text)}</code></pre>")
+        elif node.type == "equation":
+            fragments.append(f'<pre class="nf-equation"><code>{escape(node.text)}</code></pre>')
         elif node.type == "ascii":
             fragments.append(f'<pre class="nf-ascii"><code>{escape(node.text)}</code></pre>')
         elif node.type == "image" or node.type == "figure":
@@ -689,6 +789,8 @@ def render_preview_html(
             fragments.append(f'<p class="nf-caption nf-figure-caption">Figure {escape(num)}: {escape(node.text)}</p>')
         elif node.type == "pagebreak":
             fragments.append('<div class="nf-page-break" aria-hidden="true"></div>')
+        elif node.type == "separator":
+            fragments.append('<hr class="nf-separator" aria-hidden="true" />')
 
     fragments.append("</div>")
     return f"<style>{css}</style>{''.join(fragments)}"
@@ -728,6 +830,8 @@ def to_markdown(nodes: Sequence[Node]) -> str:
             lines.append(node.text)
         elif node.type == "pagebreak":
             lines.append("---")
+        elif node.type == "separator":
+            lines.append("---")
         elif node.type == "bullet":
             levels = node.levels or []
             for idx, item in enumerate(node.items or []):
@@ -738,8 +842,20 @@ def to_markdown(nodes: Sequence[Node]) -> str:
             for idx, item in enumerate(node.items or [], start=1):
                 item_level = levels[idx - 1] if idx - 1 < len(levels) else 0
                 lines.append(f"{'  ' * item_level}{idx}. {item}")
+        elif node.type == "checklist":
+            levels = node.levels or []
+            checks = node.checks or []
+            for idx, item in enumerate(node.items or []):
+                item_level = levels[idx] if idx < len(levels) else 0
+                checked = checks[idx] if idx < len(checks) else False
+                mark = "x" if checked else " "
+                lines.append(f"{'  ' * item_level}- [{mark}] {item}")
         elif node.type == "code":
             lines.append("```")
+            lines.append(node.text)
+            lines.append("```")
+        elif node.type == "equation":
+            lines.append("```text")
             lines.append(node.text)
             lines.append("```")
         elif node.type == "ascii":
@@ -802,11 +918,20 @@ def to_plain_text(nodes: Sequence[Node]) -> str:
         elif node.type == "pagebreak":
             lines.append("")
             lines.append("[PAGE BREAK]")
+        elif node.type == "separator":
+            lines.append("----------")
         elif node.type == "bullet":
             lines.extend(f"- {item}" for item in (node.items or []))
         elif node.type == "numbered":
             lines.extend(f"{idx}. {item}" for idx, item in enumerate(node.items or [], start=1))
+        elif node.type == "checklist":
+            checks = node.checks or []
+            for idx, item in enumerate(node.items or []):
+                checked = checks[idx] if idx < len(checks) else False
+                lines.append(f"[{'x' if checked else ' '}] {item}")
         elif node.type == "code":
+            lines.append(node.text)
+        elif node.type == "equation":
             lines.append(node.text)
         elif node.type == "ascii":
             lines.append(node.text)
