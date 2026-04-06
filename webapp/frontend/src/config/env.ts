@@ -29,6 +29,6 @@ export const API_BASE = API;
 
 export const API_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 20000);
 
-export const API_HEALTH_TIMEOUT_MS = Number(import.meta.env.VITE_API_HEALTH_TIMEOUT_MS ?? 3500);
+export const API_HEALTH_TIMEOUT_MS = Number(import.meta.env.VITE_API_HEALTH_TIMEOUT_MS ?? 30000);
 
 export const HAS_EXPLICIT_API_URL = Boolean(EXPLICIT_API_URL);
