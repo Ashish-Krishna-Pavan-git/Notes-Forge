@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker-setup/Dockerfile
+    ports:
+      - "10000:10000"
+    environment:
+      - FASTAPI_HOST=0.0.0.0
+      - FASTAPI_PORT=10000
+      - DOCX_TEMP_DIR=/app/.notesforge_runtime/outputs
+      - NF_RUNTIME_TARGET=docker
+      - NF_DISABLE_REMOTE_PROVIDERS=1
+      - NF_ENABLE_SERVER_FILE_DISCOVERY=0
+      - STORAGE_BACKEND=local
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app/webapp/frontend
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    volumes:
+      - ../:/app
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:10000
+    depends_on:
+      - backend

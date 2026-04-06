@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: notesforge-backend
+    env: docker
+    rootDir: .
+    dockerfilePath: docker/Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: FASTAPI_HOST
+        value: 0.0.0.0
+      - key: FASTAPI_PORT
+        value: "10000"
+      - key: DOCX_TEMP_DIR
+        value: /tmp/notesforge
+      - key: NF_RUNTIME_TARGET
+        value: render
+      - key: STORAGE_BACKEND
+        value: local
+      - key: NF_PDF_ALLOW_LOW_FIDELITY_FALLBACK
+        value: "1"
+      - key: NF_CORS_ORIGINS
+        value: https://notes-forge.onrender.com

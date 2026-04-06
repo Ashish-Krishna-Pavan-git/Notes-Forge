@@ -1,0 +1,126 @@
+{
+  "app": {
+    "name": "NotesForge",
+    "version": "10.0.0",
+    "theme": "corporate"
+  },
+  "app_ui": {
+    "theme": "aurora",
+    "mode": "smooth",
+    "music": {
+      "enabled": false,
+      "volume": 0.35,
+      "playlist_mode": "smooth",
+      "autoplay": false
+    }
+  },
+  "fonts": {
+    "family": "Arial",
+    "family_code": "Consolas",
+    "h1_family": "Times New Roman",
+    "h2_family": "Times New Roman",
+    "h3_family": "Times New Roman",
+    "h4_family": "Times New Roman",
+    "h5_family": "Times New Roman",
+    "h6_family": "Times New Roman",
+    "bullet_family": "Times New Roman",
+    "sizes": {
+      "h1": 26,
+      "h2": 20,
+      "h3": 14,
+      "h4": 14,
+      "h5": 12,
+      "h6": 12,
+      "body": 11,
+      "code": 12,
+      "header": 10,
+      "footer": 11,
+      "title": 20,
+      "footnote": 11
+    }
+  },
+  "colors": {
+    "h1": "#B91C1C",
+    "h2": "#DC2626",
+    "h3": "#EF4444",
+    "h4": "#334155",
+    "h5": "#475569",
+    "h6": "#64748B",
+    "body": "#17202a",
+    "code_background": "#0f172a",
+    "code_text": "#e2e8f0",
+    "table_header_bg": "#B91C1C",
+    "table_header_text": "#111827",
+    "table_odd_row": "#FEE2E2",
+    "table_even_row": "#f8fafc",
+    "table_border": "#DC2626",
+    "link": "#2563eb"
+  },
+  "spacing": {
+    "line_spacing": 1.6,
+    "tab_width": 8,
+    "paragraph_spacing_before": 0,
+    "paragraph_spacing_after": 6,
+    "heading_spacing_before": 10,
+    "heading_spacing_after": 6,
+    "paragraph_first_line_indent": 0,
+    "bullet_base_indent": 0.25,
+    "bullet_indent_per_level": 0.45,
+    "code_indent": 0,
+    "quote_indent": 0.5,
+    "paragraph_alignment": "left"
+  },
+  "page": {
+    "size": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1.0,
+      "bottom": 1.0,
+      "left": 1.0,
+      "right": 1.0
+    },
+    "border": {
+      "enabled": false,
+      "width": 1,
+      "color": "#000000",
+      "style": "single",
+      "offset": 24,
+      "shadow": false,
+      "frame": false
+    }
+  },
+  "header": {
+    "enabled": true,
+    "text": "CORPORATE DOCUMENT",
+    "alignment": "center",
+    "font_family": "Times New Roman",
+    "size": 10,
+    "color": "#B91C1C",
+    "bold": true,
+    "italic": false,
+    "separator": false,
+    "separator_color": "#CCCCCC",
+    "show_page_numbers": false,
+    "page_number_position": "header",
+    "page_number_alignment": "center",
+    "page_number_style": "arabic",
+    "page_format": "Page X"
+  },
+  "footer": {
+    "enabled": true,
+    "text": "",
+    "alignment": "center",
+    "font_family": "Times New Roman",
+    "size": 11,
+    "color": "#DC2626",
+    "bold": false,
+    "italic": false,
+    "separator": false,
+    "separator_color": "#CCCCCC",
+    "show_page_numbers": true,
+    "page_number_position": "footer",
+    "page_number_alignment": "center",
+    "page_number_style": "arabic",
+    "page_format": "Page X"
+  }
+}
